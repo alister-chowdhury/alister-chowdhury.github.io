@@ -1,0 +1,17 @@
+#ifndef BLUENOISE_COMMON_GLSLI
+#define BLUENOISE_COMMON_GLSLI
+
+
+uint simpleHash32(uvec3 Seed)
+{
+    uint hx = (0xb543c3a6u ^ Seed.x);
+    uint hy = (0x526f94e2u ^ Seed.y);
+    uint hxy = hx * hy;
+    uint hz0 = 0x53c5ca59u ^ (hxy >> 5u);
+    uint hz1 = (0x74743c1bu ^ Seed.z);
+    uint h = hz0 * hz1;
+    return h;
+}
+
+
+#endif
