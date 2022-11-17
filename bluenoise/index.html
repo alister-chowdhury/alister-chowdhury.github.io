@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<title>Bluenoise Generator</title>
+
+<link href="css.css" rel="stylesheet" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script type="module">
+    import { bindBluenoiseContext } from './void_and_cluster_webgl2.js';
+    window.bindBluenoiseContext = bindBluenoiseContext;
+</script>
+
+
+<script>
+
+var _THIRD_PARTY_LIBS_LOADED = 0;
+
+
+class UISliderSync
+{
+    constructor(f, slider, value)
+    {
+        this.f = f;
+        this.slider = slider;
+        this.value = value;
+        this.syncing = false;
+    }
+
+    syncSlider()
+    {
+        this.sync(this.slider, this.value);
+    }
+
+    syncValue()
+    {
+        this.sync(this.value, this.slider);
+    }
+
+    sync(src, dst)
+    {
+        if(this.syncing)
+        {
+            return;
+        }
+
+        this.syncing = true;
+        const newValue = document.getElementById(src).value;
+        document.getElementById(dst).value = newValue;
+        if(this.f != null) { this.f(newValue); }
+        this.syncing = false;
+    }
+};
+
+
+function getViewport()
+{
+    return document.getElementById("bluenoiseViewport");
+}
+
+
+function getViewportCtx()
+{
+    return window.bindBluenoiseContext(getViewport());
+}
+
+
+function initNewRenderingContext()
+{
+    getViewportCtx().newRenderingContext();
+    document.getElementById("savePng").disabled = true;
+    document.getElementById("saveBC4").disabled = true;
+    
+}
+
+function setViewportSettings(key, value)
+{
+    const ctx = getViewportCtx();
+    ctx.settings[key] = value;
+
+    const autoUpdate = true;
+    if(autoUpdate && ctx.webBrowserSupported)
+    {
+        initNewRenderingContext();
+    }
+}
+
+
+function toggleTiledVisualisation()
+{
+    const value = document.getElementById("visTiled").checked;
+    const ctx = getViewportCtx();
+    ctx.settings.visTiled = value;
+    ctx.forceRefresh = true;
+}
+
+
+function saveBluenoisePng()
+{
+    // Very unlikely, but if the plugin hasn't loaded yet, recall this
+    // function when it has.
+    if(_THIRD_PARTY_LIBS_LOADED == 0)
+    {
+        document.addEventListener("DOMContentLoaded", saveBluenoisePng);
+        return;
+    }
+
+    const ctx = getViewportCtx();
+    const dimensons = ctx.activeDimensions();
+    const blob = ctx.readBlueNoiseRaw(ctx.GL.UNSIGNED_BYTE);
+    const png8 = UPNG.encodeLL([blob], dimensons[0], dimensons[1], 1, 0, 8);
+    window.open(URL.createObjectURL(new Blob([png8], {type: "image/png"})), "_blank").focus();
+}
+
+
+function saveBluenoiseBC4()
+{
+    const ctx = getViewportCtx();
+    const blob = ctx.readBlueNoiseBC4();
+    window.open(URL.createObjectURL(new Blob([blob.buffer], {type: "application/octet-stream"})), "_blank").focus();
+}
+
+
+function mainUpdateLoop()
+{
+    const ctx = getViewportCtx();
+    if(ctx.webBrowserSupported)
+    {
+        const isUnfinished = !ctx.done();
+        ctx.update();
+        window.requestAnimationFrame(mainUpdateLoop);
+        var progressBar = document.getElementById("progressBar");
+        var progressBarPercent = document.getElementById("progressPercent");
+        const progress = ctx.progress();
+        progressBar.style.width = `${progress*100}%`;
+        progressPercent.innerHTML = `${Math.round(progress * 100)}%`;
+
+        // If it was previously not finished, but now is, we can
+        // enable the save buttons!
+        if(isUnfinished && ctx.done())
+        {
+            const activeDimensions = ctx.activeDimensions();
+            document.getElementById("savePng").disabled = false;
+            document.getElementById("saveBC4").disabled = ((activeDimensions[0] & 3) != 0)
+                                                            || ((activeDimensions[1] & 3) != 0)
+                                                            ;
+        }
+    }
+}
+
+
+function mainUpdateLoopLauncher()
+{
+    // Spin until things are fully ready
+    if((window.bindBluenoiseContext) == null || (getViewport() == null))
+    {
+        window.requestAnimationFrame(mainUpdateLoopLauncher);
+    }
+    else
+    {
+
+        const ctx = getViewportCtx();
+        if(!ctx.webBrowserSupported)
+        {
+            document.getElementById("supportedBrowser").style.display = "none";
+            
+            var notSupported = document.getElementById("notSupportedBrowser");
+            notSupported.style.display = "block";
+            notSupported.innerHTML = "Unfortunately your browser is not supported:<br/>"
+                                    + ctx.noSupportReason
+                                    + "<br/>Sorry about that :(";
+            return;
+        }
+
+        initNewRenderingContext();
+        mainUpdateLoop();
+
+        const controlsToEnable = [
+            "newBlueNoise",
+            "visTiled",
+            "sigmaSlider",
+            "sigmaValue",
+            "accuracySlider",
+            "accuracyValue",
+            "widthSlider",
+            "widthValue",
+            "heightSlider",
+            "heightValue",
+        ];
+
+        for(var i=0; i<controlsToEnable.length; ++i)
+        {
+            document.getElementById(controlsToEnable[i]).disabled = false;
+        }
+    }
+}
+
+
+_SIGMA_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("sigma", newValue); }, "sigmaSlider", "sigmaValue");
+_ACCURACY_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("updateAccuracy", newValue); }, "accuracySlider", "accuracyValue");
+_WIDTH_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("width", Math.max(1, Math.round(newValue))); }, "widthSlider", "widthValue");
+_HEIGHT_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("height", Math.max(1, Math.round(newValue))); }, "heightSlider", "heightValue");
+
+</script>
+</head>
+
+<body onload="mainUpdateLoopLauncher()">
+   <div id="supportedBrowser">
+      <div id="viewportWrapper">
+         <canvas id="bluenoiseViewport"></canvas>
+         <div id="viewportFullscreen" title="Fullscreen" onclick="getViewport().requestFullscreen()"></div>
+         <div id="viewportResizer" title="Resize viewport"></div>
+      </div>
+      <div id="controls">
+         <div id="progressWrapper">
+            <span id="progressPercent"></span>
+            <div id="progressBar"></div>
+         </div>
+         <table id="controlsTable">
+            <tr>
+               <td>Visualise Tiled</td>
+               <td><input id="visTiled" disabled type="checkbox" checked onchange="toggleTiledVisualisation()" oninput="toggleTiledVisualisation()"></td>
+            </tr>
+            <tr>
+               <td>Sigma</td>
+               <td>
+                  <input id="sigmaSlider" disabled type="range" min="1" max="3" value="1.9" step="0.01" onchange="_SIGMA_UI_SYNC.syncSlider()" oninput="_SIGMA_UI_SYNC.syncSlider()" />
+                  <input id="sigmaValue" disabled type="number" value="1.9" step="0.1" onchange="_SIGMA_UI_SYNC.syncValue()" oninput="_SIGMA_UI_SYNC.syncValue()" /> 
+               </td>
+            </tr>
+            <tr>
+               <td>Accuracy</td>
+               <td>
+                  <input id="accuracySlider" disabled type="range" min="0.5" max="1" value="0.99" step="0.001" onchange="_ACCURACY_UI_SYNC.syncSlider()" oninput="_ACCURACY_UI_SYNC.syncSlider()" />
+                  <input id="accuracyValue" disabled type="number" value="0.99" step="0.001" onchange="_ACCURACY_UI_SYNC.syncValue()" oninput="_ACCURACY_UI_SYNC.syncValue()" />
+               </td>
+            </tr>
+            <tr>
+               <td>Width</td>
+               <td>
+                  <input id="widthSlider" disabled type="range" min="4" max="512" value="64" step="1" onchange="_WIDTH_UI_SYNC.syncSlider()" oninput="_WIDTH_UI_SYNC.syncSlider()" />
+                  <input id="widthValue" disabled type="number" value="64" step="1" min="1" max="65535" onchange="_WIDTH_UI_SYNC.syncValue()" />
+               </td>
+            </tr>
+            <tr>
+               <td>Height</td>
+               <td>
+                  <input id="heightSlider" disabled type="range" min="4" max="512" value="64" step="1" onchange="_HEIGHT_UI_SYNC.syncSlider()" oninput="_HEIGHT_UI_SYNC.syncSlider()" />
+                  <input id="heightValue" disabled type="number" value="64" step="1" min="1" max="65535" onchange="_HEIGHT_UI_SYNC.syncValue()" />
+               </td>
+            </tr>
+         </table>
+         <br/>
+         <input type="button" id="newBlueNoise" value="Generate New Bluenoise" disabled onclick="initNewRenderingContext()" />
+         <!-- TODO: All the backend plumbing is there to support f16 and f32, however a exr16 / exr32 lib needs to be found -->
+         <input type="button" id="savePng" value="Save (PNG)" disabled onclick="saveBluenoisePng()" />
+         <input type="button" id="saveBC4" value="Save (BC4 compressed)" disabled onclick="saveBluenoiseBC4()" />
+      </div>
+   </div>
+   <div id="notSupportedBrowser">
+   </div>
+
+<script>
+
+// Resizing viewport logic
+function vpResizeBegin(event)
+{
+    if(event.type == "mousedown")
+    {
+        document.documentElement.addEventListener("mousemove", vpResizeIter, false);
+        document.documentElement.addEventListener("mouseup", vpResizeEnd, false);
+    }
+    else
+    {
+        document.documentElement.addEventListener("touchmove", vpResizeIter, false);
+        document.documentElement.addEventListener("touchend", vpResizeEnd, false);
+    }
+}
+
+
+function vpResizeIter(event)
+{
+    var viewportWrapper = document.getElementById("viewportWrapper");
+    const bounds = viewportWrapper.getBoundingClientRect();
+    const resizerMid = 11;
+    const viewportResizer = document.getElementById("viewportResizer");
+
+    var clientX = event.type == "mousemove" ? event.clientX : event.touches[0].clientX;
+    var clientY = event.type == "mousemove" ? event.clientY : event.touches[0].clientY;
+    
+    viewportWrapper.style.width = `${Math.max(1, Math.round(clientX - bounds.x + resizerMid))}px`;
+    viewportWrapper.style.height = `${Math.max(1, Math.round(clientY - bounds.y + resizerMid))}px`;
+
+}
+
+
+function vpResizeEnd(event)
+{
+    if(event.type == "mouseup")
+    {
+        document.documentElement.removeEventListener("mousemove", vpResizeIter, false);    
+        document.documentElement.removeEventListener("mouseup", vpResizeEnd, false);        
+    }
+    else
+    {
+        document.documentElement.removeEventListener("touchmove", vpResizeIter, false);
+        document.documentElement.removeEventListener("touchend", vpResizeEnd, false);
+    }
+}
+
+
+function vpSizeInit()
+{
+    // Make sure the viewport is always an int in size, to prevent weird artefacting where
+    // WebGL attempts to resize things to like half a pixel, somewhat ruining the whole visual
+    // point of bluenoise.
+    var viewportWrapper = document.getElementById("viewportWrapper");
+    const bounds = viewportWrapper.getBoundingClientRect();
+    viewportWrapper.style.width = `${Math.max(1, Math.round(bounds.width))}px`;
+    viewportWrapper.style.height = `${Math.max(1, Math.round(bounds.height))}px`;
+    
+    // Add resize hooks
+    var viewportResizer = document.getElementById("viewportResizer");
+    viewportResizer.addEventListener("mousedown", vpResizeBegin, false);
+    viewportResizer.addEventListener("touchstart", vpResizeBegin, false);
+}
+
+vpSizeInit();
+
+</script>
+
+
+<!-- Helper libraries for encoding pngs etc -->
+<script defer src="thirdparty/UZIP.min.js"></script>
+<script defer src="thirdparty/pako.min.js"></script>
+<script defer src="thirdparty/UPNG.min.js"></script>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function(){_THIRD_PARTY_LIBS_LOADED = 1;});
+</script>
+
+</body>
+</html>
