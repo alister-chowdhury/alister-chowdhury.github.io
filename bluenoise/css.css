@@ -5,6 +5,21 @@ body
     font-family: monospace;
 }
 
+a, a:visited
+{
+    color: #c3c3f3;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+a:focus, a:hover
+{
+    color: #f3f3ff;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+
 #notSupportedBrowser
 {
     display: none;
@@ -95,4 +110,20 @@ body
     margin-left: auto;
     margin-right: auto;
     white-space: nowrap;
+}
+
+
+#algorithmOverview
+{
+    margin-left: auto;
+    margin-right: auto;
+    width: max(50%, min(100%, 900px));
+}
+
+
+#algorithmOverview pre
+{
+    background-color: #3b3b3b;
+    padding-top: 5px;
+    padding-bottom: 5px;
 }

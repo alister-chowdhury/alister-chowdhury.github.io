@@ -10,7 +10,6 @@ layout(location=0) out vec2 outVoidData;
 
 void main()
 {
-
     uvec2 maxSize = maxSizeAndSeed.xy;
     uint seed = maxSizeAndSeed.z;
 

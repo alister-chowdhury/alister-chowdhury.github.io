@@ -1,345 +1,414 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+   <head>
+      <title>Bluenoise Generator</title>
+      <meta name="author" content="Alister Chowdhury">
+      <meta name="description" content="WEGBL2 Bluenoise generator, using a void and cluster variant.">
+      <meta name="keywords" content="bluenoise, void and cluster, rendering, dithering, low discrepancy sequence">
+      <meta name="theme-color" content="#2b2b2b">
+      <link href="css.css" rel="stylesheet">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <script type="module">
+         import { bindBluenoiseContext } from './void_and_cluster_webgl2.js';
+         window.bindBluenoiseContext = bindBluenoiseContext;
+      </script>
+      <script>         
+         
+         async function injectJavascriptAsync(src, onload)
+         {
+             let script = document.createElement("script");
+             script.src = src;
+             script.onload = onload;
+             document.body.appendChild(script);
+         }
+         
+         
+         class UISliderSync
+         {
+             constructor(f, slider, value)
+             {
+                 this.f = f;
+                 this.slider = slider;
+                 this.value = value;
+                 this.syncing = false;
+             }
+         
+             syncSlider()
+             {
+                 this.sync(this.slider, this.value);
+             }
+         
+             syncValue()
+             {
+                 this.sync(this.value, this.slider);
+             }
+         
+             sync(src, dst)
+             {
+                 if(this.syncing)
+                 {
+                     return;
+                 }
+         
+                 this.syncing = true;
+                 const newValue = document.getElementById(src).value;
+                 document.getElementById(dst).value = newValue;
+                 if(this.f != null) { this.f(newValue); }
+                 this.syncing = false;
+             }
+         };
+         
+         
+         function getViewport()
+         {
+             return document.getElementById("bluenoiseViewport");
+         }
+         
+         
+         function getViewportCtx()
+         {
+             return window.bindBluenoiseContext(getViewport());
+         }
+         
+         
+         function initNewRenderingContext()
+         {
+             getViewportCtx().newRenderingContext();
+             document.getElementById("savePng").disabled = true;
+             document.getElementById("saveBC4").disabled = true;
+             
+         }
+         
+         function setViewportSettings(key, value)
+         {
+             const ctx = getViewportCtx();
+             ctx.settings[key] = value;
+         
+             const autoUpdate = true;
+             if(autoUpdate && ctx.webBrowserSupported)
+             {
+                 initNewRenderingContext();
+             }
+         }
+         
+         
+         function toggleTiledVisualisation()
+         {
+             const value = document.getElementById("visTiled").checked;
+             const ctx = getViewportCtx();
+             ctx.settings.visTiled = value;
+             ctx.forceRefresh = true;
+         }
+         
+         
+        var _THIRD_PARTY_PNG_LIBS_LOADED = 0;
+        var _BLOCK_SAVE_PNG = 0;
+         function saveBluenoisePng()
+         {
+             if(_BLOCK_SAVE_PNG == 1)
+             {
+                return;
+             }
+             _BLOCK_SAVE_PNG = 1;
 
-<title>Bluenoise Generator</title>
+             // Only load PNG libs when they're actually required
+             if(_THIRD_PARTY_PNG_LIBS_LOADED == 0)
+             {
+                  // Helper libraries for encoding pngs etc
+                 injectJavascriptAsync("thirdparty/UZIP.min.js", function(){
+                     injectJavascriptAsync("thirdparty/pako.min.js", function(){
+                         injectJavascriptAsync("thirdparty/UPNG.min.js", function(){
+                             _THIRD_PARTY_PNG_LIBS_LOADED = 1;
+                             _BLOCK_SAVE_PNG = 0;
+                             saveBluenoisePng();
+                         })
+                     })
+                 });
+                 return;
+             }
+         
+             const ctx = getViewportCtx();
+             const dimensons = ctx.activeDimensions();
+             const blob = ctx.readBlueNoiseRaw(ctx.GL.UNSIGNED_BYTE);
+             const png8 = UPNG.encodeLL([blob], dimensons[0], dimensons[1], 1, 0, 8);
+             window.open(URL.createObjectURL(new Blob([png8], {type: "image/png"})), "_blank").focus();
+             _BLOCK_SAVE_PNG = 0;
+         }
+         
+         
+         function saveBluenoiseBC4()
+         {
+             const ctx = getViewportCtx();
+             const blob = ctx.readBlueNoiseBC4();
+             window.open(URL.createObjectURL(new Blob([blob.buffer], {type: "application/octet-stream"})), "_blank").focus();
+         }
+         
+         
+         function mainUpdateLoop()
+         {
+             const ctx = getViewportCtx();
+             if(ctx.webBrowserSupported)
+             {
+                 const isUnfinished = !ctx.done();
+                 ctx.update();
+                 window.requestAnimationFrame(mainUpdateLoop);
+                 var progressBar = document.getElementById("progressBar");
+                 var progressBarPercent = document.getElementById("progressPercent");
+                 const progress = ctx.progress();
+                 progressBar.style.width = `${progress*100}%`;
+                 progressPercent.innerHTML = `${Math.round(progress * 100)}%`;
+         
+                 // If it was previously not finished, but now is, we can
+                 // enable the save buttons!
+                 if(isUnfinished && ctx.done())
+                 {
+                     const activeDimensions = ctx.activeDimensions();
+                     document.getElementById("savePng").disabled = false;
+                     document.getElementById("saveBC4").disabled = ((activeDimensions[0] & 3) != 0)
+                                                                     || ((activeDimensions[1] & 3) != 0)
+                                                                     ;
+                 }
+             }
+         }
+         
+         
+         function mainUpdateLoopLauncher()
+         {
+             // Spin until things are fully ready
+             if((window.bindBluenoiseContext) == null || (getViewport() == null))
+             {
+                 window.requestAnimationFrame(mainUpdateLoopLauncher);
+             }
+             else
+             {
+                 const ctx = getViewportCtx();
+                 if(!ctx.webBrowserSupported)
+                 {
+                     document.getElementById("supportedBrowser").style.display = "none";
+                     
+                     var notSupported = document.getElementById("notSupportedBrowser");
+                     notSupported.style.display = "block";
+                     notSupported.innerHTML = "Unfortunately your browser is not supported:<br>"
+                                             + ctx.noSupportReason
+                                             + "<br>Sorry about that :(";
+                     return;
+                 }
 
-<link href="css.css" rel="stylesheet" />
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<script type="module">
-    import { bindBluenoiseContext } from './void_and_cluster_webgl2.js';
-    window.bindBluenoiseContext = bindBluenoiseContext;
-</script>
-
-
-<script>
-
-var _THIRD_PARTY_LIBS_LOADED = 0;
-
-
-class UISliderSync
-{
-    constructor(f, slider, value)
-    {
-        this.f = f;
-        this.slider = slider;
-        this.value = value;
-        this.syncing = false;
-    }
-
-    syncSlider()
-    {
-        this.sync(this.slider, this.value);
-    }
-
-    syncValue()
-    {
-        this.sync(this.value, this.slider);
-    }
-
-    sync(src, dst)
-    {
-        if(this.syncing)
-        {
-            return;
-        }
-
-        this.syncing = true;
-        const newValue = document.getElementById(src).value;
-        document.getElementById(dst).value = newValue;
-        if(this.f != null) { this.f(newValue); }
-        this.syncing = false;
-    }
-};
-
-
-function getViewport()
-{
-    return document.getElementById("bluenoiseViewport");
-}
-
-
-function getViewportCtx()
-{
-    return window.bindBluenoiseContext(getViewport());
-}
-
-
-function initNewRenderingContext()
-{
-    getViewportCtx().newRenderingContext();
-    document.getElementById("savePng").disabled = true;
-    document.getElementById("saveBC4").disabled = true;
-    
-}
-
-function setViewportSettings(key, value)
-{
-    const ctx = getViewportCtx();
-    ctx.settings[key] = value;
-
-    const autoUpdate = true;
-    if(autoUpdate && ctx.webBrowserSupported)
-    {
-        initNewRenderingContext();
-    }
-}
-
-
-function toggleTiledVisualisation()
-{
-    const value = document.getElementById("visTiled").checked;
-    const ctx = getViewportCtx();
-    ctx.settings.visTiled = value;
-    ctx.forceRefresh = true;
-}
-
-
-function saveBluenoisePng()
-{
-    // Very unlikely, but if the plugin hasn't loaded yet, recall this
-    // function when it has.
-    if(_THIRD_PARTY_LIBS_LOADED == 0)
-    {
-        document.addEventListener("DOMContentLoaded", saveBluenoisePng);
-        return;
-    }
-
-    const ctx = getViewportCtx();
-    const dimensons = ctx.activeDimensions();
-    const blob = ctx.readBlueNoiseRaw(ctx.GL.UNSIGNED_BYTE);
-    const png8 = UPNG.encodeLL([blob], dimensons[0], dimensons[1], 1, 0, 8);
-    window.open(URL.createObjectURL(new Blob([png8], {type: "image/png"})), "_blank").focus();
-}
-
-
-function saveBluenoiseBC4()
-{
-    const ctx = getViewportCtx();
-    const blob = ctx.readBlueNoiseBC4();
-    window.open(URL.createObjectURL(new Blob([blob.buffer], {type: "application/octet-stream"})), "_blank").focus();
-}
-
-
-function mainUpdateLoop()
-{
-    const ctx = getViewportCtx();
-    if(ctx.webBrowserSupported)
-    {
-        const isUnfinished = !ctx.done();
-        ctx.update();
-        window.requestAnimationFrame(mainUpdateLoop);
-        var progressBar = document.getElementById("progressBar");
-        var progressBarPercent = document.getElementById("progressPercent");
-        const progress = ctx.progress();
-        progressBar.style.width = `${progress*100}%`;
-        progressPercent.innerHTML = `${Math.round(progress * 100)}%`;
-
-        // If it was previously not finished, but now is, we can
-        // enable the save buttons!
-        if(isUnfinished && ctx.done())
-        {
-            const activeDimensions = ctx.activeDimensions();
-            document.getElementById("savePng").disabled = false;
-            document.getElementById("saveBC4").disabled = ((activeDimensions[0] & 3) != 0)
-                                                            || ((activeDimensions[1] & 3) != 0)
-                                                            ;
-        }
-    }
-}
-
-
-function mainUpdateLoopLauncher()
-{
-    // Spin until things are fully ready
-    if((window.bindBluenoiseContext) == null || (getViewport() == null))
-    {
-        window.requestAnimationFrame(mainUpdateLoopLauncher);
-    }
-    else
-    {
-
-        const ctx = getViewportCtx();
-        if(!ctx.webBrowserSupported)
-        {
-            document.getElementById("supportedBrowser").style.display = "none";
-            
-            var notSupported = document.getElementById("notSupportedBrowser");
-            notSupported.style.display = "block";
-            notSupported.innerHTML = "Unfortunately your browser is not supported:<br/>"
-                                    + ctx.noSupportReason
-                                    + "<br/>Sorry about that :(";
-            return;
-        }
-
-        initNewRenderingContext();
-        mainUpdateLoop();
-
-        const controlsToEnable = [
-            "newBlueNoise",
-            "visTiled",
-            "sigmaSlider",
-            "sigmaValue",
-            "accuracySlider",
-            "accuracyValue",
-            "widthSlider",
-            "widthValue",
-            "heightSlider",
-            "heightValue",
-        ];
-
-        for(var i=0; i<controlsToEnable.length; ++i)
-        {
-            document.getElementById(controlsToEnable[i]).disabled = false;
-        }
-    }
-}
-
-
-_SIGMA_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("sigma", newValue); }, "sigmaSlider", "sigmaValue");
-_ACCURACY_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("updateAccuracy", newValue); }, "accuracySlider", "accuracyValue");
-_WIDTH_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("width", Math.max(1, Math.round(newValue))); }, "widthSlider", "widthValue");
-_HEIGHT_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("height", Math.max(1, Math.round(newValue))); }, "heightSlider", "heightValue");
-
-</script>
-</head>
-
-<body onload="mainUpdateLoopLauncher()">
-   <div id="supportedBrowser">
-      <div id="viewportWrapper">
-         <canvas id="bluenoiseViewport"></canvas>
-         <div id="viewportFullscreen" title="Fullscreen" onclick="getViewport().requestFullscreen()"></div>
-         <div id="viewportResizer" title="Resize viewport"></div>
-      </div>
-      <div id="controls">
-         <div id="progressWrapper">
-            <span id="progressPercent"></span>
-            <div id="progressBar"></div>
+                 initNewRenderingContext();
+                 mainUpdateLoop();
+         
+                 const controlsToEnable = [
+                     "newBlueNoise",
+                     "visTiled",
+                     "sigmaSlider",
+                     "sigmaValue",
+                     "accuracySlider",
+                     "accuracyValue",
+                     "widthSlider",
+                     "widthValue",
+                     "heightSlider",
+                     "heightValue",
+                 ];
+         
+                 for(var i=0; i<controlsToEnable.length; ++i)
+                 {
+                     document.getElementById(controlsToEnable[i]).disabled = false;
+                 }
+             }
+         }
+         
+         
+         _SIGMA_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("sigma", newValue); }, "sigmaSlider", "sigmaValue");
+         _ACCURACY_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("updateAccuracy", newValue); }, "accuracySlider", "accuracyValue");
+         _WIDTH_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("width", Math.max(1, Math.round(newValue))); }, "widthSlider", "widthValue");
+         _HEIGHT_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("height", Math.max(1, Math.round(newValue))); }, "heightSlider", "heightValue");
+         
+      </script>
+   </head>
+   <body onload="mainUpdateLoopLauncher()">
+      <div id="supportedBrowser">
+         <div id="viewportWrapper">
+            <canvas id="bluenoiseViewport"></canvas>
+            <div id="viewportFullscreen" title="Fullscreen" onclick="getViewport().requestFullscreen()"></div>
+            <div id="viewportResizer" title="Resize viewport"></div>
          </div>
-         <table id="controlsTable">
-            <tr>
-               <td>Visualise Tiled</td>
-               <td><input id="visTiled" disabled type="checkbox" checked onchange="toggleTiledVisualisation()" oninput="toggleTiledVisualisation()"></td>
-            </tr>
-            <tr>
-               <td>Sigma</td>
-               <td>
-                  <input id="sigmaSlider" disabled type="range" min="1" max="3" value="1.9" step="0.01" onchange="_SIGMA_UI_SYNC.syncSlider()" oninput="_SIGMA_UI_SYNC.syncSlider()" />
-                  <input id="sigmaValue" disabled type="number" value="1.9" step="0.1" onchange="_SIGMA_UI_SYNC.syncValue()" oninput="_SIGMA_UI_SYNC.syncValue()" /> 
-               </td>
-            </tr>
-            <tr>
-               <td>Accuracy</td>
-               <td>
-                  <input id="accuracySlider" disabled type="range" min="0.5" max="1" value="0.99" step="0.001" onchange="_ACCURACY_UI_SYNC.syncSlider()" oninput="_ACCURACY_UI_SYNC.syncSlider()" />
-                  <input id="accuracyValue" disabled type="number" value="0.99" step="0.001" onchange="_ACCURACY_UI_SYNC.syncValue()" oninput="_ACCURACY_UI_SYNC.syncValue()" />
-               </td>
-            </tr>
-            <tr>
-               <td>Width</td>
-               <td>
-                  <input id="widthSlider" disabled type="range" min="4" max="512" value="64" step="1" onchange="_WIDTH_UI_SYNC.syncSlider()" oninput="_WIDTH_UI_SYNC.syncSlider()" />
-                  <input id="widthValue" disabled type="number" value="64" step="1" min="1" max="65535" onchange="_WIDTH_UI_SYNC.syncValue()" />
-               </td>
-            </tr>
-            <tr>
-               <td>Height</td>
-               <td>
-                  <input id="heightSlider" disabled type="range" min="4" max="512" value="64" step="1" onchange="_HEIGHT_UI_SYNC.syncSlider()" oninput="_HEIGHT_UI_SYNC.syncSlider()" />
-                  <input id="heightValue" disabled type="number" value="64" step="1" min="1" max="65535" onchange="_HEIGHT_UI_SYNC.syncValue()" />
-               </td>
-            </tr>
-         </table>
-         <br/>
-         <input type="button" id="newBlueNoise" value="Generate New Bluenoise" disabled onclick="initNewRenderingContext()" />
-         <!-- TODO: All the backend plumbing is there to support f16 and f32, however a exr16 / exr32 lib needs to be found -->
-         <input type="button" id="savePng" value="Save (PNG)" disabled onclick="saveBluenoisePng()" />
-         <input type="button" id="saveBC4" value="Save (BC4 compressed)" disabled onclick="saveBluenoiseBC4()" />
+         <div id="controls">
+            <div id="progressWrapper">
+               <span id="progressPercent"></span>
+               <div id="progressBar"></div>
+            </div>
+            <table id="controlsTable">
+               <tr>
+                  <td id="visTiledLabel">Visualise Tiled</td>
+                  <td><input aria-labelledby="visTiledLabel" id="visTiled" disabled type="checkbox" checked onchange="toggleTiledVisualisation()" oninput="toggleTiledVisualisation()"></td>
+               </tr>
+               <tr>
+                  <td id="sigmaLabel">Sigma</td>
+                  <td>
+                     <input aria-labelledby="sigmaLabel" id="sigmaSlider" disabled type="range" min="1" max="3" value="1.9" step="0.01" onchange="_SIGMA_UI_SYNC.syncSlider()" oninput="_SIGMA_UI_SYNC.syncSlider()">
+                     <input aria-labelledby="sigmaLabel" id="sigmaValue" disabled type="number" value="1.9" step="0.1" onchange="_SIGMA_UI_SYNC.syncValue()" oninput="_SIGMA_UI_SYNC.syncValue()"> 
+                  </td>
+               </tr>
+               <tr>
+                  <td id="accuracyLabel">Accuracy</td>
+                  <td>
+                     <input aria-labelledby="accuracyLabel" id="accuracySlider" disabled type="range" min="0.5" max="1" value="0.99" step="0.001" onchange="_ACCURACY_UI_SYNC.syncSlider()" oninput="_ACCURACY_UI_SYNC.syncSlider()">
+                     <input aria-labelledby="accuracyLabel" id="accuracyValue" disabled type="number" value="0.99" step="0.001" onchange="_ACCURACY_UI_SYNC.syncValue()" oninput="_ACCURACY_UI_SYNC.syncValue()">
+                  </td>
+               </tr>
+               <tr>
+                  <td id="widthLabel">Width</td>
+                  <td>
+                     <input aria-labelledby="widthLabel" id="widthSlider" disabled type="range" min="4" max="512" value="64" step="1" onchange="_WIDTH_UI_SYNC.syncSlider()" oninput="_WIDTH_UI_SYNC.syncSlider()">
+                     <input aria-labelledby="widthLabel" id="widthValue" disabled type="number" value="64" step="1" min="1" max="65535" onchange="_WIDTH_UI_SYNC.syncValue()">
+                  </td>
+               </tr>
+               <tr>
+                  <td id="heightLabel">Height</td>
+                  <td>
+                     <input aria-labelledby="heightLabel" id="heightSlider" disabled type="range" min="4" max="512" value="64" step="1" onchange="_HEIGHT_UI_SYNC.syncSlider()" oninput="_HEIGHT_UI_SYNC.syncSlider()">
+                     <input aria-labelledby="heightLabel" id="heightValue" disabled type="number" value="64" step="1" min="1" max="65535" onchange="_HEIGHT_UI_SYNC.syncValue()">
+                  </td>
+               </tr>
+            </table>
+            <br>
+            <input type="button" id="newBlueNoise" value="Generate New Bluenoise" disabled onclick="initNewRenderingContext()">
+            <!-- TODO: All the backend plumbing is there to support f16 and f32, however a exr16 / exr32 lib needs to be found -->
+            <input type="button" id="savePng" value="Save (PNG)" disabled onclick="saveBluenoisePng()">
+            <input type="button" id="saveBC4" value="Save (BC4 compressed)" disabled onclick="saveBluenoiseBC4()">
+         </div>
       </div>
-   </div>
-   <div id="notSupportedBrowser">
-   </div>
+      <div id="notSupportedBrowser">
+      </div>
+      <br>
+      <div id="algorithmOverview">
+      <h3>Background:</h3>
+      Bluenoise textures are commonly used in rendering to effectively mask a lack of samples via dithering.<br> 
+      The method used to generate bluenoise here is a variant of <a target="_blank" href="http://cv.ulichney.com/papers/1993-void-cluster.pdf">void-and-cluster</a>, first described by Robert Ulichney (1993).<br>
+      I'd also recommend giving the following articles a read over if you're more interested in a bit more background:<br>
+      <ul>
+         <li><a target="_blank" href="https://blog.demofox.org/2019/06/25/generating-blue-noise-textures-with-void-and-cluster/">Generating Blue Noise Textures With Void And Cluster</a> by Demofox (June 25, 2019).</li>
+         <li><a target="_blank" href="https://bartwronski.com/2021/04/21/superfast-void-and-cluster-blue-noise-in-python-numpy-jax/">Superfast void-and-cluster Blue Noise in Python (Numpy/Jax)</a> by Bart Wronski (April 21, 2021).</li>
+      </ul>
+      <br>
+      <h3>Algorithm overview:</h3>
+      <h4>1. Seeding</h4>
+      In order to make void and cluster non-deterministic, you typically seed points.<br>
+      This does not seed points, but rather it seeds a very small amount of background energy [0, 1.08420210e-19] to each pixel.<br>
+      This satisfies non-determinism, while also not noticeably biasing actually filled points and can be done in a single pass on the GPU.<br>
+      <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/bluenoise/shaders/void_and_cluster_init.frag">void_and_cluster_init.frag</a><br><br>
+      <h4>2. The Main Loop</h4>
+      Each pixel of the final image should be a unique value, with the first value written being 1 and the last value written 0.<br>
+      e.g, if we have a 3x3 image, the values and their order would be:
+      <pre>    [1.0, 0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125, 0.0]</pre>
+      <br>
+      We decide which pixel to write to by finding the biggest "void" that hasn't been written to yet.<br>
+      In this case, I reduce the buffers down 8x8 pixels at a time, (64x64 => 8x8 => 1x1) and keep track of the biggest voids coordinate.<br>
+      <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/bluenoise/shaders/void_and_cluster_reduce_init.frag">void_and_cluster_reduce_init.frag</a><br>
+      <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/bluenoise/shaders/void_and_cluster_reduce_iter.frag">void_and_cluster_reduce_iter.frag</a><br>
+      <br>
+      This is then fed into a update routine, where the pixel + surrounding pixels energy are updated.<br>
+      The amount of "energy" a pixel contributes to itself and its neighbours is:
+      <pre>    e^(-distSq * sigma^-2) * value</pre>
+      <br>
+      The accuracy slider controls the neighbourhood of pixels to update.<br>
+      An accuracy of 1.0 would update all pixels; otherwise we derive the bounds via:<br>
+      <pre>
+    ∞
+    ∫ e^(-x * a^-1) dx = a
+    0
+    where a = sigma²
 
-<script>
+    So the amount of pixels we would need to travel to reach some percentage:
+    -ln(1 - percentage) sigma²
 
-// Resizing viewport logic
-function vpResizeBegin(event)
-{
-    if(event.type == "mousedown")
-    {
-        document.documentElement.addEventListener("mousemove", vpResizeIter, false);
-        document.documentElement.addEventListener("mouseup", vpResizeEnd, false);
-    }
-    else
-    {
-        document.documentElement.addEventListener("touchmove", vpResizeIter, false);
-        document.documentElement.addEventListener("touchend", vpResizeEnd, false);
-    }
-}
+    e.g:
+        accuracy=0.99
+        sigma=1.9
+        -ln(1 - 0.99) 1.9² = 16.62
+        Surrounding bounds = [-17, -17] => [17, 17]
 
-
-function vpResizeIter(event)
-{
-    var viewportWrapper = document.getElementById("viewportWrapper");
-    const bounds = viewportWrapper.getBoundingClientRect();
-    const resizerMid = 11;
-    const viewportResizer = document.getElementById("viewportResizer");
-
-    var clientX = event.type == "mousemove" ? event.clientX : event.touches[0].clientX;
-    var clientY = event.type == "mousemove" ? event.clientY : event.touches[0].clientY;
-    
-    viewportWrapper.style.width = `${Math.max(1, Math.round(clientX - bounds.x + resizerMid))}px`;
-    viewportWrapper.style.height = `${Math.max(1, Math.round(clientY - bounds.y + resizerMid))}px`;
-
-}
-
-
-function vpResizeEnd(event)
-{
-    if(event.type == "mouseup")
-    {
-        document.documentElement.removeEventListener("mousemove", vpResizeIter, false);    
-        document.documentElement.removeEventListener("mouseup", vpResizeEnd, false);        
-    }
-    else
-    {
-        document.documentElement.removeEventListener("touchmove", vpResizeIter, false);
-        document.documentElement.removeEventListener("touchend", vpResizeEnd, false);
-    }
-}
-
-
-function vpSizeInit()
-{
-    // Make sure the viewport is always an int in size, to prevent weird artefacting where
-    // WebGL attempts to resize things to like half a pixel, somewhat ruining the whole visual
-    // point of bluenoise.
-    var viewportWrapper = document.getElementById("viewportWrapper");
-    const bounds = viewportWrapper.getBoundingClientRect();
-    viewportWrapper.style.width = `${Math.max(1, Math.round(bounds.width))}px`;
-    viewportWrapper.style.height = `${Math.max(1, Math.round(bounds.height))}px`;
-    
-    // Add resize hooks
-    var viewportResizer = document.getElementById("viewportResizer");
-    viewportResizer.addEventListener("mousedown", vpResizeBegin, false);
-    viewportResizer.addEventListener("touchstart", vpResizeBegin, false);
-}
-
-vpSizeInit();
-
-</script>
-
-
-<!-- Helper libraries for encoding pngs etc -->
-<script defer src="thirdparty/UZIP.min.js"></script>
-<script defer src="thirdparty/pako.min.js"></script>
-<script defer src="thirdparty/UPNG.min.js"></script>
-
-
-<script>
-    document.addEventListener("DOMContentLoaded", function(){_THIRD_PARTY_LIBS_LOADED = 1;});
-</script>
-
-</body>
+        accuracy=0.99
+        sigma=1.5
+        -ln(1 - 0.99) 1.5² = 10.36
+        Surrounding bounds = [-11, -11] => [11, 11]
+    </pre>
+      (Hopefully this math is legit)<br>
+      <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/bluenoise/shaders/void_and_cluster_partial_update.vert">void_and_cluster_partial_update.vert</a><br>
+      <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/bluenoise/shaders/void_and_cluster_update.frag">void_and_cluster_update.frag</a><br>
+      <br>
+      <br>
+      The full Javascript/WebGL2 stuff can be viewed here: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/bluenoise/void_and_cluster_webgl2.js">void_and_cluster_webgl2.js</a>.<br>
+      It's worth mentioning, I primarily program in C++/HLSL/GLSL which is probably apparent to anyone more familiar with JS.<br>
+      <br>
+      Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.shadertoy.com/view/cdfSD8">https://www.shadertoy.com/view/cdfSD8</a><br>
+    </div>
+      <script>
+         // Resizing viewport logic
+         function vpResizeBegin(event)
+         {
+             if(event.type == "mousedown")
+             {
+                 document.documentElement.addEventListener("mousemove", vpResizeIter, false);
+                 document.documentElement.addEventListener("mouseup", vpResizeEnd, false);
+             }
+             else
+             {
+                 document.documentElement.addEventListener("touchmove", vpResizeIter, false);
+                 document.documentElement.addEventListener("touchend", vpResizeEnd, false);
+             }
+         }
+         
+         
+         function vpResizeIter(event)
+         {
+             var viewportWrapper = document.getElementById("viewportWrapper");
+             const bounds = viewportWrapper.getBoundingClientRect();
+             const resizerMid = 11;
+             const viewportResizer = document.getElementById("viewportResizer");
+         
+             var clientX = event.type == "mousemove" ? event.clientX : event.touches[0].clientX;
+             var clientY = event.type == "mousemove" ? event.clientY : event.touches[0].clientY;
+             
+             viewportWrapper.style.width = `${Math.max(1, Math.round(clientX - bounds.x + resizerMid))}px`;
+             viewportWrapper.style.height = `${Math.max(1, Math.round(clientY - bounds.y + resizerMid))}px`;
+         
+         }
+         
+         
+         function vpResizeEnd(event)
+         {
+             if(event.type == "mouseup")
+             {
+                 document.documentElement.removeEventListener("mousemove", vpResizeIter, false);    
+                 document.documentElement.removeEventListener("mouseup", vpResizeEnd, false);        
+             }
+             else
+             {
+                 document.documentElement.removeEventListener("touchmove", vpResizeIter, false);
+                 document.documentElement.removeEventListener("touchend", vpResizeEnd, false);
+             }
+         }
+         
+         
+         function vpSizeInit()
+         {
+             // Make sure the viewport is always an int in size, to prevent weird artefacting where
+             // WebGL attempts to resize things to like half a pixel, somewhat ruining the whole visual
+             // point of bluenoise.
+             var viewportWrapper = document.getElementById("viewportWrapper");
+             const bounds = viewportWrapper.getBoundingClientRect();
+             viewportWrapper.style.width = `${Math.max(1, Math.round(bounds.width))}px`;
+             viewportWrapper.style.height = `${Math.max(1, Math.round(bounds.height))}px`;
+             
+             // Add resize hooks
+             var viewportResizer = document.getElementById("viewportResizer");
+             viewportResizer.addEventListener("mousedown", vpResizeBegin, false);
+             viewportResizer.addEventListener("touchstart", vpResizeBegin, false);
+         }
+         
+         vpSizeInit();
+         
+      </script>
+   </body>
 </html>
