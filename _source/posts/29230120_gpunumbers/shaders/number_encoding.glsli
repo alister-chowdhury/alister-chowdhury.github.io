@@ -1,0 +1,535 @@
+#ifndef GPU_NUMBER_ENCODING_GLSL_H
+#define GPU_NUMBER_ENCODING_GLSL_H
+
+
+// This contains logic for encoding and drawing numbers.
+// The encoding logic is based off:
+// https://github.com/alister-chowdhury/impl-function-ref/blob/master/generic/encode_number_for_gpu_rendering.inl
+//
+// The way this works is by packing a u32 with 8 characters (4 bits per character).
+// This is useful because it requires a fixed amount of storage and max triangle count.
+// If the number doesn't fit into the budget (8 characters), engineering notation is used instead.
+//
+// Unlike the C++ version, this only supports encoding 8 characters on the GPU.
+// But does support sampling a uvec2 (for 16 characters).
+//
+// The drawing part uses a 5x6 1bpp font (30bits), with each character encoded into a
+// uint that can be sampled from.
+//
+// Functions:
+//  uint encodeNumber(uint value);
+//  uint encodeNumber(int value);
+//  uint encodeNumber(float value);
+//
+//  uint sampleEncodedDigit(uint encodedDigit, vec2 uv);
+//  uint sampleEncodedNumber(uint encodedNumber, vec2 uv);
+//  uint sampleEncodedNumber(uvec2 encodedNumber, vec2 uv);
+//
+// It's worth noting `sampleEncodedNumber` will scale the UV.x by 1.2
+// to add a logical 1px padding.
+// So you should be aiming to draw a box with an aspect ratio of 6:1
+
+
+#ifndef Y_STARTS_AT_BOTTOM
+#define Y_STARTS_AT_BOTTOM 1
+#endif
+
+
+// Encoding logic
+
+#define GPU_NUMBER_ENCODING_E        10
+#define GPU_NUMBER_ENCODING_DOT      11
+#define GPU_NUMBER_ENCODING_PLUS     12
+#define GPU_NUMBER_ENCODING_NEG      13
+#define GPU_NUMBER_ENCODING_INVALID  14
+#define GPU_NUMBER_ENCODING_EMPTY    15
+
+#define INV_LN_10 0.434294481903251827651128918916605082294397005803666566
+
+#define pow10(x)            pow(10, x)
+#define floorLog10(x)       floor(log(x) * INV_LN_10)
+
+
+#define GPU_NUMBER_ENCODING_DYNAMIC_INT     0
+#define GPU_NUMBER_ENCODING_DYNAMIC_UINT    1
+#define GPU_NUMBER_ENCODING_DYNAMIC_FLOAT   2
+
+
+float fractInputReturnFloor(inout float x)
+{
+    float floored = floor(x);
+    x -= floored;
+    return floored;
+}
+
+struct RepBuffer
+{
+    uint    data;
+    uint    index;
+};
+
+
+RepBuffer RepBuffer_init()
+{
+    RepBuffer repBuffer;
+    repBuffer.data = 0;
+    repBuffer.index = 0;
+    return repBuffer;
+}
+
+void RepBuffer_push(inout RepBuffer repBuffer, uint value)
+{
+    repBuffer.data |= ((~value) & 15) << (4 * repBuffer.index++);
+}
+
+void RepBuffer_pop(inout RepBuffer repBuffer, uint count)
+{
+    if(count > repBuffer.index) { count = repBuffer.index; }
+    uint mask = ~0;
+    mask >>= ((count - repBuffer.index) * 4);
+    repBuffer.data &= mask;
+    repBuffer.index -= count;
+}
+
+
+uint RepBuffer_remainingSpace(RepBuffer repBuffer)
+{
+    return 8 - repBuffer.index;
+}
+
+
+uint RepBuffer_get(RepBuffer repBuffer)
+{
+    return ~repBuffer.data;
+}
+
+
+uint RepBuffer_getZero()
+{
+    RepBuffer repBuffer = RepBuffer_init();
+    RepBuffer_push(repBuffer, 0);
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_DOT);
+    RepBuffer_push(repBuffer, 0);
+    return RepBuffer_get(repBuffer);
+}
+
+uint RepBuffer_getNan()
+{
+    RepBuffer repBuffer = RepBuffer_init();
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_INVALID);
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_DOT);
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_INVALID);
+    return RepBuffer_get(repBuffer);
+}
+
+uint RepBuffer_getPosInf()
+{
+    RepBuffer repBuffer = RepBuffer_init();
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_PLUS);
+    RepBuffer_push(repBuffer, 9);
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_E);
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_PLUS);
+    RepBuffer_push(repBuffer, 9);
+    RepBuffer_push(repBuffer, 9);
+    RepBuffer_push(repBuffer, 9);
+    RepBuffer_push(repBuffer, 9);
+    return RepBuffer_get(repBuffer);
+}
+
+uint RepBuffer_getNegInf()
+{
+    RepBuffer repBuffer = RepBuffer_init();
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_NEG);
+    RepBuffer_push(repBuffer, 9);
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_E);
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_PLUS);
+    RepBuffer_push(repBuffer, 9);
+    RepBuffer_push(repBuffer, 9);
+    RepBuffer_push(repBuffer, 9);
+    RepBuffer_push(repBuffer, 9);
+    return RepBuffer_get(repBuffer);
+}
+
+
+RepBuffer encodeWholeNumber(float x, bool isInteger)
+{
+
+    RepBuffer repBuffer = RepBuffer_init();
+
+    if(x < 0)
+    {
+        x = -x;
+        RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_NEG);
+    }
+
+    int e10 = int(floorLog10(x));
+    float d10 = pow10(-e10);
+
+    // Scale down
+    x *= d10;
+
+    // Apply rounding logic
+    x += 0.5f * pow10(-int(RepBuffer_remainingSpace(repBuffer)) + 2);
+
+    // Deal with really odd case
+    // where we round up enough to
+    // change our current number
+    if(x >= 10.0f)
+    {
+        x *= 0.1f;
+        ++e10;
+    }
+
+    // Numbers >= 1, will also omit 0 for decimal numbers
+    if(e10 >= 0)
+    {
+        for(int i=0; i<=e10; ++i)
+        {
+            uint decimal = uint(fractInputReturnFloor(x));
+            x *= 10.0f;
+            RepBuffer_push(repBuffer, decimal);
+        }
+
+        // stop on whole numbers or if we'd just write a single decimal place
+        if(isInteger || (RepBuffer_remainingSpace(repBuffer) <= 1))
+        {
+            return repBuffer;
+        }
+    }
+
+
+    // Decimals
+    {
+        // Include decimal place as zero we wish to strip
+        uint writtenZeroes = 1;
+        RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_DOT);
+
+        // Fill in 0's
+        for(int i=0; i<(-e10-1); ++i)
+        {
+            RepBuffer_push(repBuffer, 0);
+            ++writtenZeroes;
+        }
+
+        // Use the remaining space for anything left
+        uint budget = RepBuffer_remainingSpace(repBuffer);
+        for(uint i=0; i<budget; ++i)
+        {
+            uint decimal = uint(fractInputReturnFloor(x));
+            x *= 10.0f;
+            if(decimal == 0)
+            {
+                ++writtenZeroes;
+            }
+            else
+            {
+                writtenZeroes = 0;
+            }
+            RepBuffer_push(repBuffer, decimal);
+        }
+
+        // Clear trailing 0's and possibly the decimal place
+        RepBuffer_pop(repBuffer, writtenZeroes);
+    }
+
+    return repBuffer;
+}
+
+
+RepBuffer encodeWholeNumber(float x)
+{
+    return encodeWholeNumber(x, floor(x) == x);
+}
+
+
+RepBuffer encodeWholeNumber(int x)
+{
+    return encodeWholeNumber(float(x), true);
+}
+
+
+RepBuffer encodeWholeNumber(uint x)
+{
+    return encodeWholeNumber(float(x), true);
+}
+
+
+RepBuffer encodeEngNotation(float x)
+{
+
+    RepBuffer repBuffer = RepBuffer_init();
+
+    if(x < 0)
+    {
+        x = -x;
+        RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_NEG);
+    }
+
+    int e10 = int(floorLog10(x));
+    float d10 = pow10(-e10);
+
+    // Scale down
+    x *= d10;
+
+    uint budget = RepBuffer_remainingSpace(repBuffer);
+
+    // X.e+X
+    budget -= 5;
+    if(abs(e10) >= 10)
+    {
+        budget -= 1;
+    }
+
+    // Apply rounding logic
+    x += 0.5f * pow10(-int(budget));
+
+    // Deal with really odd case
+    // where we round up enough to
+    // change our current number
+    if(x >= 10.0f)
+    {
+        x *= 0.1f;
+        // Even odder case where our budget decreases
+        if(++e10 == 10)
+        {
+            budget -= 1;
+        }
+    }
+
+    // First number and a dot
+    {
+        uint decimal = uint(fractInputReturnFloor(x));
+        x *= 10.0f;
+        RepBuffer_push(repBuffer, decimal);
+        RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_DOT);
+    }
+
+
+    while(budget != 0)
+    {
+        uint decimal = uint(fractInputReturnFloor(x));
+        x *= 10.0f;
+        RepBuffer_push(repBuffer, decimal);
+        --budget;
+    }
+
+    RepBuffer_push(repBuffer, GPU_NUMBER_ENCODING_E);
+    RepBuffer_push(repBuffer, (e10 < 0) ? GPU_NUMBER_ENCODING_NEG : GPU_NUMBER_ENCODING_PLUS);
+
+    if(e10 < 0)
+    {
+        e10 = -e10;
+    }
+
+    // NB: We only handle two digit exponents (which is fine for floats)
+    if(e10 >= 10)
+    {
+        RepBuffer_push(repBuffer, uint(e10 / 10));
+    }
+
+    RepBuffer_push(repBuffer, uint(e10) % 10);
+
+    return repBuffer;
+}
+
+
+bool requiresEngineerNotation(float value)
+{
+    // This is the maximum float we can represent as an integer.
+    // before errors start emerging, (8000011 will output 8000012).
+    // Found purely by brute force.
+    const float maxValidFloat = 8000010.0f;
+    if(value == 0 || value == -0) return false;
+    if(value < 0)
+    {
+        value = -value;
+        return !(value <= maxValidFloat && value >= 0.001);
+    }
+    return !(value <= maxValidFloat && value >= 0.0001);
+}
+
+
+bool requiresEngineerNotation(int value)
+{
+    if(value < 0)
+    {
+        value = -value;
+        return !(value < 10000000);
+    }
+    return !(value < 100000000);
+}
+
+
+bool requiresEngineerNotation(uint value)
+{
+    return !(value < 100000000);
+}
+
+
+uint encodeNumber(uint value)
+{
+    if(value == 0) { return RepBuffer_getZero(); }
+    RepBuffer buf = requiresEngineerNotation(value) ? encodeEngNotation(float(value)) : encodeWholeNumber(value);
+    return RepBuffer_get(buf);
+}
+
+
+uint encodeNumber(int value)
+{
+    if(value == 0) { return RepBuffer_getZero(); }
+    RepBuffer buf = requiresEngineerNotation(value) ? encodeEngNotation(float(value)) : encodeWholeNumber(value);
+    return RepBuffer_get(buf);
+}
+
+
+uint encodeNumber(float value)
+{
+    if(value == 0)      { return RepBuffer_getZero(); }
+    if(isnan(value))    { return RepBuffer_getNan(); }
+    if(isinf(value))
+    {
+        if(value > 0)
+        {
+            return RepBuffer_getPosInf();
+        }
+        return RepBuffer_getNegInf();
+    }
+
+    RepBuffer buf = requiresEngineerNotation(value) ? encodeEngNotation(value) : encodeWholeNumber(value);
+    return RepBuffer_get(buf);
+}
+
+
+uint encodeNumberDynamic(uint data, uint numberEncodingType)
+{
+    float encodingValue;
+    bool useEngNotation;
+    bool isInteger;
+
+    if(numberEncodingType == GPU_NUMBER_ENCODING_DYNAMIC_INT)
+    {
+        int native = int(data);
+        useEngNotation = requiresEngineerNotation(native);
+        encodingValue = float(native);
+        isInteger = true;
+    }
+    else if(numberEncodingType == GPU_NUMBER_ENCODING_DYNAMIC_UINT)
+    {
+        useEngNotation = requiresEngineerNotation(data);
+        encodingValue = float(data);
+        isInteger = true;
+    }
+    else if (numberEncodingType == GPU_NUMBER_ENCODING_DYNAMIC_FLOAT)
+    {
+        encodingValue = uintBitsToFloat(data);
+        useEngNotation = requiresEngineerNotation(encodingValue);
+        
+        if(isnan(encodingValue))
+        {
+            return RepBuffer_getNan();
+        }
+        
+        if(isinf(encodingValue))
+        {
+            if(encodingValue > 0)
+            {
+                return RepBuffer_getPosInf();
+            }
+            return RepBuffer_getNegInf();
+        }
+
+        isInteger = floor(encodingValue) == encodingValue;
+    }
+    else
+    {
+        // Assume decoded
+        return data;
+    }
+
+    if(encodingValue == 0)
+    {
+        return RepBuffer_getZero();
+    }
+
+
+    RepBuffer buf = (
+        useEngNotation
+        ? encodeEngNotation(encodingValue)
+        : encodeWholeNumber(encodingValue, isInteger)
+    );
+    return RepBuffer_get(buf);
+}
+
+
+uint encodeNumberDynamic(uint data)
+{
+    return encodeNumberDynamic(data, GPU_NUMBER_ENCODING_DYNAMIC_INT);
+}
+
+
+//// Drawing logic
+
+// .###. ..#.. .###. ##### #...# ##### .#### ##### .###. .###.
+// #..## .##.. #...# ....# #...# #.... #.... ....# #...# #...#
+// #.#.# ..#.. ...#. ..##. #...# ####. ####. ...#. .###. #...#
+// ##..# ..#.. ..#.. ....# .#### ....# #...# ..#.. #...# .####
+// #...# ..#.. .#... #...# ....# ....# #...# ..#.. #...# ....#
+// .###. .###. ##### .###. ....# ####. .###. ..#.. .###. .###.
+//
+// ..... ..... ..... ..... ..... .....
+// .###. ..... ..... ..... .#.#. .....
+// #...# ..... ..#.. ..... ##### .....
+// ##### ..... .###. .###. .#.#. .....
+// #.... .##.. ..#.. ..... ##### .....
+// .###. .##.. ..... ..... .#.#. .....
+
+uint numberPixels[16] = uint[16](
+#if !Y_STARTS_AT_BOTTOM
+    0x1d19d72eu, 0x1c4210c4u, 0x3e22222eu, 0x1d18321fu,
+    0x210f4631u, 0x1f083c3fu, 0x1d18bc3eu, 0x0842221fu,
+    0x1d18ba2eu, 0x1d0f462eu, 0x1c1fc5c0u, 0x0c600000u,
+    0x00471000u, 0x00070000u, 0x15f57d40u, 0x00000000u
+#else
+    0x1d9ace2eu, 0x0862108eu, 0x1d14105fu, 0x3f06422eu,
+    0x2318fa10u, 0x3e17c20fu, 0x3c17c62eu, 0x3f041084u,
+    0x1d17462eu, 0x1d18fa0eu, 0x00e8fc2eu, 0x000000c6u,
+    0x00023880u, 0x00003800u, 0x00afabeau, 0x00000000u
+#endif
+);
+
+
+uint sampleEncodedDigit(uint encodedDigit, vec2 uv)
+{
+    if(uv.x < 0. || uv.y < 0. || uv.x >= 1. || uv.y >= 1.) return 0u;
+    uvec2 coord = uvec2(uv * vec2(5., 6.));
+    return (numberPixels[encodedDigit] >> (coord.y * 5u + coord.x)) & 1u;
+}
+
+
+// 8 character variant
+uint sampleEncodedNumber(uint encodedNumber, vec2 uv)
+{
+    // Extract the digit ID by scaling the uv.x value by 8 and clipping
+    // the relevant 4 bits.
+    uv.x *= 8.0;
+    uint encodedDigit = (encodedNumber >> (uint(uv.x) * 4u)) & 0xf;
+    
+    // Put the U in between then [0, 1.2] range, the extra 0.2 is add a
+    // logical 1px padding.
+    // (6/5, where 5 is the number of pixels on the x axis)
+    uv.x = fract(uv.x) * 1.2;
+
+    return sampleEncodedDigit(encodedDigit, uv);
+}
+
+
+// 16 character variant
+uint sampleEncodedNumber(uvec2 encodedNumber, vec2 uv)
+{
+    uint encodingPart = uv.x > 0.5 ? encodedNumber.x : encodedNumber.y;
+    uv.x = fract(uv.x * 2);
+    return sampleEncodedNumber(encodingPart, uv);
+}
+
+
+#endif // GPU_NUMBER_ENCODING_GLSL_H

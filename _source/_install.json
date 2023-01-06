@@ -1,0 +1,7 @@
+{
+    "thirdparty/**": {"minify": false},
+    "res/*.svg": {},
+    "css.css": {"minify": true},
+    "index.html": {"minify": true},
+    "util.js": {"minify": true}
+}

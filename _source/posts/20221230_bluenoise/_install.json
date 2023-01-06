@@ -1,0 +1,6 @@
+{
+    "index.html": {"minify": true},
+    "void_and_cluster_webgl2.js": {"minify": true},
+    "shaders/compiled/*": {"minify": true},
+    "res/*.png": {}
+}

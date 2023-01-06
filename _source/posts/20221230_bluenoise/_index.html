@@ -1,0 +1,627 @@
+
+ <head>
+    <title>Bluenoise Generator</title>
+    <meta name="description" content="WEGBL2 Bluenoise generator, using a void and cluster variant.">
+    <meta name="keywords" content="bluenoise, void and cluster, rendering, dithering, low discrepancy sequence">
+    <style>
+      #notSupportedBrowser {
+        display: none;
+      }
+
+      #viewportWrapper {
+        width: 50%;
+        height: 50%;
+        position: relative;
+        min-width: 64px;
+        min-height: 64px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      #viewportResizer {
+        cursor: se-resize;
+        right: 2px;
+        bottom: 2px;
+        width: 20px;
+        height: 20px;
+        background: url(/res/resize.svg), #d3d3d3;
+        position: absolute;
+      }
+
+      #viewportFullscreen {
+        cursor: pointer;
+        right: 26px;
+        bottom: 2px;
+        width: 20px;
+        height: 20px;
+        background: url(/res/fullscreen.svg), #d3d3d3;
+        position: absolute;
+      }
+
+      #bluenoiseViewport {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      #progressWrapper {
+        display: block;
+        position: relative;
+        width: 100%;
+        margin-top: 5px;
+        background-color: #d3d3d3;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      #progressBar {
+        width: 0;
+        height: 1.2em;
+        border: 0;
+        background-color: #3c3c3c;
+      }
+
+      #progressPercent {
+        position: absolute;
+        display: inline-block;
+        text-align: center;
+        color: #fff;
+        font-weight: bold;
+        mix-blend-mode: difference;
+        padding: 0;
+        margin: 0;
+      }
+
+      #controls {
+        text-align: center;
+        margin-left: auto;
+        margin-right: auto;
+        width: min-content;
+      }
+
+      #controlsTable {
+        margin-left: auto;
+        margin-right: auto;
+        white-space: nowrap;
+      }
+
+      #controlsTable input[type="number"]
+      {
+        width: 5em;
+      }
+
+      #controlsButtons
+      {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        flex-direction: column;
+      }
+
+      #controlsButtons>input
+      {
+        margin-bottom: 0.5em;
+      }
+
+      .sigmaVisContainer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+
+      }
+
+      .sigmaVisContainer > div {
+        margin: 5px;
+        text-align: center;
+      }
+
+      .sigmaVisContainer > div > img {
+        width: 64px;
+        height: 64px;
+        -ms-interpolation-mode: nearest-neighbor;
+        image-rendering: crisp-edges;
+        image-rendering: pixelated;
+      }
+
+
+    </style>
+    <script type="module">
+       import { onResourcesLoaded, bindBluenoiseContext } from './void_and_cluster_webgl2.js';
+       onResourcesLoaded(()=>{ window.bindBluenoiseContext = bindBluenoiseContext; });
+    </script>
+    <script>
+       async function injectJavascriptAsync(src, onload)
+       {
+           let script = document.createElement("script");
+           script.src = src;
+           script.onload = onload;
+           document.body.appendChild(script);
+       }
+
+
+       class UISliderSync
+       {
+           constructor(f, slider, value)
+           {
+               this.f = f;
+               this.slider = slider;
+               this.value = value;
+               this.syncing = false;
+           }
+
+           syncSlider()
+           {
+               this.sync(this.slider, this.value);
+           }
+
+           syncValue()
+           {
+               this.sync(this.value, this.slider);
+           }
+
+           sync(src, dst)
+           {
+               if(this.syncing)
+               {
+                   return;
+               }
+
+               this.syncing = true;
+               const newValue = document.getElementById(src).value;
+               document.getElementById(dst).value = newValue;
+               if(this.f != null) { this.f(newValue); }
+               this.syncing = false;
+           }
+       };
+
+
+       function getViewport()
+       {
+           return document.getElementById("bluenoiseViewport");
+       }
+
+
+       function getViewportCtx()
+       {
+           return window.bindBluenoiseContext(getViewport());
+       }
+
+
+       function initNewRenderingContext()
+       {
+           getViewportCtx().newRenderingContext();
+           document.getElementById("savePng").disabled = true;
+           document.getElementById("saveBC4").disabled = true;
+
+       }
+
+       function setViewportSettings(key, value)
+       {
+           const ctx = getViewportCtx();
+           ctx.settings[key] = value;
+
+           const autoUpdate = true;
+           if(autoUpdate && ctx.webBrowserSupported)
+           {
+               initNewRenderingContext();
+           }
+       }
+
+
+       function toggleTiledVisualisation()
+       {
+           const value = document.getElementById("visTiled").checked;
+           const ctx = getViewportCtx();
+           ctx.settings.visTiled = value;
+           ctx.forceRefresh = true;
+       }
+
+
+      var _THIRD_PARTY_PNG_LIBS_LOADED = 0;
+      var _BLOCK_SAVE_PNG = 0;
+       function saveBluenoisePng()
+       {
+           if(_BLOCK_SAVE_PNG == 1)
+           {
+              return;
+           }
+           _BLOCK_SAVE_PNG = 1;
+
+           // Only load PNG libs when they're actually required
+           if(_THIRD_PARTY_PNG_LIBS_LOADED == 0)
+           {
+                // Helper libraries for encoding pngs etc
+               injectJavascriptAsync("/thirdparty/UZIP.min.js", function(){
+                   injectJavascriptAsync("/thirdparty/pako.min.js", function(){
+                       injectJavascriptAsync("/thirdparty/UPNG.min.js", function(){
+                           _THIRD_PARTY_PNG_LIBS_LOADED = 1;
+                           _BLOCK_SAVE_PNG = 0;
+                           saveBluenoisePng();
+                       })
+                   })
+               });
+               return;
+           }
+
+           const ctx = getViewportCtx();
+           const dimensons = ctx.activeDimensions();
+           const blob = ctx.readBlueNoiseRaw(ctx.GL.UNSIGNED_BYTE);
+           const png8 = UPNG.encodeLL([blob], dimensons[0], dimensons[1], 1, 0, 8);
+           window.open(URL.createObjectURL(new Blob([png8], {type: "image/png"})), "_blank").focus();
+           _BLOCK_SAVE_PNG = 0;
+       }
+
+
+       function saveBluenoiseBC4()
+       {
+           const ctx = getViewportCtx();
+           const blob = ctx.readBlueNoiseBC4();
+           window.open(URL.createObjectURL(new Blob([blob.buffer], {type: "application/octet-stream"})), "_blank").focus();
+       }
+
+
+       function mainUpdateLoop()
+       {
+           const ctx = getViewportCtx();
+           if(ctx.webBrowserSupported)
+           {
+               const isUnfinished = !ctx.done();
+               ctx.update();
+               window.requestAnimationFrame(mainUpdateLoop);
+               var progressBar = document.getElementById("progressBar");
+               var progressBarPercent = document.getElementById("progressPercent");
+               const progress = ctx.progress();
+               progressBar.style.width = `${progress*100}%`;
+               progressPercent.innerHTML = `${Math.round(progress * 100)}%`;
+
+               // If it was previously not finished, but now is, we can
+               // enable the save buttons!
+               if(isUnfinished && ctx.done())
+               {
+                   const activeDimensions = ctx.activeDimensions();
+                   document.getElementById("savePng").disabled = false;
+                   document.getElementById("saveBC4").disabled = ((activeDimensions[0] & 3) != 0)
+                                                                   || ((activeDimensions[1] & 3) != 0)
+                                                                   ;
+               }
+           }
+       }
+
+
+       function mainUpdateLoopLauncher()
+       {
+           // Spin until things are fully ready
+           if((window.bindBluenoiseContext) == null || (getViewport() == null))
+           {
+               window.requestAnimationFrame(mainUpdateLoopLauncher);
+           }
+           else
+           {
+               const ctx = getViewportCtx();
+               if(!ctx.webBrowserSupported)
+               {
+                   document.getElementById("supportedBrowser").style.display = "none";
+
+                   var notSupported = document.getElementById("notSupportedBrowser");
+                   notSupported.style.display = "block";
+                   notSupported.innerHTML = "Unfortunately your browser is not supported:<br>"
+                                           + ctx.noSupportReason
+                                           + "<br>Sorry about that :(";
+                   return;
+               }
+
+               initNewRenderingContext();
+               mainUpdateLoop();
+
+               const controlsToEnable = [
+                   "newBlueNoise",
+                   "visTiled",
+                   "sigmaSlider",
+                   "sigmaValue",
+                   "accuracySlider",
+                   "accuracyValue",
+                   "widthSlider",
+                   "widthValue",
+                   "heightSlider",
+                   "heightValue",
+               ];
+
+               for(var i=0; i<controlsToEnable.length; ++i)
+               {
+                   document.getElementById(controlsToEnable[i]).disabled = false;
+               }
+           }
+       }
+
+       _SIGMA_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("sigma", newValue); }, "sigmaSlider", "sigmaValue");
+       _ACCURACY_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("updateAccuracy", newValue); }, "accuracySlider", "accuracyValue");
+       _WIDTH_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("width", Math.max(1, Math.round(newValue))); }, "widthSlider", "widthValue");
+       _HEIGHT_UI_SYNC = new UISliderSync(function(newValue) { setViewportSettings("height", Math.max(1, Math.round(newValue))); }, "heightSlider", "heightValue");
+
+    </script>
+ </head>
+ <body onload="mainUpdateLoopLauncher()">
+    <div id="supportedBrowser">
+       <div id="viewportWrapper">
+          <canvas id="bluenoiseViewport"></canvas>
+          <div id="viewportFullscreen" title="Fullscreen" onclick="getViewport().requestFullscreen()"></div>
+          <div id="viewportResizer" title="Resize viewport"></div>
+       </div>
+       <div id="controls">
+          <div id="progressWrapper">
+             <span id="progressPercent"></span>
+             <div id="progressBar"></div>
+          </div>
+          <table id="controlsTable">
+             <tr>
+                <td id="visTiledLabel">Visualise Tiled</td>
+                <td><input aria-labelledby="visTiledLabel" id="visTiled" disabled type="checkbox" checked onchange="toggleTiledVisualisation()" oninput="toggleTiledVisualisation()"></td>
+             </tr>
+             <tr>
+                <td id="sigmaLabel">Sigma</td>
+                <td>
+                   <input aria-labelledby="sigmaLabel" id="sigmaSlider" disabled type="range" min="1" max="3" value="1.9" step="0.01" onchange="_SIGMA_UI_SYNC.syncSlider()" oninput="_SIGMA_UI_SYNC.syncSlider()">
+                   <input aria-labelledby="sigmaLabel" id="sigmaValue" disabled type="number" value="1.9" step="0.1" onchange="_SIGMA_UI_SYNC.syncValue()" oninput="_SIGMA_UI_SYNC.syncValue()">
+                </td>
+             </tr>
+             <tr>
+                <td id="accuracyLabel">Accuracy</td>
+                <td>
+                   <input aria-labelledby="accuracyLabel" id="accuracySlider" disabled type="range" min="0.5" max="1" value="0.9" step="0.0001" onchange="_ACCURACY_UI_SYNC.syncSlider()" oninput="_ACCURACY_UI_SYNC.syncSlider()">
+                   <input aria-labelledby="accuracyLabel" id="accuracyValue" disabled type="number" value="0.9" step="0.0001" onchange="_ACCURACY_UI_SYNC.syncValue()" oninput="_ACCURACY_UI_SYNC.syncValue()">
+                </td>
+             </tr>
+             <tr>
+                <td id="widthLabel">Width</td>
+                <td>
+                   <input aria-labelledby="widthLabel" id="widthSlider" disabled type="range" min="4" max="512" value="64" step="1" onchange="_WIDTH_UI_SYNC.syncSlider()" oninput="_WIDTH_UI_SYNC.syncSlider()">
+                   <input aria-labelledby="widthLabel" id="widthValue" disabled type="number" value="64" step="1" min="1" max="65535" onchange="_WIDTH_UI_SYNC.syncValue()">
+                </td>
+             </tr>
+             <tr>
+                <td id="heightLabel">Height</td>
+                <td>
+                   <input aria-labelledby="heightLabel" id="heightSlider" disabled type="range" min="4" max="512" value="64" step="1" onchange="_HEIGHT_UI_SYNC.syncSlider()" oninput="_HEIGHT_UI_SYNC.syncSlider()">
+                   <input aria-labelledby="heightLabel" id="heightValue" disabled type="number" value="64" step="1" min="1" max="65535" onchange="_HEIGHT_UI_SYNC.syncValue()">
+                </td>
+             </tr>
+          </table>
+          <br>
+          <div id="controlsButtons">
+          <input type="button" id="newBlueNoise" value="Generate New Bluenoise" disabled onclick="initNewRenderingContext()">
+          <!-- TODO: All the backend plumbing is there to support f16 and f32, however a exr16 / exr32 lib needs to be found -->
+          <input type="button" id="savePng" value="Save (PNG)" disabled onclick="saveBluenoisePng()">
+          <input type="button" id="saveBC4" value="Save (BC4 compressed)" disabled onclick="saveBluenoiseBC4()">
+        </div>
+       </div>
+    </div>
+    <div id="notSupportedBrowser">
+    </div>
+    <br>
+    <main>
+
+  <markdown>
+## <ins>Background</ins>
+Bluenoise textures are commonly used in rendering to effectively mask a lack of samples via dithering.<br>
+The method used to generate bluenoise here is a variant of <a target="_blank" href="http://cv.ulichney.com/papers/1993-void-cluster.pdf">void-and-cluster</a>, first described by Robert Ulichney (1993).<br>
+I'd also recommend giving the following articles a read over if you're more interested in a bit more background:
+* <a target="_blank" href="https://blog.demofox.org/2019/06/25/generating-blue-noise-textures-with-void-and-cluster/">Generating Blue Noise Textures With Void And Cluster</a> by Demofox (June 25, 2019).
+* <a target="_blank" href="https://bartwronski.com/2021/04/21/superfast-void-and-cluster-blue-noise-in-python-numpy-jax/">Superfast void-and-cluster Blue Noise in Python (Numpy/Jax)</a> by Bart Wronski (April 21, 2021).
+
+## <ins>Algorithm Overview</ins>
+
+### <ins>1. Seeding</ins>
+In order to make void and cluster non-deterministic, you typically seed points.<br>
+This does not seed points, but rather it seeds a very small amount of background energy [0, 1.08420210e-19] to each pixel.<br>
+This satisfies non-determinism, while also not noticeably biasing actually filled points and can be done in a single pass on the GPU.<br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_init.frag">void_and_cluster_init.frag</a>
+
+
+### <ins>2. The Main Loop</ins>
+Each pixel of the final image should be a unique value, with the first value written being 1 and the last value written 0.<br>
+e.g, if we have a 3x3 image, the values and their order would be:
+```
+    [1.0, 0.875, 0.75, 0.625, 0.5, 0.375, 0.25, 0.125, 0.0]
+```
+
+We decide which pixel to write to by finding the biggest "void" that hasn't been written to yet.<br>
+In this case, I reduce the buffers down 8x8 pixels at a time, (64x64 => 8x8 => 1x1) and keep track of the biggest voids coordinate.<br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_reduce_init.frag">void_and_cluster_reduce_init.frag</a><br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_reduce_iter.frag">void_and_cluster_reduce_iter.frag</a><br>
+
+This is then fed into a update routine, where the pixel + surrounding pixels energy are updated.<br>
+The amount of "energy" a pixel contributes to itself and its neighbours is:<br><br>
+<latex>e^{-x^2 \sigma^{-2}}</latex><br>
+Where x is the distance to the between pixels.
+
+<div class="sigmaVisContainer">
+  <div><img alt="sigma=1.0" src="res/sigma1.0.png"><br>&sigma; = 1.0</div>
+  <div><img alt="sigma=1.2" src="res/sigma1.2.png"><br>&sigma; = 1.2</div>
+  <div><img alt="sigma=1.4" src="res/sigma1.4.png"><br>&sigma; = 1.4</div>
+  <div><img alt="sigma=1.6" src="res/sigma1.6.png"><br>&sigma; = 1.6</div>
+  <div><img alt="sigma=1.8" src="res/sigma1.8.png"><br>&sigma; = 1.8</div>
+  <div><img alt="sigma=2.0" src="res/sigma2.0.png"><br>&sigma; = 2.0</div>
+  <div><img alt="sigma=2.2" src="res/sigma2.2.png"><br>&sigma; = 2.2</div>
+  <div><img alt="sigma=2.4" src="res/sigma2.4.png"><br>&sigma; = 2.4</div>
+  <div><img alt="sigma=2.6" src="res/sigma2.6.png"><br>&sigma; = 2.6</div>
+  <div><img alt="sigma=2.8" src="res/sigma2.8.png"><br>&sigma; = 2.8</div>
+  <div><img alt="sigma=3.0" src="res/sigma3.0.png"><br>&sigma; = 3.0</div>
+</div>
+
+<br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_partial_update.vert">void_and_cluster_partial_update.vert</a><br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_update.frag">void_and_cluster_update.frag</a><br>
+<br>
+
+### <ins>3. Region To Update</ins>
+
+#### <ins>3.a Correct version</ins>
+
+We can derive a "true" bounds, given some target accuracy via:<br>
+
+<latex>\newcommand{\d}[1]{\operatorname{d}{#1}}\newcommand{\erf}[1]{\operatorname{erf}(#1)}\int_{0}^{u}\int_{0}^{u} e^{-(x^{2} + y^{2}) \sigma^{-2}} \d{x} \d{y} = \dfrac{\pi}{4} \sigma^{2} \erf{\dfrac{u}{\sigma}}^{2}</latex>
+<br>
+Where u is the span of pixels to update.
+<br>
+<br>
+<br>
+Feeding in <latex>\infty</latex> gives us:<br>
+<latex>\newcommand{\d}[1]{\operatorname{d}{#1}}\newcommand{\erf}[1]{\operatorname{erf}(#1)}\int_{0}^{\infty}\int_{0}^{\infty} e^{-(x^{2} + y^{2}) \sigma^{-2}} \d{x} \d{y} = \dfrac{\pi}{4} \sigma^{2}</latex>
+<br>
+<br>
+<br>
+We can therefore derive an accuracy percentage by:<br><br>
+<latex>\newcommand{\erf}[1]{\operatorname{erf}(#1)} p = \dfrac{\dfrac{\pi}{4} \sigma^{2} \erf{\dfrac{u}{\sigma}}^{2}}{\dfrac{\pi}{4} \sigma^{2}} = \erf{\dfrac{u}{\sigma}}^{2}</latex>
+<br>
+<br>
+<br>
+And to get a usable span:<br><br>
+<latex>\newcommand{\ierf}[1]{\operatorname{erf^{-1}}(#1)}u = \ierf{\sqrt{p}} \sigma</latex>
+<br>
+
+e.g:
+```
+              multiplier         |                update span
+    --------------------------------------------------------------------------
+    ierf(sqrt(0.5))     ≈ 0.744  | [-ceil(0.744 * sigma), ceil(0.744 * sigma)]
+    ierf(sqrt(0.6))     ≈ 0.857  | [-ceil(0.857 * sigma), ceil(0.857 * sigma)]
+    ierf(sqrt(0.7))     ≈ 0.986  | [-ceil(0.986 * sigma), ceil(0.986 * sigma)]
+    ierf(sqrt(0.8))     ≈ 1.144  | [-ceil(1.144 * sigma), ceil(1.144 * sigma)]
+    ierf(sqrt(0.9))     ≈ 1.377  | [-ceil(1.377 * sigma), ceil(1.377 * sigma)]
+    ierf(sqrt(0.99))    ≈ 1.981  | [-ceil(1.981 * sigma), ceil(1.981 * sigma)]
+    ierf(sqrt(0.999))   ≈ 2.456  | [-ceil(2.456 * sigma), ceil(2.456 * sigma)]
+    ierf(sqrt(0.9999))  ≈ 2.862  | [-ceil(2.862 * sigma), ceil(2.862 * sigma)]
+    ierf(sqrt(0.99999)) ≈ 3.223  | [-ceil(3.223 * sigma), ceil(3.223 * sigma)]
+
+    With a sigma of 1.9:
+    0.5     => [-2, 2]
+    0.6     => [-2, 2]
+    0.7     => [-2, 2]
+    0.8     => [-3, 3]
+    0.9     => [-3, 3]
+    0.99    => [-4, 4]
+    0.999   => [-5, 5]
+    0.9999  => [-6, 6]
+    0.99999 => [-7, 7]
+```
+
+That being said, anything less than 99.99% very quickly becomes unusable, and as far as UI controls are concerned, is quite unintuitive.<br>
+
+
+#### <ins>3.b More intuitive version</ins>
+
+
+If we flip the problem around and change it to, what is the greatest span we can reach, before
+floating point precision kicks in and prevents anything from even being written, we just need to solve:
+
+<latex>e^{-u^{2} \sigma^{-2}} = \delta</latex><br>
+Where &delta; is a very small number (e.g FLT_MIN [2^-149]) and u would be the maximum viable span.<br>
+<br>From which we can derive:
+<latex>u = \sqrt{-\ln(\delta) \sigma^{2}} = \sqrt{-\ln(\delta)}\enspace\sigma</latex><br>
+<br>
+With &delta; = FLT_MIN, we arive at:
+
+```
+    span = 10.16262416423198497411 * sigma
+```
+
+And can better control the accuracy via:
+```
+    span = ceil(10.16262416423198497411 * sigma * accuracy)
+```
+
+Which being linear feels more intuitive, artefacts don't *really* start showing up until < 50%, and the span covered could be reduced as the pixel values decrease (although this hasn't been implemented here).
+
+Example of the first 64 chosen samples using different accuracies, with &sigma;=1.9:
+<div class="sigmaVisContainer">
+  <div><img alt="acc0.1" src="res/acc0.1.png"><br>acc = 0.1</div>
+  <div><img alt="acc0.2" src="res/acc0.2.png"><br>acc = 0.2</div>
+  <div><img alt="acc0.3" src="res/acc0.3.png"><br>acc = 0.3</div>
+  <div><img alt="acc0.4" src="res/acc0.4.png"><br>acc = 0.4</div>
+  <div><img alt="acc0.5" src="res/acc0.5.png"><br>acc = 0.5</div>
+  <div><img alt="acc1.0" src="res/acc1.0.png"><br>acc = 1.0</div>
+</div>
+
+
+As a note, atleast using WebGL2 (with only fragment shaders) on a PC, the time saved by limiting the region seems negligible.
+If we were updating regions using a compute shader this might be a different story, but even so, it's unlikely we'll ever really saturate the waves available without being bottlenecked by the reduction step first.
+<br>
+
+<hr>
+
+The full Javascript/WebGL2 stuff can be viewed here: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/void_and_cluster_webgl2.js">void_and_cluster_webgl2.js</a>.<br>
+It's worth mentioning, I primarily program in C++/HLSL/GLSL which is probably apparent to anyone more familiar with JS.<br>
+<br>
+Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.shadertoy.com/view/cdfSD8">https://www.shadertoy.com/view/cdfSD8</a><br>
+</markdown>
+
+  </main>
+
+    <script>
+       // Resizing viewport logic
+       function vpResizeBegin(event)
+       {
+           if(event.type == "mousedown")
+           {
+               document.documentElement.addEventListener("mousemove", vpResizeIter, false);
+               document.documentElement.addEventListener("mouseup", vpResizeEnd, false);
+           }
+           else
+           {
+               document.documentElement.addEventListener("touchmove", vpResizeIter, false);
+               document.documentElement.addEventListener("touchend", vpResizeEnd, false);
+           }
+       }
+
+
+       function vpResizeIter(event)
+       {
+           var viewportWrapper = document.getElementById("viewportWrapper");
+           const bounds = viewportWrapper.getBoundingClientRect();
+           const resizerMid = 11;
+           const viewportResizer = document.getElementById("viewportResizer");
+
+           var clientX = event.type == "mousemove" ? event.clientX : event.touches[0].clientX;
+           var clientY = event.type == "mousemove" ? event.clientY : event.touches[0].clientY;
+
+           viewportWrapper.style.width = `${Math.max(1, Math.round(clientX - bounds.x + resizerMid))}px`;
+           viewportWrapper.style.height = `${Math.max(1, Math.round(clientY - bounds.y + resizerMid))}px`;
+
+       }
+
+
+       function vpResizeEnd(event)
+       {
+           if(event.type == "mouseup")
+           {
+               document.documentElement.removeEventListener("mousemove", vpResizeIter, false);
+               document.documentElement.removeEventListener("mouseup", vpResizeEnd, false);
+           }
+           else
+           {
+               document.documentElement.removeEventListener("touchmove", vpResizeIter, false);
+               document.documentElement.removeEventListener("touchend", vpResizeEnd, false);
+           }
+       }
+
+
+       function vpSizeInit()
+       {
+           // Make sure the viewport is always an int in size, to prevent weird artefacting where
+           // WebGL attempts to resize things to like half a pixel, somewhat ruining the whole visual
+           // point of bluenoise.
+           var viewportWrapper = document.getElementById("viewportWrapper");
+           const bounds = viewportWrapper.getBoundingClientRect();
+           viewportWrapper.style.width = `${Math.max(1, Math.round(bounds.width))}px`;
+           viewportWrapper.style.height = `${Math.max(1, Math.round(bounds.height))}px`;
+
+           // Add resize hooks
+           var viewportResizer = document.getElementById("viewportResizer");
+           viewportResizer.addEventListener("mousedown", vpResizeBegin, false);
+           viewportResizer.addEventListener("touchstart", vpResizeBegin, false);
+       }
+
+       vpSizeInit();
+    </script>
+ </body>

@@ -1,0 +1,91 @@
+
+ <head>
+    <title>Posts</title>
+    <meta name="description" content="List of posts that I have posted.">
+    <meta name="keywords" content="rendering, graphics, posts">
+    <style>
+      .entry
+      {
+        padding-top:0.5em;
+        padding-bottom:0.5em;
+      }
+
+      .desc
+      {
+        margin-left: 1em;
+      }
+
+      .date
+      {
+        font-size: 0.8em;
+        margin-left: 1.25em;
+      }
+    </style>
+ </head>
+ <body>
+  <main>
+<mako>
+
+<%
+
+from datetime import datetime
+from pathlib import Path
+import os
+import sys
+
+sys.path.insert(0, REPO_ROOT)
+
+from builder.html_processing.extract_metadata import extract_metadata
+
+posts_root = os.path.join(source_file, "..")
+relevant_entries = []
+
+for entry in sorted(os.listdir(posts_root), reverse=True):
+
+  parts = entry.split("_", 1)
+  if len(parts) != 2:
+    continue
+
+  timestamp = parts[0]
+  if not timestamp.isdigit() and len(timestamp) != 8:
+    continue
+
+  entry_dir_path = os.path.join(posts_root, entry)
+  entry_index_html = Path(os.path.join(entry_dir_path, "index.html"))
+  
+  if not entry_index_html.is_file():
+    continue
+
+  title, meta = extract_metadata(entry_index_html.read_text("utf8"))
+  post_date = datetime.strptime(timestamp, "%Y%m%d").strftime("%d %B %Y")
+
+  relevant_entries.append({
+    "post_date": post_date,
+    "title": title,
+    "path": "{0}/".format(entry),
+    "desc": meta.get("description")
+  })
+
+%>
+
+<markdown>
+
+${"##"} <ins>Posts</ins>
+
+% for entry in relevant_entries:
+
+<div class="entry">
+
+${"###"} <a href='${entry["path"]}'>${entry["title"]}</a>
+<p class="desc">${entry["desc"]}</p>
+<p class="date">${entry["post_date"]}</p>
+
+</div>
+
+% endfor
+
+</markdown>
+
+</mako>
+  </main>
+ </body>
