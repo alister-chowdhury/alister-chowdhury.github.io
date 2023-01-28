@@ -1,0 +1,2 @@
+#version 300 es
+precision highp float;precision highp int;uniform highp uint backgroundEnergySeed;layout(location=0)out highp vec2 outNoiseEnergy;void main(){uvec2 _=uvec2(gl_FragCoord.xy);outNoiseEnergy=vec2(0.,uintBitsToFloat(((1405471321u^(((3041117094u^_.x)*(1383044322u^_.y))>>5u))*(1953774619u^backgroundEnergySeed))&536870911u));}

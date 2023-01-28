@@ -1,0 +1,141 @@
+<!DOCTYPE html><html lang=en><head><meta charset=utf-8><meta name=author content="Alister Chowdhury"><meta name=theme-color content=#2b2b2b><link href=/css.css rel=stylesheet><meta name=viewport content="width=device-width, initial-scale=1"><title>Simplifying Drawing Numbers On The GPU</title><meta name=description content="Encoding numbers in a fixed format, to make drawing them less of a pain."><meta name=keywords content="encoding numbers, GPU drawing, rendering, UI"><style>#notSupportedBrowser{display:none}.dataTable{width:fit-content;margin-left:auto;margin-right:auto;padding:1em;background-color:#1f1f1f}.dataTable>div{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border-bottom:#7373c3 1px solid}.dataTable>div>div{text-align:center;padding-left:.5em;padding-right:.5em;margin-top:auto;margin-bottom:auto}.dataTable>div>div>input{padding:0;border:0;padding-left:.1em;padding-right:.1em}input[type="color"]{-webkit-appearance:none}input[type="color"]::-webkit-color-swatch-wrapper{padding:0}input[type="color"]::-webkit-color-swatch{border:none}</style><script>function addAfterLoaded(e){window.resourcesReady?e():window.afterLoaded.push(e)}window.resourcesReady=!1,window.afterLoaded=[];</script><script type=module>import{onResourcesLoaded as e,encodeNumber as r,paddedHexify as d,decodeToString as o,bindDrawNumbersContext as a}from"./gpunumbers_webgl2.js";e(()=>{window.resourcesReady=!0,window.encodeNumber=r,window.paddedHexify=d,window.decodeToString=o,window.bindDrawNumbersContext=a,window.afterLoaded.forEach(e=>{e()})});</script><link rel=stylesheet href=/thirdparty/highlight.js.css></head><body> <div id=header> <a href=/>Home</a> <a href=/posts/>Posts</a> <a href=https://github.com/alister-chowdhury>Github</a> </div> <main> <h2><ins>Background</ins></h2> <p>A little while ago, I wanted a way to easily display a bunch of debugging numbers while I was rendering. (FPS, instances culled, all that sort of good stuff).</p> <p>You can read it back to the CPU and just print it to the console, but that gets quite messy and becomes rather burdensome to sift through.</p> <p>You could also probably use whatever font rendering shaders you have at hand, but then that becomes quite tedious. When all you really wanted to do was quickly know the value of something, suddenly you need to worry about how much buffer to pre-allocate and the maximum number triangles/compute you may end up needing for all the digits.</p> <h2><ins>Encoding For A Simpler Pipeline</ins></h2> <p>Ideally, a solution would satisfy:</p> <ul> <li>Not be a performance hog.</li> <li>Be simple to drop in.</li> <li>Use fixed buffer and dispatch sizes.</li> <li>Represent a reasonable gamut of numbers.</li> </ul> <p>To this end, it would be great if we could encode something usable in single <code>uint32</code> and dispatch a single quad (be it two triangles or a compute range).</p> <p>We know we'll need to store the digits 0 through 9, so we would have to use atleast 4 bits per digit, leaving us with a 8 character budget. 8 characters seems like more than enough for most use cases, and if we're talking only integers [-9999999, 99999999], we might call it a day.</p> <p>It would be nice to be able to represent floats and since we have 16 possible values per digit but we're only using 10, that leaves us with 6 spare, that we can put to good use!</p> <p>I settled on the following charset:</p> <div class=dataTable> <div><div>Nibble</div><div>Character</div></div> <div><div>0</div><div>0</div></div> <div><div>1</div><div>1</div></div> <div><div>2</div><div>2</div></div> <div><div>3</div><div>3</div></div> <div><div>4</div><div>4</div></div> <div><div>5</div><div>5</div></div> <div><div>6</div><div>6</div></div> <div><div>7</div><div>7</div></div> <div><div>8</div><div>8</div></div> <div><div>9</div><div>9</div></div> <div><div>A</div><div>e</div></div> <div><div>B</div><div>.</div></div> <div><div>C</div><div>+</div></div> <div><div>D</div><div>-</div></div> <div><div>E</div><div>#</div></div> <div><div>F</div><div>space</div></div> </div> <p>And went about writing encoders in a few different languages:</p> <ul> <li><a target=_blank href=https://github.com/alister-chowdhury/impl-function-ref/blob/master/generic/encode_number_for_gpu_rendering.inl>C++</a> (original version, which is a bit more involved)</li> <li><a target=_blank href=https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/29230120_gpunumbers/shaders/number_encoding.hlsli>HLSL</a> (also includes sampling logic)</li> <li><a target=_blank href=https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/29230120_gpunumbers/shaders/number_encoding.glsli>GLSL</a> (also includes sampling logic)</li> <li><a target=_blank href=https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/29230120_gpunumbers/encode_number_web.c>C</a> (primarily targetting <a target=_blank href=https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/29230120_gpunumbers/encode_number_web.wasm>WASM</a> for JS)</li> </ul> <p>And here are a few examples:</p> <div class=dataTable> <div><div>Input</div><div>Encoded</div><div>Decoded</div></div> <div><div>0</div><div>0xfffff0b0</div><div>0.0</div></div> <div><div>1.5</div><div>0xfffff5b1</div><div>1.5</div></div> <div><div>-123</div><div>0xffff321d</div><div>-123</div></div> <div><div>132412210</div><div>0x8ca423b1</div><div>1.324e+8</div></div> <div><div>0.012456</div><div>0xf654210b</div><div>.012456</div></div> <div><div>-0.00001421</div><div>0x5da24b1d</div><div>-1.42e-5</div></div> <div><div>59.84512</div><div>0x21548b95</div><div>59.84512</div></div> <div><div>9.99999999</div><div>0xffffff01</div><div>10</div></div> <div><div>&infin;</div><div>0x9999ca9c</div><div>+9e+9999</div></div> <div><div>-&infin;</div><div>0x9999ca9d</div><div>-9e+9999</div></div> <div><div>NaN</div><div>0xfffffebe</div><div>#.#</div></div> </div> <p>And here's a little live demo using the C/WASM version + WebGL2:</p> <div class=dataTable> <div><div>Input</div><div>Encoded</div><div>Decoded</div></div> <div><div><input id=demo0Input aria-label="Input Number" disabled type=number value=1.2345 step=0.00001 style=width:8em></div><div id=demo0Encoding>0xff5432b1</div><div id=demo0Decoded>1.2345</div></div> <div><div><br><br>FG</div><div><br><br>BG</div><div><br><br>WebGL2</div></div> <div><div><input id=demo0Fg aria-label="Foreground Colour" disabled type=color value=#00d5ff></div><div><input id=demo0Bg aria-label="Background Colour" disabled type=color value=#400778></div><div><canvas id=demo0Canvas style=width:96px;height:12px width=96 height=12></canvas><div id=notSupportedBrowser></div></div></div> </div> <p>Shaders used:</p> <ul> <li><a target=_blank href=https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/29230120_gpunumbers/shaders/draw_number.vert>draw_number.vert</a></li> <li><a target=_blank href=https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/29230120_gpunumbers/shaders/draw_number.frag>draw_number.frag</a></li> </ul> <br> <p>Additionally, this solves the problem of dispatching, since it's a fixed <code>uint32</code> we can effectively sample it using UVs. Here is an example using HLSL:</p> <pre><code class=language-cpp>//// From number_encoding.hlsli
+
+// GL = Y starts at the bottom
+// DX = Y starts at the top
+#ifndef Y_STARTS_AT_BOTTOM
+#define Y_STARTS_AT_BOTTOM 0
+#endif
+
+
+// .###. ..#.. .###. ##### #...# ##### .#### ##### .###. .###.
+// #..## .##.. #...# ....# #...# #.... #.... ....# #...# #...#
+// #.#.# ..#.. ...#. ..##. #...# ####. ####. ...#. .###. #...#
+// ##..# ..#.. ..#.. ....# .#### ....# #...# ..#.. #...# .####
+// #...# ..#.. .#... #...# ....# ....# #...# ..#.. #...# ....#
+// .###. .###. ##### .###. ....# ####. .###. ..#.. .###. .###.
+//
+// ..... ..... ..... ..... ..... .....
+// .###. ..... ..... ..... .#.#. .....
+// #...# ..... ..#.. ..... ##### .....
+// ##### ..... .###. .###. .#.#. .....
+// #.... .##.. ..#.. ..... ##### .....
+// .###. .##.. ..... ..... .#.#. .....
+
+const static uint numberPixels[16] = {
+#if !Y_STARTS_AT_BOTTOM
+    0x1d19d72eu, 0x1c4210c4u, 0x3e22222eu, 0x1d18321fu,
+    0x210f4631u, 0x1f083c3fu, 0x1d18bc3eu, 0x0842221fu,
+    0x1d18ba2eu, 0x1d0f462eu, 0x1c1fc5c0u, 0x0c600000u,
+    0x00471000u, 0x00070000u, 0x15f57d40u, 0x00000000u
+#else
+    0x1d9ace2eu, 0x0862108eu, 0x1d14105fu, 0x3f06422eu,
+    0x2318fa10u, 0x3e17c20fu, 0x3c17c62eu, 0x3f041084u,
+    0x1d17462eu, 0x1d18fa0eu, 0x00e8fc2eu, 0x000000c6u,
+    0x00023880u, 0x00003800u, 0x00afabeau, 0x00000000u
+#endif
+};
+
+
+uint sampleEncodedDigit(uint encodedDigit, float2 uv)
+{
+    if(uv.x &lt; 0. || uv.y &lt; 0. || uv.x &gt;= 1. || uv.y &gt;= 1.) return 0u;
+    uint2 coord = uint2(uv * float2(5., 6.));
+    return (numberPixels[encodedDigit] &gt;&gt; (coord.y * 5u + coord.x)) &amp; 1u;
+}
+
+
+// 8 character variant
+uint sampleEncodedNumber(uint encodedNumber, float2 uv)
+{
+    // Extract the digit ID by scaling the uv.x value by 8 and clipping
+    // the relevant 4 bits.
+    uv.x *= 8.0;
+    uint encodedDigit = (encodedNumber &gt;&gt; (uint(uv.x) * 4u)) &amp; 0xf;
+
+    // Put the U in between then [0, 1.2] range, the extra 0.2 is add a
+    // logical 1px padding.
+    // (6/5, where 5 is the number of pixels on the x axis)
+    uv.x = frac(uv.x) * 1.2;
+
+    return sampleEncodedDigit(encodedDigit, uv);
+}
+
+
+//// Actual shader
+
+
+struct VSToPS
+{
+    float2 uv : ATTR0;
+    uint   encoded : ATTR1;
+};
+
+float4 bgCol;
+float4 fgCol;
+
+
+float4 drawNumberPS(VSToPS input) : SV_TARGET
+{
+    uint signedValue = sampleEncodedNumber(input.encoded, input.uv);
+    return lerp(bgCol, fgCol, float(signedValue));
+}
+</code></pre> <p>And using AMDs assembly as a loose reference:</p> <pre><code>shader main
+  asic(GFX10)
+  type(PS)
+  sgpr_count(14)
+  vgpr_count(8)
+  wave_size(64)
+
+  s_inst_prefetch  0x0003
+  s_mov_b32     m0, s12
+  v_interp_p1_f32  v2, v0, attr0.x
+  v_interp_p1_f32  v0, v0, attr0.y
+  v_interp_p2_f32  v2, v1, attr0.x
+  v_interp_p2_f32  v0, v1, attr0.y
+  v_mul_f32     v1, lit(0x41000000), v2
+  v_cmp_lt_f32  s[0:1], v0, 0
+  v_fract_f32   v2, v1
+  v_cmp_le_f32  vcc, lit(0x3f555555), v2
+  s_or_b64      s[0:1], s[0:1], vcc
+  v_cmp_le_f32  vcc, 1.0, v0
+  s_or_b64      vcc, s[0:1], vcc
+  s_mov_b64     s[0:1], exec
+  s_andn2_b64   exec, s[0:1], vcc
+  v_cvt_u32_f32  v1, v1
+  s_cbranch_execz  label_0098
+  v_lshlrev_b32  v1, 2, v1
+  v_interp_mov_f32  v3, p0, attr1.x
+  v_lshrrev_b32  v1, v1, v3
+  v_and_b32     v1, 15, v1
+  tbuffer_load_format_x  v1, v1, s[8:11], 0 idxen format:[BUF_FMT_32_FLOAT]
+  v_mul_f32     v0, lit(0x40c00000), v0
+  v_mul_f32     v2, lit(0x40c00000), v2
+  v_cvt_u32_f32  v3, v0
+  v_cvt_u32_f32  v2, v2
+  v_lshl_add_u32  v0, v3, 2, v3
+  v_add_nc_u32  v0, v2, v0
+  s_waitcnt     vmcnt(0)
+  v_lshrrev_b32  v0, v0, v1
+  v_and_b32     v0, 1, v0
+label_0098:
+  s_andn2_b64   exec, s[0:1], exec
+  v_mov_b32     v0, 0
+  s_mov_b64     exec, s[0:1]
+  s_buffer_load_dwordx8  s[0:7], s[4:7], null
+  v_cvt_f32_u32  v0, v0
+  s_waitcnt     lgkmcnt(0)
+  v_subrev_f32  v1, s0, s4
+  v_subrev_f32  v2, s1, s5
+  v_subrev_f32  v3, s2, s6
+  v_subrev_f32  v4, s3, s7
+  v_mad_f32     v1, v0, v1, s0
+  v_mad_f32     v2, v0, v2, s1
+  v_mad_f32     v3, v0, v3, s2
+  v_mad_f32     v0, v0, v4, s3
+  v_cvt_pkrtz_f16_f32  v1, v1, v2
+  v_cvt_pkrtz_f16_f32  v0, v3, v0
+  s_nop         0x0000
+  s_nop         0x0000
+  exp           mrt0, v1, v1, v0, v0 done compr vm
+
+</code></pre> <p>Which looks pretty reasonable.</p> <p>All in all, this seems like a pretty good approach.<br> The full Javascript/WebGL2 stuff can be viewed here: <a target=_blank href=https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/29230120_gpunumbers/gpunumbers_webgl2.js>gpunumbers_webgl2.js</a>.</p> </main> <script>addAfterLoaded(async()=>{let e=document.getElementById("demo0Input"),t=document.getElementById("demo0Fg"),n=document.getElementById("demo0Bg"),d=document.getElementById("demo0Canvas"),l=bindDrawNumbersContext(d),i=[e];if(l.valid)i.push(t,n),d.width=d.clientWidth,d.height=d.clientHeight;else{d.style.display="none";var o=document.getElementById("notSupportedBrowser");o.style.display="block",o.innerHTML="WebGL2 not supported :("}let s=d=>{let i=encodeNumber(e.value);if(paddedHexify(i),document.getElementById("demo0Encoding").innerText="0x"+paddedHexify(i),document.getElementById("demo0Decoded").innerText=decodeToString(i),l.valid){let o=e=>[parseInt(e.substring(1,3),16)/255,parseInt(e.substring(3,5),16)/255,parseInt(e.substring(5,7),16)/255];l.render(i,o(n.value),o(t.value))}};i.forEach(e=>{e.onchange=s,e.oninput=s,e.disabled=!1}),s()});</script> <hr id=footersep> <div id=copyright>With the exception of third-party libraries / resources, code is public domain. Text &copy; Alister Chowdhury.</div> <script>async function _hsInit(...e){for(let n of e){let t=document.createElement("script");t.src="/thirdparty/languages/"+n+".min.js",t.async=!0,t.onload=function(e){return function(){document.querySelectorAll("pre code.language-"+e).forEach(hljs.highlightElement)}}(n),document.body.appendChild(t)}}</script> <script async src=/thirdparty/highlight.min.js onload="_hsInit('cpp');"></script></body></html>
