@@ -1,0 +1,9 @@
+{
+    "install": {
+        "res/*.svg": {},
+        "thirdparty/**": {"minify": false},
+        "index.html": {"minify": true},
+        "css.css": {"minify": true},
+        "util.js": {"minify": true},
+    }
+}
