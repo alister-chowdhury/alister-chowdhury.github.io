@@ -415,7 +415,7 @@ I'd also recommend giving the following articles a read over if you're more inte
 In order to make void and cluster non-deterministic, you typically seed points.<br>
 This does not seed points, but rather it seeds a very small amount of background energy [0, 1.08420210e-19] to each pixel.<br>
 This satisfies non-determinism, while also not noticeably biasing actually filled points and can be done in a single pass on the GPU.<br>
-<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_init.frag">void_and_cluster_init.frag</a>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20221230_bluenoise/shaders/void_and_cluster_init.frag">void_and_cluster_init.frag</a>
 
 
 ### <ins>2. The Main Loop</ins>
@@ -427,8 +427,8 @@ e.g, if we have a 3x3 image, the values and their order would be:
 
 We decide which pixel to write to by finding the biggest "void" that hasn't been written to yet.<br>
 In this case, I reduce the buffers down 8x8 pixels at a time, (64x64 => 8x8 => 1x1) and keep track of the biggest voids coordinate.<br>
-<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_reduce_init.frag">void_and_cluster_reduce_init.frag</a><br>
-<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_reduce_iter.frag">void_and_cluster_reduce_iter.frag</a><br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20221230_bluenoise/shaders/void_and_cluster_reduce_init.frag">void_and_cluster_reduce_init.frag</a><br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20221230_bluenoise/shaders/void_and_cluster_reduce_iter.frag">void_and_cluster_reduce_iter.frag</a><br>
 
 This is then fed into a update routine, where the pixel + surrounding pixels energy are updated.<br>
 The amount of "energy" a pixel contributes to itself and its neighbours is:<br><br>
@@ -450,8 +450,8 @@ Where x is the distance to the between pixels.
 </div>
 
 <br>
-<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_partial_update.vert">void_and_cluster_partial_update.vert</a><br>
-<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/shaders/void_and_cluster_update.frag">void_and_cluster_update.frag</a><br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20221230_bluenoise/shaders/void_and_cluster_partial_update.vert">void_and_cluster_partial_update.vert</a><br>
+<a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20221230_bluenoise/shaders/void_and_cluster_update.frag">void_and_cluster_update.frag</a><br>
 <br>
 
 ### <ins>3. Region To Update</ins>
@@ -550,7 +550,7 @@ If we were updating regions using a compute shader this might be a different sto
 
 <hr>
 
-The full Javascript/WebGL2 stuff can be viewed here: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/20221230_bluenoise/void_and_cluster_webgl2.js">void_and_cluster_webgl2.js</a>.<br>
+The full Javascript/WebGL2 stuff can be viewed here: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20221230_bluenoise/void_and_cluster_webgl2.js">void_and_cluster_webgl2.js</a>.<br>
 It's worth mentioning, I primarily program in C++/HLSL/GLSL which is probably apparent to anyone more familiar with JS.<br>
 <br>
 Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.shadertoy.com/view/cdfSD8">https://www.shadertoy.com/view/cdfSD8</a><br>
