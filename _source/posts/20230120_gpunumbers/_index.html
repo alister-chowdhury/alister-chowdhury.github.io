@@ -95,7 +95,9 @@
   <main>
 <markdown>
 
-## <ins>Background</ins>
+# Simplifying Drawing Numbers On The GPU
+
+## Background
 A little while ago, I wanted a way to easily display a bunch of debugging numbers while I was rendering.
 (FPS, instances culled, all that sort of good stuff).
 
@@ -107,7 +109,7 @@ When all you really wanted to do was quickly know the value of something, sudden
 much buffer to pre-allocate and the maximum number triangles/compute you may end up needing for all the digits.
 
 
-## <ins>Encoding For A Simpler Pipeline</ins>
+## Encoding For A Simpler Pipeline
 Ideally, a solution would satisfy:
 * Not be a performance hog.
 * Be simple to drop in.

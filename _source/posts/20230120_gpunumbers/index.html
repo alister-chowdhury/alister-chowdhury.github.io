@@ -112,7 +112,8 @@
    
 
   <main>
-<h2><ins>Background</ins></h2>
+<h1>Simplifying Drawing Numbers On The GPU</h1>
+<h2>Background</h2>
 <p>A little while ago, I wanted a way to easily display a bunch of debugging numbers while I was rendering.
 (FPS, instances culled, all that sort of good stuff).</p>
 <p>You can read it back to the CPU and just print it to the console, but that gets quite messy and becomes rather
@@ -120,7 +121,7 @@ burdensome to sift through.</p>
 <p>You could also probably use whatever font rendering shaders you have at hand, but then that becomes quite tedious.
 When all you really wanted to do was quickly know the value of something, suddenly you need to worry about how
 much buffer to pre-allocate and the maximum number triangles/compute you may end up needing for all the digits.</p>
-<h2><ins>Encoding For A Simpler Pipeline</ins></h2>
+<h2>Encoding For A Simpler Pipeline</h2>
 <p>Ideally, a solution would satisfy:</p>
 <ul>
 <li>Not be a performance hog.</li>
