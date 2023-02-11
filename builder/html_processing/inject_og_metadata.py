@@ -79,6 +79,7 @@ def inject_og_metadata(source, source_file):
                 ' content="{0}">\n'
                 .format(post_date)
             )
+            head_to_inject += publish_tag
 
         for tag in metatags.get("keywords", "").split(","):
             article_tag = (
