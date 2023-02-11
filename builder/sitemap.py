@@ -64,11 +64,10 @@ def _build_sitemap(html_file_maps):
         location = url["loc"]
         if location.endswith("index.html"):
             location = location[:-len("index.html")]
-        location = location.strip("/")
         ElementTree.SubElement(url_node, "loc").text = "/".join((
             WEBSITE_ROOT,
             location
-        )).rstrip("/")
+        ))
         ElementTree.SubElement(url_node, "lastmod").text = url["lastmod"]
     _apply_indent(root)
     return ElementTree.tostring(
