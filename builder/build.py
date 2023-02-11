@@ -43,6 +43,9 @@ def build_html(template_file, out_file=None):
         extract_html_sections,
         merge_html
     )
+    from .html_processing.inject_og_metadata import (
+        inject_og_metadata
+    )
 
     global _HEADER_SECTION
     global _FOOTER_SECTION
@@ -87,6 +90,10 @@ def build_html(template_file, out_file=None):
     source = render_custom_html_tags(
         source,
         source_file=template_file.as_posix()
+    )
+    source = inject_og_metadata(
+        source,
+        source_file=template_file
     )
 
     if out_file.is_file():

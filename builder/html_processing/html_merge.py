@@ -1,7 +1,7 @@
 from ._transformer_base import _BaseHtmlTransformer
 
 
-class HtmlSection(object):
+class HtmlSections(object):
     """Wrapper around different sections to insert."""
 
     def __init__(
@@ -47,7 +47,7 @@ class _HtmlExtractSections(_BaseHtmlTransformer):
         Returns:
             HtmlSections: Gathered sections.
         """
-        return HtmlSection(
+        return HtmlSections(
             "".join(self._pre_head),
             "".join(self._head),
             "".join(self._head_to_body),
