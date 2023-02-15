@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+   
+ 
+<head>
+    <meta property="og:title" content="Fast Integer Division On The GPU">
+    <meta property="og:url" content="https://alister-chowdhury.github.io/posts/20230212_uintdiv/">
+    <meta property="og:type" content="article">
+    <meta property="og:article:published_time" content="2023-02-12T00:00:00">
+    <meta property="og:article:tag" content="integer division">
+    <meta property="og:article:tag" content="rendering">
+    <meta property="og:article:tag" content="optimization">
+    <meta property="og:article:tag" content="math">
+
+      <meta charset="utf-8">
+      <meta name="author" content="Alister Chowdhury">
+      <meta name="theme-color" content="#2b2b2b">
+      <link href="/css.css" rel="stylesheet">
+      <meta property="og:site_name" content="Stuff And Also Things">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+   
+    <title>Fast Integer Division On The GPU</title>
+    <meta name="description" content="Looking at how we can use floating point math to stop integer division being so contentious.">
+    <meta name="keywords" content="integer division, rendering, optimization, math">
+ 
+</head>
+   
+ 
+<body>
+    <div id="header">
+        <a href="/">Home</a>
+        <a href="/posts/">Posts</a>
+        <a href="https://github.com/alister-chowdhury">Github</a>
+    </div>
+   
+
+  <main>
+<h1>Fast Integer Division On The GPU</h1>
+<!--BEGIN RANDOM NOTES -->
+<p>The journey to using floats for integer division.</p>
+<p>Tried using CUDA, which burned out my laptop, which seemed perfectly fine with float(a)/float(b)</p>
+<p>Noticed in shadertoy using INTEL, that there were black speckles.
+This is because of <code>a * rcp(b)</code> and <code>rcp(b)</code> typically being an approximation.</p>
+<p>Found the following worked quite well on the CPU:</p>
+<pre><code>uint fastUintDiv(uint a, uint b)
+{
+    return uint(asfloat(1u + asuint(float(a) * rcp(float(b)))));  // 36 cycles, works past 0xffff
+}
+
+</code></pre>
+<p>fastUintDiv:
+    On an INTEL GPU, works for (a &lt;= 3981553, b &lt;= 111602)
+    But on NVIDIA
+        Put frozen peas under my laptop and manually paused it when my GPU temp exceeded 56c
+        Stops working when b &gt; 988, which is incredibly low</p>
+<p>so adjusting it to:</p>
+<pre><code>uint fastUintDiv(uint a, uint b)
+{
+    return uint(asfloat(1u + asuint(float(a) * rcp(float(b)))));  // 36 cycles, works past 0xffff
+}
+</code></pre>
+<p>NVIDIA a, b &gt;= 5472257, not sure the upper limit 
+INTEL  a, b &lt;= 2888383
+AMD    unknown, but presumably in a similar ballpark</p>
+<p>///////////////////////////////////////////
+/// TODO
+///////////////////////////////////////////</p>
+<p>attempting to reach faster speeds using a f32.mad rather than a f32.mul + u32.add:</p>
+<p>INTEL: a &lt;= 10758, b &lt;= 10758</p>
+<p>uint fasterUintDiv(uint a, uint b)
+{
+    return uint(float(a) * rcp(float(b)) + asfloat(0x38000001u));    // 32 cycles, works if x, y &lt;= 65174
+}</p>
+<p>GPU rcp is unpredictable, can we make it predictable by doing our own software
+approximation.</p>
+<p>Newton iteration for 1/x = x - 2x - kx^2</p>
+<p>2<em>x - k </em> x * x;</p>
+<p>x * (2 - k * x) // 1mul + 1mad | 8 cycles</p>
+<p>double_newton = (x * (2 - k * x)) * (2 - k * (x * (2 - k * x)))
+              =  x<em>(-k</em>x + 2)<em>(-k</em>x<em>(-k</em>x + 2) + 2)</p>
+<pre><code>          = k = k * x // 1mul
+            x*(-k + 2)*(-k*(-k + 2) + 2)
+</code></pre>
+<pre><code>#include &lt;cstdio&gt;
+#include &lt;cstdint&gt;
+#include &lt;cstddef&gt;
+#include &lt;bit&gt;
+
+// uint32_t initial_magic = (((127 + 127)) &lt;&lt; 23) + 0x31241;
+uint32_t initial_magic = (((127 + 127)) &lt;&lt; 23);
+
+
+// Function to reverse bits of num
+unsigned int reverseBits(unsigned int num)
+{
+    unsigned int count = sizeof(num) * 8 - 1;
+    unsigned int reverse_num = num;
+
+    num &gt;&gt;= 1;
+    while (num) {
+        reverse_num &lt;&lt;= 1;
+        reverse_num |= num &amp; 1;
+        num &gt;&gt;= 1;
+        count--;
+    }
+    reverse_num &lt;&lt;= count;
+    return reverse_num;
+}
+
+
+
+float newton(float x, float k)
+{
+    return x * (2.0f - k * x);
+}
+
+
+uint32_t approx_div(uint32_t x, uint32_t y)
+{
+    float xf = x;
+    float yf = y;
+    uint32_t a = initial_magic - std::bit_cast&lt;uint32_t&gt;(yf);
+    float x0 = std::bit_cast&lt;float&gt;(a);
+    float x1 = x0;
+          // doing a lerp gets us quite far...
+#if 0
+          float k0 = 0.15f;
+          x1 = x0 * k0 + newton(x1, yf) * (1.0f - k0);
+#else
+        // for(int i=0; i&lt;2; ++i) // this is 16 cycles...
+        // x1 = newton(x1, yf);
+
+
+        // // Only sort of works for factors of 3 and 2
+        // float k0 = yf * x1 - 1.0f;
+        // xf = xf - k0 * yf * 0.8888888f;
+
+
+        // Bad, cus not mad
+        // x1 = std::bit_cast&lt;float&gt;(std::bit_cast&lt;uint32_t&gt;(x1) + 1);
+
+#endif
+
+    // float m = xf * x1 + 9e-2f;
+    float m = xf * x1;
+    printf(&quot;'%f'&quot;, m);
+    return (uint32_t)m;
+}
+
+
+// Almost acts like a newton iter when:
+//
+//      float y0 = approxRcp0(x);
+//      float y1 = approxRcp0(y0 * x * x);
+//      float y2 = (y0 + y1) * 0.5;
+float approxRcp0(float x)
+{
+    uint32_t a = initial_magic - std::bit_cast&lt;uint32_t&gt;(x);
+    float y = std::bit_cast&lt;float&gt;(a);
+    return y;
+}
+
+
+
+int main(void)
+{
+    for(int i=1; i&lt;0x3fff; ++i)
+    {
+
+        float x = i;
+
+
+
+
+#if 0
+            uint32_t a = initial_magic - std::bit_cast&lt;uint32_t&gt;(x);
+
+            float y = std::bit_cast&lt;float&gt;(a);
+            float y0 = y;
+
+    #if 0
+            y0 = y0 * (1.9999f - x * y0);
+            y0 = y0 * (2.0001f - x * y0);
+    #elif 1
+            y0 = newton(y0, x);
+            y0 = newton(y0, x);
+    #else
+
+    #endif
+
+            // printf(&quot;%u &quot;, a);
+            printf(&quot;%f =&gt; %f (%f)\n&quot;, x, x*y0, 1.0f/y0);
+
+#else
+
+        float y0 = approxRcp0(x);
+        float y1 = approxRcp0(y0 * x * x);
+        // float y2 = (y0 + y1) * 0.5;
+        printf(&quot;%f %f %f\n&quot;, x, y0, y1);
+
+
+#endif
+
+
+    }
+}
+</code></pre>
+<pre><code>
+from numpy import *
+
+
+start = uint32(0x3f800000)
+end = uint32(0x3fffffff)
+extract_mant = lambda x: float32(x).view(uint32) &amp; 0x7fffff
+one = start.view(float32)
+inv_mant = lambda x: extract_mant(one/(x.view(float32)))
+bin_fmt = &quot;{0:023b}&quot;.format
+
+
+# isnt very good tbh
+for i in range(0x7fff0f, 0x7fffff+2):
+    s = start + uint32(i)
+    ms = extract_mant(s.view(float32))
+    me = inv_mant(s)
+    # works for some
+    #print((ms), &quot;=&gt;&quot;, (me), (0x800000-i*2)&amp; 0x7fffff)
+    # works for others
+    print(s.view(float32), &quot;=&gt;&quot;, (me), ((0x800000-i) &gt;&gt; 1)&amp; 0x7fffff)
+</code></pre>
+<!-- END RANDOM NOTES -->
+
+  </main>
+
+ 
+<hr id="footersep">
+<div id="copyright">With the exception of third-party libraries / resources, code is public domain. Text &copy; Alister Chowdhury.</div>
+</body>
+</html>
+

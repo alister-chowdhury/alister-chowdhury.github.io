@@ -1,0 +1,359 @@
+import distutils.spawn
+import re
+import time
+import subprocess
+from OpenGL.GL import *
+from OpenGL.GLUT import *
+
+
+COMMON_HEADER = """
+#version 460 core
+layout(local_size_x=64, local_size_y=16) in;
+
+#define asfloat  uintBitsToFloat
+#define asuint   floatBitsToUint
+#define rcp(x)   (1./x)
+
+
+
+// 36 cycle variety
+// INTEL: a <= 2888384, b <= 2888384
+// NVIDIA: > 5472257, not sure how far it can go (not sure I trust the optimizer)
+uint fastUintDiv(uint a, uint b)
+{
+    return uint(asfloat(2u + asuint(float(a) * rcp(float(b)))));
+}
+
+
+// 32 cycles variety
+uint fasterUintDiv(uint a, uint b)
+{
+    // INTEL: a <= 10758, b <= 10758
+    // NVIDIA: [a,b] > 1409025, haven't found upper bound (not sure I trust the optimizer)
+    //return uint(float(a) * rcp(float(b)) + asfloat(0x38000001u));
+
+    // INTEL: a <= 5382, b <= 5382
+    // NVIDIA: [a,b] > 2736129, haven't found upper bound (not sure I trust the optimizer)
+    //return uint(float(a) * rcp(float(b)) + asfloat(0x37800000));
+    
+    // INTEL: a <= 21510, b <= 16363
+    // NVIDIA: [a,b] > 2654209, haven't found upper bound (not sure I trust the optimizer)
+    return uint(float(a) * rcp(float(b)) + asfloat(0x38800000));
+}
+
+
+"""
+
+
+PROBE_FASTER_UINT_DIV_BASE = """
+
+layout(location = 0) uniform uvec2 offset;
+layout(std430, binding = 0) buffer writeback_
+{
+    uint allocator;
+    uint failedOffsets[];
+};
+
+void main()
+{
+    uint x = offset.x + gl_GlobalInvocationID.x;
+    uint y = offset.y + gl_GlobalInvocationID.y;
+
+#if UPPER_DENOM_LIMIT
+    y = min(UPPER_DENOM_LIMIT, offset.y + gl_GlobalInvocationID.y);
+#endif // UPPER_DENOM_LIMIT
+
+    uint z0 = x / y;
+    uint z1 = TARGET_FAST_UINT_DIV_FUNC(x, y);
+
+    if(z0 != z1)
+    {
+        uint writeAddr = atomicAdd(allocator, 1);
+        failedOffsets[writeAddr*2 + 0] = x;
+        failedOffsets[writeAddr*2 + 1] = y;
+    }
+}
+
+"""
+
+
+# On windows this will be usually inside one of the nested directories in
+# C:\Windows\System32\DriverStore\FileRepository
+_NVIDIA_SMI_EXEC = distutils.spawn.find_executable("nvidia-smi")
+_MAX_NVIDIA_TEMP_UNTIL_SLEEP = 60
+_MAX_NVIDIA_TEMP_UNTIL_RESUME = 56
+
+
+def _get_nvidia_temp():
+    """Get the current tempreture of an nvidia gpu, using nvidia-smi"""
+    if _NVIDIA_SMI_EXEC is None:
+        raise RuntimeError("Can't find nvidia-smi! Add it to the path variable!")
+    csv_data = (
+        subprocess.Popen(
+            (_NVIDIA_SMI_EXEC, "--query-gpu=temperature.gpu", "--format=csv"),
+            stdout=subprocess.PIPE,
+            close_fds=True,
+        )
+        .stdout.read()
+        .decode("latin-1")
+    )
+
+    # Considering im just targetting my system, im totally assuming there
+    # will be exactly 1 NVIDIA GPU.
+    extracted = re.search(r"temperature.gpu\s+(\d+)\s+", csv_data)
+    if not extracted:
+        raise RuntimeError("Failed to get temperature!")
+    return float(extracted.group(1))
+
+
+def _prevent_nvidia_overheating():
+    """This is a bit of a hack to prevent my system from overheating."""
+    if _get_nvidia_temp() >= _MAX_NVIDIA_TEMP_UNTIL_SLEEP:
+        print("Sleeping until NVIDIA GPU calms down!")
+        while _get_nvidia_temp() > _MAX_NVIDIA_TEMP_UNTIL_RESUME:
+            time.sleep(10)
+
+
+def _make_probe_shader(function, upper_denom_limit=None):
+    """Generate shader source code for probing the divisor limits.
+
+    Args:
+        function (str): Name of function to test
+        upper_denom_limit (int): Max number denom can be. (Default: None)
+
+    Returns:
+        str: Generated source
+    """
+    shader = COMMON_HEADER
+    shader += "#define TARGET_FAST_UINT_DIV_FUNC {0}\n".format(function)
+    if upper_denom_limit:
+        shader += "#define UPPER_DENOM_LIMIT {0}\n".format(upper_denom_limit)
+    shader += PROBE_FASTER_UINT_DIV_BASE
+    return shader
+
+
+def compile_compute_program(source):
+    """Generate a compute program."""
+    # Compile shader
+    shader_id = glCreateShader(GL_COMPUTE_SHADER)
+    glShaderSource(shader_id, source, 0)
+    glCompileShader(shader_id)
+    ok = glGetShaderiv(shader_id, GL_COMPILE_STATUS)
+    if not ok:
+        error_log = glGetShaderInfoLog(shader_id)
+        raise RuntimeError(
+            "Failed to load shader:\n{0}".format(
+                error_log.decode("latin-1"),
+            )
+        )
+    # Attach to program
+    main_program = glCreateProgram()
+
+    glAttachShader(main_program, shader_id)
+    glLinkProgram(main_program)
+
+    ok = glGetProgramiv(main_program, GL_LINK_STATUS)
+    if not ok:
+        error_log = glGetProgramInfoLog(main_program)
+        raise RuntimeError(
+            "Failed to link program:\n{0}".format(error_log.decode("latin-1"))
+        )
+    # Cleanup
+    glDetachShader(main_program, shader_id)
+    glDeleteShader(shader_id)
+
+    return main_program
+
+
+class GPUContext(object):
+    def __init__(self):
+        # Create a dummy 1x1 window just to get GL up and running
+        glutInitContextVersion(4, 6)
+        glutInitContextProfile(GLUT_CORE_PROFILE)
+        glutInitContextFlags(GLUT_FORWARD_COMPATIBLE)
+        glutInit()
+        glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_STENCIL | GLUT_DOUBLE)
+        glutInitWindowSize(1, 1)
+
+        glutCreateWindow(b"Find Limits")
+        glutDisplayFunc(self._draw_wrapper)
+
+        self.init()
+        glutMainLoop()
+
+    def _draw_wrapper(self):
+        start_time = time.time()
+       
+        if self._prevent_overheating:
+            _prevent_nvidia_overheating()
+
+        # Redraw to the screen every second, so we're not wasting
+        # time waiting for vsyncs, but also dont want it to be marked
+        # as not responsive.
+        while time.time() - start_time < 1:
+            self.draw()
+        
+        glutPostRedisplay()
+        glutSwapBuffers()
+
+    def init(self):
+        # Swap this if your GPU isn't liable to melt your motherboard
+        self._prevent_overheating = True
+
+        if self._prevent_overheating and (b"NVIDIA" not in glGetString(GL_VENDOR)):
+            self._prevent_overheating = False
+        self._x = 0
+        self._y = 0
+        self._dispatch_size_x = 64
+        self._dispatch_size_y = 1024
+        self._per_iteration_x = 64 * self._dispatch_size_x
+        self._per_iteration_y = 16 * self._dispatch_size_y
+        self._max_x = ((1 << 32) - 1) // (self._per_iteration_x)
+        self._max_dispatch_range = self._per_iteration_x * self._per_iteration_y
+
+        self._writeback_ptr = ctypes.c_int()
+        glCreateBuffers(1, self._writeback_ptr)
+        self._writeback = self._writeback_ptr.value
+        glNamedBufferStorage(
+            self._writeback,
+            (1 + self._max_dispatch_range) * 4,
+            bytes((1 + self._max_dispatch_range) * 4),  # Fill with nulls
+            GL_MAP_READ_BIT,
+        )
+
+        self.denom_upper_limit = None
+        self._target_function = "fasterUintDiv"
+        self._test_fast_uint_div_program = compile_compute_program(
+            _make_probe_shader(self._target_function)
+        )
+
+        glUseProgram(self._test_fast_uint_div_program)
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, self._writeback)
+
+    def _barrier_read_fails(self):
+        glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT)
+        num_failed = (c_int * 1)()
+        glGetNamedBufferSubData(self._writeback, 0, 4, num_failed)
+
+        found = []
+        if num_failed[0] != 0:
+            ints_to_read = 1 + 2 * num_failed[0]
+            bad_params = (c_int * ints_to_read)()
+            glGetNamedBufferSubData(self._writeback, 0, 4 * ints_to_read, bad_params)
+            for i in range(num_failed[0]):
+                x = bad_params[1 + i * 2 + 0]
+                y = bad_params[1 + i * 2 + 1]
+                found.append((x, y))
+        return found
+
+    def find_denominator(self):
+        offset_x = 1 + self._x * self._per_iteration_x
+        offset_y = 1 + self._y * self._per_iteration_y
+
+        glUniform2ui(0, offset_x, offset_y)
+        glDispatchCompute(self._dispatch_size_x, self._dispatch_size_y, 1)
+
+        next_offset_x = offset_x + self._per_iteration_x
+        next_offset_y = offset_y + self._per_iteration_y
+
+        print(
+            "Running [{0}, {1}] => [{2}, {3}]".format(
+                offset_x, offset_y, next_offset_x, next_offset_y
+            )
+        )
+
+        failed = self._barrier_read_fails()
+
+        if failed:
+            print("Failed!:")
+            for x, y in failed:
+                print("    {0}/{1}".format(x, y))
+            numerator_upper_limit = min(numerator for numerator, _ in failed)
+            denom_upper_limit = min(denom for _, denom in failed)
+
+            print("\nMIN {0}/{1}".format(numerator_upper_limit, denom_upper_limit))
+
+            # We iterate the values alongside each other
+            # So if order for `1000/6` or `6/1000` to have failed,
+            # 1/1 => 999/999 would have already had to have passed.
+            #
+            # The true upper limit is going to be which ever value
+            # is bigger out of the mins, minus one.
+            self.denom_upper_limit = max(numerator_upper_limit, denom_upper_limit) - 1
+
+            print("Denominator upper bound: {0}".format(self.denom_upper_limit))
+
+            # Change shader to now clamp to the denominator
+            self._test_fast_uint_div_program = compile_compute_program(
+                _make_probe_shader(self._target_function, self.denom_upper_limit)
+            )
+
+            glUseProgram(self._test_fast_uint_div_program)
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, self._writeback)
+
+            # And clear the counter
+            glClearNamedBufferSubData(
+                self._writeback,
+                GL_R32UI,
+                0,
+                4,
+                GL_RED_INTEGER,
+                GL_UNSIGNED_INT,
+                bytes(4),
+            )
+        else:
+            self._y += 1
+            if next_offset_y >= next_offset_x:
+                self._x += 1
+                self._y = 0
+                if self._x >= self._max_x:
+                    print("ALL DONE!")
+                    exit(0)
+
+    def find_numerator(self):
+        offset_x = 1 + self._x * self._per_iteration_x
+        offset_y = 1 + self._y * self._per_iteration_y
+
+        glUniform2ui(0, offset_x, offset_y)
+        glDispatchCompute(self._dispatch_size_x, self._dispatch_size_y, 1)
+
+        next_offset_x = offset_x + self._per_iteration_x
+        next_offset_y = offset_y + self._per_iteration_y
+
+        print(
+            "Running [Searching ??? / {4}] [{0}, {1}] => [{2}, {3}]".format(
+                offset_x, offset_y, next_offset_x, next_offset_y, self.denom_upper_limit
+            )
+        )
+
+        failed = self._barrier_read_fails()
+        if failed:
+            print("Failed!:")
+            for x, y in failed:
+                print("    {0}/{1}".format(x, y))
+            self.numerator_upper_limit = min(numerator for numerator, _ in failed) - 1
+
+            print(
+                "(a/b) : a <= {0}, b <= {1}".format(
+                    self.numerator_upper_limit, self.denom_upper_limit
+                )
+            )
+            exit(0)
+        else:
+            self._y += 1
+            if next_offset_y >= min(self.denom_upper_limit + 1, next_offset_x):
+                self._x += 1
+                self._y = 0
+                if self._x >= self._max_x:
+                    print("ALL DONE!")
+                    exit(0)
+
+    def draw(self):
+        if self.denom_upper_limit:
+            self.find_numerator()
+        else:
+            self.find_denominator()
+
+
+if __name__ == "__main__":
+    ctx = GPUContext()

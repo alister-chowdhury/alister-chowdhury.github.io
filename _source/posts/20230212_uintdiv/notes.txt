@@ -1,0 +1,60 @@
+The journey to using floats for integer division.
+
+
+Tried using CUDA, which burned out my laptop, which seemed perfectly fine with float(a)/float(b)
+
+
+Noticed in shadertoy using INTEL, that there were black speckles.
+This is because of `a * rcp(b)` and `rcp(b)` typically being an approximation.
+
+
+Found the following worked quite well on the CPU:
+
+```
+uint fastUintDiv(uint a, uint b)
+{
+    return uint(asfloat(1u + asuint(float(a) * rcp(float(b)))));  // 36 cycles, works past 0xffff
+}
+
+```
+
+
+fastUintDiv:
+    On an INTEL GPU, works for (a <= 3981553, b <= 111602)
+    But on NVIDIA
+        Put frozen peas under my laptop and manually paused it when my GPU temp exceeded 56c
+        Stops working when b > 988, which is incredibly low
+
+
+
+
+
+
+so adjusting it to:
+```
+uint fastUintDiv(uint a, uint b)
+{
+    return uint(asfloat(1u + asuint(float(a) * rcp(float(b)))));  // 36 cycles, works past 0xffff
+}
+```
+
+
+NVIDIA a, b >= 5472257, not sure the upper limit 
+INTEL  a, b <= 2888383
+AMD    unknown, but presumably in a similar ballpark
+
+
+
+///////////////////////////////////////////
+/// TODO
+///////////////////////////////////////////
+
+
+attempting to reach faster speeds using a f32.mad rather than a f32.mul + u32.add:
+
+INTEL: a <= 10758, b <= 10758
+
+uint fasterUintDiv(uint a, uint b)
+{
+    return uint(float(a) * rcp(float(b)) + asfloat(0x38000001u));    // 32 cycles, works if x, y <= 65174
+}

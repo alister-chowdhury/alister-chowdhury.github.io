@@ -1,0 +1,353 @@
+
+ <head>
+    <title>Fast Integer Division On The GPU</title>
+    <meta name="description" content="Looking at how we can use floating point math to stop integer division being so contentious.">
+    <meta name="keywords" content="integer division, rendering, optimization, math">
+ </head>
+ <body>
+
+  <main>
+<markdown>
+
+# Fast Integer Division On The GPU
+
+
+
+
+
+
+<!--BEGIN RANDOM NOTES -->
+The journey to using floats for integer division.
+
+
+Tried using CUDA, which burned out my laptop, which seemed perfectly fine with float(a)/float(b)
+
+
+Noticed in shadertoy using INTEL, that there were black speckles.
+This is because of `a * rcp(b)` and `rcp(b)` typically being an approximation.
+
+
+Found the following worked quite well on the CPU:
+
+```
+uint fastUintDiv(uint a, uint b)
+{
+    return uint(asfloat(1u + asuint(float(a) * rcp(float(b)))));  // 36 cycles, works past 0xffff
+}
+
+```
+
+
+fastUintDiv:
+    On an INTEL GPU, works for (a <= 3981553, b <= 111602)
+    But on NVIDIA
+        Put frozen peas under my laptop and manually paused it when my GPU temp exceeded 56c
+        Stops working when b > 988, which is incredibly low
+
+
+
+
+
+
+so adjusting it to:
+```
+uint fastUintDiv(uint a, uint b)
+{
+    return uint(asfloat(1u + asuint(float(a) * rcp(float(b)))));  // 36 cycles, works past 0xffff
+}
+```
+
+
+NVIDIA a, b >= 5472257, not sure the upper limit 
+INTEL  a, b <= 2888383
+AMD    unknown, but presumably in a similar ballpark
+
+
+
+///////////////////////////////////////////
+/// TODO
+///////////////////////////////////////////
+
+
+attempting to reach faster speeds using a f32.mad rather than a f32.mul + u32.add:
+
+INTEL: a <= 10758, b <= 10758
+
+uint fasterUintDiv(uint a, uint b)
+{
+    return uint(float(a) * rcp(float(b)) + asfloat(0x38000001u));    // 32 cycles, works if x, y <= 65174
+}
+
+
+
+
+
+
+
+
+
+GPU rcp is unpredictable, can we make it predictable by doing our own software
+approximation.
+
+
+
+
+Newton iteration for 1/x = x - 2x - kx^2
+
+2*x - k * x * x;
+
+x * (2 - k * x) // 1mul + 1mad | 8 cycles
+
+
+double_newton = (x * (2 - k * x)) * (2 - k * (x * (2 - k * x)))
+              =  x*(-k*x + 2)*(-k*x*(-k*x + 2) + 2)
+
+              = k = k * x // 1mul
+                x*(-k + 2)*(-k*(-k + 2) + 2)
+
+
+
+
+
+
+```
+#include <cstdio>
+#include <cstdint>
+#include <cstddef>
+#include <bit>
+
+// uint32_t initial_magic = (((127 + 127)) << 23) + 0x31241;
+uint32_t initial_magic = (((127 + 127)) << 23);
+
+
+
+
+
+
+
+// Function to reverse bits of num
+unsigned int reverseBits(unsigned int num)
+{
+    unsigned int count = sizeof(num) * 8 - 1;
+    unsigned int reverse_num = num;
+ 
+    num >>= 1;
+    while (num) {
+        reverse_num <<= 1;
+        reverse_num |= num & 1;
+        num >>= 1;
+        count--;
+    }
+    reverse_num <<= count;
+    return reverse_num;
+}
+
+
+
+float newton(float x, float k)
+{
+    return x * (2.0f - k * x);
+}
+
+
+// Possibly halley?
+float newton_opt(float x, float k)
+{
+    // Cubic error correction
+#if 0
+    float E = 1.0f - k * x;
+    float Y = x * E;
+    return x + Y + Y * E;
+#else
+    // 2x mad, 1 mul, 1 mac
+    float a = -k * x + 1;
+    float b = a * x + x;
+    return a * a * x + b;
+#endif
+}
+
+float optNewtonRcp(float x, float y)
+{
+    uint32_t xi = asuint(x);
+    uint32_t yi = asuint(y);
+
+    // uint32_t normalised_yi = (yi & ~0x7f800000u) | 0x3f000000u;
+    // uint32_t normalised_xi = xi + (normalised_yi - yi);
+    uint32_t normalised_yi = yi + (0x3f000000u - (yi & 0x7f800000u));
+    uint32_t normalised_xi = xi + (0x3f000000u - (yi & 0x7f800000u));
+
+    x = asfloat(normalised_xi);
+    y = asfloat(normalised_yi);
+
+    const float c0 = 140.0f / 33.0f;
+    const float c1 = -64.0f / 11.0f;
+    const float c2 = 256.0f / 99.0f;
+
+    // 2x mad + 1 sgpr mov
+    float xn = y * (c2 * y + c1) + c0;
+
+    const int num_steps = 1;
+    for(int i=0; i<num_steps; ++i)
+    {
+        // xn = newton(xn, y);
+        xn = newton_opt(xn, y);
+    }
+
+    return xn * x;
+}
+
+
+float optNewtonRcp2(float x, float y)
+{
+    float yi = approxRcp0(y);
+    yi = newton_opt(yi, y);
+    yi = newton_opt(yi, y);
+    return x * yi;
+}
+
+
+
+
+
+
+
+
+
+uint32_t approx_div(uint32_t x, uint32_t y)
+{
+    float xf = x;
+    float yf = y;
+    uint32_t a = initial_magic - std::bit_cast<uint32_t>(yf);
+    float x0 = std::bit_cast<float>(a);
+    float x1 = x0;
+          // doing a lerp gets us quite far...
+#if 0
+          float k0 = 0.15f;
+          x1 = x0 * k0 + newton(x1, yf) * (1.0f - k0);
+#else
+        // for(int i=0; i<2; ++i) // this is 16 cycles...
+        // x1 = newton(x1, yf);
+        
+
+        // // Only sort of works for factors of 3 and 2
+        // float k0 = yf * x1 - 1.0f;
+        // xf = xf - k0 * yf * 0.8888888f;
+
+
+        // Bad, cus not mad
+        // x1 = std::bit_cast<float>(std::bit_cast<uint32_t>(x1) + 1);
+
+#endif
+
+    // float m = xf * x1 + 9e-2f;
+    float m = xf * x1;
+    printf("'%f'", m);
+    return (uint32_t)m;
+}
+
+
+// Almost acts like a newton iter when:
+//
+//      float y0 = approxRcp0(x);
+//      float y1 = approxRcp0(y0 * x * x);
+//      float y2 = (y0 + y1) * 0.5;
+float approxRcp0(float x)
+{
+    uint32_t a = initial_magic - std::bit_cast<uint32_t>(x);
+    float y = std::bit_cast<float>(a);
+    return y;
+}
+
+
+
+int main(void)
+{
+    for(int i=1; i<0x3fff; ++i)
+    {
+
+        float x = i;
+
+
+
+
+#if 0
+            uint32_t a = initial_magic - std::bit_cast<uint32_t>(x);
+
+            float y = std::bit_cast<float>(a);
+            float y0 = y;
+
+    #if 0
+            y0 = y0 * (1.9999f - x * y0);
+            y0 = y0 * (2.0001f - x * y0);
+    #elif 1
+            y0 = newton(y0, x);
+            y0 = newton(y0, x);
+    #else
+
+    #endif
+
+            // printf("%u ", a);
+            printf("%f => %f (%f)\n", x, x*y0, 1.0f/y0);
+
+#else
+
+        float y0 = approxRcp0(x);
+        float y1 = approxRcp0(y0 * x * x);
+        // float y2 = (y0 + y1) * 0.5;
+        printf("%f %f %f\n", x, y0, y1);
+
+
+#endif
+
+
+    }
+}
+```
+
+
+
+
+
+```
+
+from numpy import *
+
+
+start = uint32(0x3f800000)
+end = uint32(0x3fffffff)
+extract_mant = lambda x: float32(x).view(uint32) & 0x7fffff
+one = start.view(float32)
+inv_mant = lambda x: extract_mant(one/(x.view(float32)))
+bin_fmt = "{0:023b}".format
+
+
+# isnt very good tbh
+for i in range(0x7fff0f, 0x7fffff+2):
+    s = start + uint32(i)
+    ms = extract_mant(s.view(float32))
+    me = inv_mant(s)
+    # works for some
+    #print((ms), "=>", (me), (0x800000-i*2)& 0x7fffff)
+    # works for others
+    print(s.view(float32), "=>", (me), ((0x800000-i) >> 1)& 0x7fffff)
+```
+
+
+
+
+
+<!-- END RANDOM NOTES -->
+
+
+
+
+
+
+
+
+
+
+</markdown>
+  </main>
+
+ </body>
