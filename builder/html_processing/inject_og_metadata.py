@@ -65,12 +65,20 @@ def inject_og_metadata(source, source_file):
         content_type=content_type
     )
 
+    # Duplicate meta description
+    if "description" in metatags:
+        head_to_inject += (
+            '    <meta property="og:description" content="{0}">\n'.format(
+                metatags["description"]
+            )
+        )
+
     # Add tags and publish time to posts
     if is_post:
 
         # Extract the posttime from the url itself
         article_url = url[len("posts/"):]
-        url_split = article_url.split("_", 1)
+        url_split = article_url.split("-", 1)
         if url_split and url_split[0].isdigit():
             timestamp = url_split[0]
             post_date = datetime.strptime(timestamp, "%Y%m%d").isoformat()

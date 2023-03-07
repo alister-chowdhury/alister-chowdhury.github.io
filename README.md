@@ -18,7 +18,7 @@ Uses a custom static site generator (which lives under `builder`).
 * `_template` is where the header and footer that gets injected live.
 * `builder` is the python library that manages all the building / installing / updating.
 
-Posts live under `_source/posts/YYYYMMDD_name` and should have their own `_index.html` which will be compiled when building.
+Posts live under `_source/posts/YYYYMMDD-name` and should have their own `_index.html` which will be compiled when building.
 
 There are `_install.json` files sprinkled about, these are basically descriptors for what to copy from `_source` to `_build` and whether or not to minify things during the copying process.
 

@@ -42,7 +42,7 @@ relevant_entries = []
 
 for entry in sorted(os.listdir(posts_root), reverse=True):
 
-  parts = entry.split("_", 1)
+  parts = entry.split("-", 1)
   if len(parts) != 2:
     continue
 
