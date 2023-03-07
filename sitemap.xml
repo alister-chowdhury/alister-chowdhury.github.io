@@ -2,22 +2,22 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
  <url>
   <loc>https://alister-chowdhury.github.io/</loc>
-  <lastmod>2023-02-11</lastmod>
+  <lastmod>2023-03-07</lastmod>
  </url>
  <url>
-  <loc>https://alister-chowdhury.github.io/posts/20221230_bluenoise/</loc>
-  <lastmod>2023-02-11</lastmod>
+  <loc>https://alister-chowdhury.github.io/posts/20221230-bluenoise-generator/</loc>
+  <lastmod>2023-03-07</lastmod>
  </url>
  <url>
-  <loc>https://alister-chowdhury.github.io/posts/20230120_gpunumbers/</loc>
-  <lastmod>2023-02-17</lastmod>
+  <loc>https://alister-chowdhury.github.io/posts/20230120-simplifying-drawing-numbers-on-the-gpu/</loc>
+  <lastmod>2023-03-07</lastmod>
  </url>
  <url>
-  <loc>https://alister-chowdhury.github.io/posts/20230131_visualisations/</loc>
+  <loc>https://alister-chowdhury.github.io/posts/20230131-various-rendering-related-visualisations/</loc>
   <lastmod>2023-03-07</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/</loc>
-  <lastmod>2023-02-11</lastmod>
+  <lastmod>2023-03-07</lastmod>
  </url>
 </urlset>
