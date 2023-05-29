@@ -1,0 +1,124 @@
+#pragma once
+
+#include "math.h"
+
+namespace std
+{
+
+using ::double_t;
+using ::float_t;
+
+
+__MINSTL_FORCEINLINE int isnan(float __x) { return __builtin_isnan(__x); }
+__MINSTL_FORCEINLINE int isnan(double __x) { return __builtin_isnan(__x); }
+
+__MINSTL_FORCEINLINE int isinf(float __x) { return __builtin_isinf(__x); }
+__MINSTL_FORCEINLINE int isinf(double __x) { return __builtin_isinf(__x); }
+
+__MINSTL_FORCEINLINE int isfinite(float __x) { return __builtin_isfinite(__x); }
+__MINSTL_FORCEINLINE int isfinite(double __x) { return __builtin_isfinite(__x); }
+
+__MINSTL_FORCEINLINE int isnormal(float __x) { return __builtin_isnormal(__x); }
+__MINSTL_FORCEINLINE int isnormal(double __x) { return __builtin_isnormal(__x); }
+
+__MINSTL_FORCEINLINE int signbit(float __x) { return __builtin_signbit(__x); }
+__MINSTL_FORCEINLINE int signbit(double __x) { return __builtin_signbit(__x); }
+
+__MINSTL_FORCEINLINE int isunordered(float __x, float __y) { return __builtin_isunordered(__x, __x); }
+__MINSTL_FORCEINLINE int isunordered(double __x, double __y) { return __builtin_isunordered(__x, __y); }
+
+__MINSTL_FORCEINLINE int isless(float __x, float __y) { return __builtin_isless(__x, __x); }
+__MINSTL_FORCEINLINE int isless(double __x, double __y) { return __builtin_isless(__x, __y); }
+
+__MINSTL_FORCEINLINE int islessequal(float __x, float __y) { return __builtin_islessequal(__x, __x); }
+__MINSTL_FORCEINLINE int islessequal(double __x, double __y) { return __builtin_islessequal(__x, __y); }
+
+__MINSTL_FORCEINLINE int islessgreater(float __x, float __y) { return __builtin_islessgreater(__x, __x); }
+__MINSTL_FORCEINLINE int islessgreater(double __x, double __y) { return __builtin_islessgreater(__x, __y); }
+
+__MINSTL_FORCEINLINE int isgreater(float __x, float __y) { return __builtin_isgreater(__x, __x); }
+__MINSTL_FORCEINLINE int isgreater(double __x, double __y) { return __builtin_isgreater(__x, __y); }
+
+__MINSTL_FORCEINLINE int isgreaterequal(float __x, float __y) { return __builtin_isgreaterequal(__x, __x); }
+__MINSTL_FORCEINLINE int isgreaterequal(double __x, double __y) { return __builtin_isgreaterequal(__x, __y); }
+
+
+__MINSTL_FORCEINLINE float abs(float __x)   { return ::fabsf(__x); }
+__MINSTL_FORCEINLINE double abs(double __x) { return ::fabs(__x); }
+
+
+#define __MINSTL_MAKE_CMATH_REDIRECT_ONE(__name)\
+    __MINSTL_FORCEINLINE float __name (float __x) { return ::__name ## f(__x); }\
+    __MINSTL_FORCEINLINE double __name (double __x) { return ::__name(__x); }
+
+#define __MINSTL_MAKE_CMATH_REDIRECT_TWO(__name)\
+    __MINSTL_FORCEINLINE float __name (float __x, float __y) { return ::__name ## f(__x, __y); }\
+    __MINSTL_FORCEINLINE double __name (double __x, double __y) { return ::__name(__x, __y); }
+
+#define __MINSTL_MAKE_CMATH_REDIRECT_THREE(__name)\
+    __MINSTL_FORCEINLINE float __name (float __x, float __y, float __z) { return ::__name ## f(__x, __y, __z); }\
+    __MINSTL_FORCEINLINE double __name (double __x, double __y, double __z) { return ::__name(__x, __y, __z); }
+
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(acos)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(acosh)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(asin)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(asinh)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(atan)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(atanh)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(cbrt)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(ceil)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(cos)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(cosh)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(erf)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(erfc)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(exp)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(exp2)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(expm1)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(fabs)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(floor)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(lgamma)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(llround)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(log)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(log10)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(log1p)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(log2)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(logb)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(lround)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(round)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(sin)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(sinh)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(sqrt)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(tan)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(tanh)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(tgamma)
+__MINSTL_MAKE_CMATH_REDIRECT_ONE(trunc)
+
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(copysign)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(atan2)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(fdim)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(fmax)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(fmin)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(fmod)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(hypot)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(nextafter)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(pow)
+__MINSTL_MAKE_CMATH_REDIRECT_TWO(remainder)
+
+__MINSTL_MAKE_CMATH_REDIRECT_THREE(fma)
+
+
+#undef __MINSTL_MAKE_CMATH_REDIRECT_ONE
+#undef __MINSTL_MAKE_CMATH_REDIRECT_TWO
+#undef __MINSTL_MAKE_CMATH_REDIRECT_THREE
+
+
+__MINSTL_FORCEINLINE double remquo(double __x, double __y, int* __z) { return ::remquo(__x, __y, __z); }
+__MINSTL_FORCEINLINE float remquo(float __x, float __y, int* __z)    { return ::remquof(__x, __y, __z); }
+
+__MINSTL_FORCEINLINE double frexp(double __x, int* __y)  { return ::frexp(__x, __y); }
+__MINSTL_FORCEINLINE float frexp(float __x, int* __y)    { return ::frexpf(__x, __y); }
+
+__MINSTL_FORCEINLINE int ilogb(double __x)  { return ::ilogb(__x); }
+__MINSTL_FORCEINLINE int ilogb(float __x)    { return ::ilogbf(__x); }
+
+} // namespace std

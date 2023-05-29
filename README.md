@@ -10,6 +10,7 @@ Uses a custom static site generator (which lives under `builder`).
 * * mistune (Been using 2.0.4)
 * * xxhash (Optional)
 * nodejs (Been using 12.18.2, optional, Latex won't be prerendered without it)
+* LLVM (Been using 16.0.0), optional to compile C/C++
 
 
 ## Layout

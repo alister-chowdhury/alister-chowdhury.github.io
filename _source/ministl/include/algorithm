@@ -1,0 +1,549 @@
+#pragma once
+
+#include "__platform.h"
+#include "type_traits"
+#include "utility"
+
+namespace std
+{
+
+
+template<class _It> using __default_it_less_t = std::less<std::remove_reference_t<decltype(*std::declval<_It>())>>;
+
+
+template<class _It, class _P>
+constexpr __MINSTL_FORCEINLINE bool all_of(_It __s, _It __e, _P __pred)
+{
+    for(; __s < __e; ++__s)
+    {
+        if(!__pred(*__s))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+template<class _It, class _P>
+constexpr __MINSTL_FORCEINLINE bool any_of(_It __s, _It __e, _P __pred)
+{
+    for(; __s < __e; ++__s)
+    {
+        if(__pred(*__s))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+template<class _It, class _P>
+constexpr __MINSTL_FORCEINLINE bool none_of(_It __s, _It __e, _P __pred)
+{
+    for(; __s < __e; ++__s)
+    {
+        if(__pred(*__s))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+template<class _It, class _F>
+constexpr __MINSTL_FORCEINLINE _F for_each(_It __first, _It __last, _F __f)
+{
+    while(__first != __last)
+    {
+        __f(*__first++);
+    }
+    return __f;
+}
+
+
+template<class _It>
+constexpr __MINSTL_FORCEINLINE void iter_swap(_It __a, _It __b)
+{
+    swap(*__a, *__b);
+}
+
+
+template<class _T>
+constexpr __MINSTL_FORCEINLINE const _T& max(const _T& __a, const _T& __b)
+{
+    return __a < __b ? __b : __a;
+}
+
+template<class _T, class _Comp>
+constexpr __MINSTL_FORCEINLINE const _T& max(const _T& __a, const _T& __b, _Comp __comp)
+{
+    return __comp(__a, __b) ? __b : __a;
+}
+
+template<class _T>
+constexpr __MINSTL_FORCEINLINE const _T& min(const _T& __a, const _T& __b)
+{
+    return __a < __b ? __a : __b;
+}
+
+template<class _T, class _Comp>
+constexpr __MINSTL_FORCEINLINE const _T& min(const _T& __a, const _T& __b, _Comp __comp)
+{
+    return __comp(__a, __b) ? __a : __b;
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE _RandAccIt __med3(const _RandAccIt& __a,
+                                                 const _RandAccIt& __b,
+                                                 const _RandAccIt& __c,
+                                                 const _Comp& __comp)
+{
+    if(__comp(*__a, *__b))
+    {
+        return __comp(*__b, *__c) ? __b : ( __comp(*__a, *__c) ? __c : __a );
+    }
+    return __comp(*__a, *__c) ? __a : ( __comp(*__b, *__c) ? __c : __b );
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void __insertion_sort(const _RandAccIt& __start,
+                                                     const _RandAccIt& __end,
+                                                     const _Comp& __comp)
+{
+    using __T = std::remove_reference_t<decltype(*__start)>;
+    _RandAccIt __it = __start; ++__it;
+    for(; __it < __end; ++__it)
+    {
+        __T __value = std::move(*__it);
+        _RandAccIt __subit = __it;
+        _RandAccIt __lastit = __it; --__lastit;
+
+        for(; (__lastit >= __start) && __comp(__value, *__lastit); --__subit, --__lastit)
+        {
+            *__subit = std::move(*__lastit);
+        }
+        *__subit = std::move(__value);
+    }
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void __selection_sort(const _RandAccIt& __start_,
+                                                     const _RandAccIt& __end,
+                                                     const _Comp& __comp)
+{
+    _RandAccIt __last = __end;
+    --__last;
+    for(_RandAccIt __start = __start_; __start < __last; ++__start)
+    {
+        _RandAccIt __s = __start;
+        _RandAccIt __it = __start; ++__it;
+        for(; __it < __end; ++__it)
+        {
+            if(__comp(*__it, *__s))
+            {
+                __s = __it;
+            }
+        }
+        if(__s != __start)
+        {
+            std::iter_swap(__s, __start);
+        }
+    }
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void __partial_selection_sort_fwd(const _RandAccIt& __start_,
+                                                                 const _RandAccIt& __nth,
+                                                                 const _RandAccIt& __end,
+                                                                 const _Comp& __comp)
+{
+    for(_RandAccIt __start = __start_; __start <= __nth; ++__start)
+    {
+        _RandAccIt __s = __start;
+        _RandAccIt __it = __start; ++__it;
+        for(; __it < __end; ++__it)
+        {
+            if(__comp(*__it, *__s))
+            {
+                __s = __it;
+            }
+        }
+        if(__s != __start)
+        {
+            std::iter_swap(__s, __start);
+        }
+    }
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void __partial_selection_sort_bck(const _RandAccIt& __start,
+                                                                 const _RandAccIt& __nth,
+                                                                 const _RandAccIt& __end,
+                                                                 const _Comp& __comp)
+{
+    _RandAccIt __last = __end;
+    --__last;
+    for(; __nth <= __last; --__last)
+    {
+        _RandAccIt __s = __start;
+        _RandAccIt __it = __start; ++__it;
+        for(; __it <= __last; ++__it)
+        {
+            if(__comp(*__s, *__it))
+            {
+                __s = __it;
+            }
+        }
+        if(__s != __last)
+        {
+            std::iter_swap(__s, __last);
+        }
+    }
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void __partial_selection_sort(const _RandAccIt& __start,
+                                                             const _RandAccIt& __nth,
+                                                             const _RandAccIt& __end,
+                                                             const _Comp& __comp)
+{
+
+#if __code_model_small__
+
+    std::__partial_selection_sort_fwd(__start, __nth, __end, __comp);
+
+#else // __code_model_small__
+
+    if((__nth - __start) < (__end - __nth))
+    {
+        std::__partial_selection_sort_fwd(__start, __nth, __end, __comp);
+    }
+    else
+    {
+        std::__partial_selection_sort_bck(__start, __nth, __end, __comp);
+    }
+
+#endif // __code_model_small__
+
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE _RandAccIt __partition_external(const _RandAccIt& __start_,
+                                                               const _RandAccIt& __end_,
+                                                               const _RandAccIt& __piv,
+                                                               const _Comp& __comp)
+{
+
+    // One way swapping (does not require strict weak ordering)
+#if 0
+
+    const _RandAccIt& __end = __end_;
+    _RandAccIt __it = __start_;
+
+    // Initial scan
+    for(; (__it < __end) && (__comp(*__it, *__piv)); ++__it);
+    if(!(__it < __end)) { return std::move(__it); }
+    _RandAccIt __inserter = __it++;
+    for(; __it < __end; ++__it)
+    {
+        if(__comp(*__it, *__piv))
+        {
+            std::iter_swap(__it, __inserter);
+            ++__inserter;
+        }
+    }
+    return std::move(__inserter);
+
+#else
+
+    // Two way swapping (faster, requires strict weak ordering)
+    // TODO: Use block quick sort stuff?
+
+    _RandAccIt __start = __start_;
+    _RandAccIt __last = __end_; --__last;
+
+    // Initial scan
+    for(; (__start <= __last) && (__comp(*__start, *__piv)); ++__start);
+    for(; (__start < __last) && (!__comp(*__last, *__piv)); --__last);
+
+    // If the comparitor is unstable, e.g random, this is liable to access OOB memory
+    while (__start < __last)
+    {
+        std::iter_swap(__start, __last);
+        while (__comp(*++__start, *__piv));
+        while (!__comp(*--__last, *__piv));
+    }
+
+    return std::move(__start);
+
+
+#endif
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE _RandAccIt __partition(const _RandAccIt& __start,
+                                                      const _RandAccIt& __end,
+                                                      const _RandAccIt& __piv,
+                                                      const _Comp& __comp)
+{
+    _RandAccIt __last = __end;
+    --__last;
+    if(__piv != __last)
+    {
+        std::iter_swap(__piv, __last);
+    }
+    _RandAccIt __result = std::__partition_external(__start, __last, __last, __comp);
+    
+    if(__result != __last)
+    {
+        std::iter_swap(__result, __last);
+        
+        // Handle the case where we have numerous duplicate values, rollback towards
+        // the target pivot.
+        if(__result == __start)
+        {
+            __last = __result;
+            while((__result != __piv) && (!__comp(*__result, *++__last)))
+            {
+                ++__result;
+            }
+        }
+    }
+
+    return std::move(__result);
+
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void static __quicksort(const _RandAccIt& __start_,
+                                                       const _RandAccIt& __end_,
+                                                       const _Comp& __comp,
+                                                       int __depth = 0)
+{
+
+    _RandAccIt __start = __start_;
+    _RandAccIt __end = __end_;
+
+    while(1)
+    {
+        constexpr __SIZE_TYPE__ __maxitersize = 20;
+        constexpr __SIZE_TYPE__ __maxdepth = 32;
+        __SIZE_TYPE__ __n = __end - __start;
+
+        if(__n <= 1)
+        {
+            return;
+        }
+
+        if((__n <= __maxitersize) || (__depth >= __maxdepth))
+        {
+            __insertion_sort(__start, __end, __comp);
+            return;
+        }
+
+        _RandAccIt __last = __end; --__last;
+        _RandAccIt __piv = std::__partition(__start,
+                                            __end,
+                                            std::__med3(__start, __start + __n/2, __last, __comp),
+                                            __comp);
+        while((__piv == __start) && (__start < __end))
+        {
+            ++__start;
+            __n = __end - __start;
+            __piv = std::__partition(__start,
+                                     __end,
+                                     __start + __n/2,
+                                     __comp);
+        }
+        __quicksort(__piv, __end, __comp, __depth + 1);
+        __end = std::move(__piv);
+    }
+
+}
+
+
+// Implementation of quicksort where a stack of start points are stored
+// rather than recursion.
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void static __quicksort_no_recursion(const _RandAccIt& __start_,
+                                                                    const _RandAccIt& __end_,
+                                                                    const _Comp& __comp)
+{
+    // TODO: Could use alloca?
+#if __SIZE_WIDTH__ == 64
+        constexpr __SIZE_TYPE__ __maxstack = 44;
+#elif __SIZE_WIDTH__ == 32
+        constexpr __SIZE_TYPE__ __maxstack = 28;
+#else
+        #error "Unsupported platform"
+#endif
+    constexpr int __maxitersize = 20;
+
+    int __stackindex = 0;
+    _RandAccIt __stack[__maxstack] {};
+    _RandAccIt __start = __start_;
+    _RandAccIt __end = __end_;
+
+    while(1)
+    {
+        do
+        {
+            __SIZE_TYPE__ __n = __end - __start;
+
+            if(__n <= 1)
+            {
+                break;
+            }
+
+            if((__n <= __maxitersize) || (__stackindex >= __maxstack))
+            {
+                std::__insertion_sort(__start, __end, __comp);
+                break;
+            }
+
+            _RandAccIt __last = __end; --__last;
+            _RandAccIt __piv = std::__partition(__start,
+                                                __end,
+                                                std::__med3(__start, __start + __n/2, __last, __comp),
+                                                __comp);
+
+            while((__piv == __start) && (__start < __end))
+            {
+                ++__start;
+                __n = __end - __start;
+                __piv = std::__partition(__start,
+                                         __end,
+                                         __start + __n/2,
+                                         __comp);
+            }
+            
+            __stack[__stackindex++] = __start;
+            __start = std::move(__piv);
+        }
+        while(1);
+
+        if(__stackindex <= 0)
+        {
+            break;
+        }
+
+        __end = std::move(__start);
+        __start = std::move(__stack[--__stackindex]);
+    }
+
+}
+
+
+// Simple quicksort based sort, todo: should probably use introsort, which means
+// implementing heapsort.
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void sort(const _RandAccIt& __start,
+                                         const _RandAccIt& __end,
+                                         const _Comp& __comp)
+{
+    if(__start < __end)
+    {
+        if constexpr(std::is_default_constructible_v<_RandAccIt>)
+        {
+            std::__quicksort_no_recursion(__start, __end, __comp);
+        }
+        else
+        {
+            std::__quicksort(__start, __end, __comp);
+        }
+    }
+}
+
+template<class _RandAccIt>
+constexpr __MINSTL_FORCEINLINE void sort(const _RandAccIt& __start,
+                                        const _RandAccIt& __end)
+{
+    std::sort(__start, __end, std::__default_it_less_t<_RandAccIt>{});
+}
+
+
+template<class _RandAccIt, class _Comp>
+constexpr __MINSTL_FORCEINLINE void nth_element(const _RandAccIt& __start_,
+                                                const _RandAccIt& __nth,
+                                                const _RandAccIt& __end_,
+                                                const _Comp& __comp)
+{
+    __SIZE_TYPE__ __n = __end_ - __start_;
+
+    if(__n > 1)
+    {
+        _RandAccIt __start = __start_;
+        _RandAccIt __end = __end_;
+
+        constexpr __SIZE_TYPE__ __maxitersize = 50;
+        int __maxdepth = 32;
+
+        while(1)
+        {
+            __n = __end - __start;
+            if(__n <= 1)
+            {
+                break;
+            }
+            if(__n <= __maxitersize)
+            {
+                std::__partial_selection_sort(__start, __nth, __end, __comp);
+                break;
+            }
+            if(--__maxdepth <= 0)
+            {
+                std::__insertion_sort(__start, __end, __comp);
+                return;
+            }
+
+            _RandAccIt __split = std::__partition(__start, __end, __nth, __comp);
+
+            while((__split == __start) && (__split != __nth))
+            {
+                ++__start;
+                __n = __end - __start;
+                __split = std::__partition(__start,
+                                           __end,
+                                           __start + __n/2,
+                                           __comp);
+            }
+
+            if(__split < __nth)
+            {
+                ++__split;
+                __start = std::move(__split);
+            }
+            else if(__split > __nth)
+            {
+                __end = std::move(__split);
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+}
+
+template<class _RandAccIt>
+constexpr __MINSTL_FORCEINLINE void nth_element(const _RandAccIt& __start,
+                                                const _RandAccIt& __nth,
+                                                const _RandAccIt& __end)
+{
+    std::nth_element(__start, __nth, __end, std::__default_it_less_t<_RandAccIt>{});
+}
+
+
+
+} // namespace std

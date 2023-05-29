@@ -1,0 +1,66 @@
+#pragma once
+
+#include "__platform.h"
+#include "type_traits"
+
+namespace std
+{
+
+template<class _T>
+constexpr __MINSTL_FORCEINLINE remove_reference_t<_T>&& move(_T&& __x)
+{
+    return static_cast<std::remove_reference_t<_T>&&>(__x);
+}
+
+
+template<class _T>
+constexpr __MINSTL_FORCEINLINE void swap(_T& __x, _T& __y)
+{
+    std::remove_reference_t<_T> __tmp = std::move(__x);
+    __x = std::move(__y);
+    __y = std::move(__tmp);
+}
+
+
+template<class _T>
+struct equal_to
+{
+    constexpr __MINSTL_FORCEINLINE bool operator()(const _T& __a, const _T& __b) const { return __a == __b; }
+};
+
+template<class _T>
+struct not_equal_to
+{
+    constexpr __MINSTL_FORCEINLINE bool operator()(const _T& __a, const _T& __b) const { return __a != __b; }
+};
+
+template<class _T>
+struct greater
+{
+    constexpr __MINSTL_FORCEINLINE bool operator()(const _T& __a, const _T& __b) const { return __a > __b; }
+};
+
+template<class _T>
+struct less
+{
+    constexpr __MINSTL_FORCEINLINE bool operator()(const _T& __a, const _T& __b) const { return __a < __b; }
+};
+
+template<class _T>
+struct greater_equal
+{
+    constexpr __MINSTL_FORCEINLINE bool operator()(const _T& __a, const _T& __b) const { return __a >= __b; }
+};
+
+template<class _T>
+struct less_equal
+{
+    constexpr __MINSTL_FORCEINLINE bool operator()(const _T& __a, const _T& __b) const { return __a <= __b; }
+};
+
+
+template<class _T>
+constexpr decltype(std::__declval<_T>()) declval();
+
+
+} // namespace std

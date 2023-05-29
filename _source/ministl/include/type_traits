@@ -1,0 +1,181 @@
+#pragma once
+
+#include "cstddef"
+
+namespace std
+{
+
+
+// remove_reference
+#if defined(__has_builtin) && __has_builtin(__remove_reference_t)
+template<class _T> using remove_reference_t = __remove_reference_t(_T);
+template<class _T> struct remove_reference { using type = __remove_reference_t(_T); };
+#else //  defined(__has_builtin) && __has_builtin(__remove_reference_t)
+template<class _T> struct remove_reference         { using type = _T; };
+template<class _T> struct remove_reference<_T&>    { using type = _T; };
+template<class _T> struct remove_reference<_T&&>   { using type = _T; };
+template<class _T> using remove_reference_t = typename std::remove_reference<_T>::type;
+#endif // defined(__has_builtin) && __has_builtin(__remove_reference_t)
+
+
+// add_lvalue_reference
+#if defined(__has_builtin) || __has_builtin(__add_lvalue_reference)
+template<class _T> using add_lvalue_reference_t = __add_lvalue_reference(_T);
+template<class _T> struct add_lvalue_reference { using type = __add_lvalue_reference(_T); };
+#else //  defined(__has_builtin) || __has_builtin(__add_lvalue_reference)
+template<class _T> struct add_lvalue_reference          { using type = _T&; }
+template<class _T> struct add_lvalue_reference<_T&>     { using type = _T&; }
+template<class _T> struct add_lvalue_reference<_T&&>    { using type = _T&; }
+template<>         struct add_lvalue_reference<void>    { using type = void; }
+template<class _T> using add_lvalue_reference_t = typename std::add_lvalue_reference<_T>::type;
+#endif //  defined(__has_builtin) || __has_builtin(__add_lvalue_reference)
+
+
+// add_rvalue_reference
+#if defined(__has_builtin) || __has_builtin(__add_rvalue_reference)
+template<class _T> using add_rvalue_reference_t = __add_rvalue_reference(_T);
+template<class _T> struct add_rvalue_reference { using type = __add_rvalue_reference(_T); };
+#else //  defined(__has_builtin) || __has_builtin(__add_rvalue_reference)
+template<class _T> struct add_rvalue_reference          { using type = _T&&; }
+template<class _T> struct add_rvalue_reference<_T&>     { using type = _T&; }
+template<class _T> struct add_rvalue_reference<_T&&>    { using type = _T&&; }
+template<>         struct add_rvalue_reference<void>    { using type = void; }
+template<class _T> using add_rvalue_reference_t = typename std::add_rvalue_reference<_T>::type;
+#endif //  defined(__has_builtin) || __has_builtin(__add_rvalue_reference)
+
+
+// Internal declval
+template<class _T>
+constexpr std::add_rvalue_reference_t<std::remove_reference_t<_T>> __declval();
+
+
+// conditional
+template<bool __b, class _T, class> struct conditional { using type = _T; }; 
+template<class _T, class _F> struct conditional<false, _T, _F> { using type = _F; };
+template<bool __b, class _T, class _F> using conditional_t = typename std::conditional<__b, _T, _F>::type;
+
+
+// enable_if
+template<bool, class _T = void> struct enable_if {};
+template<class _T> struct enable_if<true, _T> { using type = _T; };
+template<bool __b, class _T=void> using enable_if_t = typename std::enable_if<__b, _T>::type;
+
+
+// void_t
+template<class...> using void_t = void;
+
+
+// identity
+template<class _T> struct type_identity  { using type = _T; };
+template<class _T> using type_identity_t = _T;
+
+
+// integral_constant
+template<class _T, _T __v>
+struct integral_constant
+{
+    static constexpr _T value = __v;
+    using value_type = _T;
+    using type = integral_constant;
+    constexpr operator value_type() const noexcept { return value; }
+    constexpr value_type operator()() const noexcept { return value; }
+};
+
+using false_type = std::integral_constant<bool, false>;
+using true_type = std::integral_constant<bool, true>;
+
+
+template<class _T> inline constexpr bool is_default_constructible_v = __is_constructible(_T);
+template<class _T> struct is_default_constructible { const static bool value = __is_constructible(_T); };
+
+// alignment_of
+template<class _T> inline constexpr size_t alignment_of_v = alignof(_T);
+template<class _T> struct alignment_of : integral_constant<size_t, std::alignment_of_v<_T>> {};
+
+
+// add const/volatile
+template<class _T> struct add_const { using type =  const _T; };
+template<class _T> struct add_cv { using type =  const volatile _T; };
+template<class _T> struct add_volatile { using type =  volatile _T; };
+template<class _T> using add_const_t = typename std::add_const<_T>::type;
+template<class _T> using add_cv_t = typename std::add_cv<_T>::type;
+template<class _T> using add_volatile_t = typename std::add_volatile<_T>::type;
+
+
+// remove const/volatile
+template<class _T> struct remove_const { using type =  _T; };
+template<class _T> struct remove_const<const _T> { using type =  _T; };
+template<class _T> struct remove_volatile { using type =  _T; };
+template<class _T> struct remove_volatile<volatile _T> { using type =  _T; };
+template<class _T> using remove_const_t = typename std::remove_const<_T>::type;
+template<class _T> using remove_volatile_t = typename std::remove_volatile<_T>::type;
+template<class _T> struct remove_cv { using type =  std::remove_const_t<remove_volatile_t<_T>>; };
+template<class _T> using remove_cv_t = typename std::remove_cv<_T>::type;
+
+
+// is_same
+template<class _T, class _U> struct is_same : std::false_type {};
+template<class _T> struct is_same<_T, _T> : std::true_type {};
+template<class _T, class _U> constexpr inline bool is_same_v = std::is_same<_T, _U>::value;
+
+
+// is_array
+#if defined(__has_builtin) || __has_builtin(__is_array)
+template<class _T> inline constexpr bool is_array_v = __is_array(_T);
+template<class _T> struct is_array : integral_constant<bool, __is_array(_T)> {};
+#else // defined(__has_builtin) || __has_builtin(__is_array)
+template<class _T> struct __impl_is_array : std::false_type {};
+template<class _T> struct __impl_is_array<_T[]> : std::true_type {};
+template<class _T, size_t __N> struct __impl_is_array<_T[__N]> : std::true_type {};
+template<class _T> struct is_array : __impl_is_array<remove_cv_t<_T>> {};
+template<class _T> using is_array_t = typename std::is_array<_T>::type;
+#endif // defined(__has_builtin) || __has_builtin(__is_array)
+
+
+// is_floating_point
+#if defined(__has_builtin) || __has_builtin(__is_floating_point)
+template<class _T> inline constexpr bool is_floating_point_v = __is_floating_point(_T);
+template<class _T> struct is_floating_point : std::integral_constant<bool, __is_floating_point(_T)> {};
+#else // defined(__has_builtin) || __has_builtin(__is_floating_point)
+template<class _T> struct __impl_is_floating_point : std::false_type {};
+template<> struct __impl_is_floating_point<float> : std::true_type {};
+template<> struct __impl_is_floating_point<double> : std::true_type {};
+template<> struct __impl_is_floating_point<long double> : std::true_type {};
+template<class _T> struct is_floating_point : __impl_is_floating_point<remove_cv_t<_T>> {};
+template<class _T> inline constexpr bool is_floating_point_v = std::is_floating_point<_T>::value;
+#endif // defined(__has_builtin) || __has_builtin(__is_floating_point)
+
+
+// is_integral
+#if defined(__has_builtin) || __has_builtin(__is_integral)
+template<class _T> struct is_integral : std::integral_constant<bool, __is_integral(_T)> {};
+template<class _T> inline constexpr bool is_integral_v = __is_integral(_T);
+#else //  defined(__has_builtin) || __has_builtin(__is_integral)
+template<class _T> __impl_is_integral : std::false_type {};
+template<> __impl_is_integral<char> : std::true_type {};
+template<> __impl_is_integral<unsigned char> : std::true_type {};
+template<> __impl_is_integral<short> : std::true_type {};
+template<> __impl_is_integral<unsigned short> : std::true_type {};
+template<> __impl_is_integral<int> : std::true_type {};
+template<> __impl_is_integral<unsigned int> : std::true_type {};
+template<> __impl_is_integral<long long> : std::true_type {};
+template<> __impl_is_integral<unsigned long long> : std::true_type {};
+template<> __impl_is_integral<bool> : std::true_type {};
+template<class _T> struct is_integral : __impl_is_integral<remove_cv_t<_T>> {};
+template<class _T> inline constexpr bool is_integral_v = typename is_integral<_T>::value;
+#endif // defined(__has_builtin) || __has_builtin(__is_integral)
+
+
+
+
+// is_signed / is_unsigned
+// template<class _T, bool=is_integral_v<_T>> struct __impl_is_signed : integral_constant<bool, is_same_v<signed _T, _T>> {};
+// template<class _T> struct __impl_is_signed<_T, false> : std::false_type {};
+// template<class _T, bool=is_integral_v<_T>> struct __impl_is_unsigned : integral_constant<bool, is_same_v<unsigned _T, _T>> {};
+// template<class _T> struct __impl_is_unsigned<_T, false> : std::false_type {};
+// template<class _T> using is_signed = __impl_is_signed<_T>;
+// template<class _T> using is_unsigned = __impl_is_unsigned<_T>;
+// template<class _T> inline constexpr bool is_signed_v = typename is_signed<_T>::value;
+// template<class _T> inline constexpr bool is_unsigned_v = typename is_unsigned<_T>::value;
+
+} // namespace std
