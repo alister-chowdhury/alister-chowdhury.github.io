@@ -565,6 +565,7 @@ Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.
        // Resizing viewport logic
        function vpResizeBegin(event)
        {
+           event.preventDefault();
            if(event.type == "mousedown")
            {
                document.documentElement.addEventListener("mousemove", vpResizeIter, false);
@@ -580,6 +581,7 @@ Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.
 
        function vpResizeIter(event)
        {
+           event.preventDefault();
            var viewportWrapper = document.getElementById("viewportWrapper");
            const bounds = viewportWrapper.getBoundingClientRect();
            const resizerMid = 11;
@@ -596,6 +598,7 @@ Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.
 
        function vpResizeEnd(event)
        {
+           event.preventDefault();
            if(event.type == "mouseup")
            {
                document.documentElement.removeEventListener("mousemove", vpResizeIter, false);

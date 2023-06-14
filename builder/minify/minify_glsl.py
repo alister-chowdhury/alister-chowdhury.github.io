@@ -573,7 +573,7 @@ def minify_glsl(source):
     # e.g: 1.2000000476837158203125 => 1.2
     minified = re.sub(
         r"([+\-]?\d+\.\d+)",
-        lambda x: min(x.group(1), str(float32(x.group(1)))),
+        lambda x: str(float32(x.group(1))),
         minified
     )
 

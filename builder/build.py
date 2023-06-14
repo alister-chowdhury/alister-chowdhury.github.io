@@ -43,8 +43,8 @@ def build_html(template_file, out_file=None):
         extract_html_sections,
         merge_html
     )
-    from .html_processing.inject_og_metadata import (
-        inject_og_metadata
+    from .html_processing.inject_seo_metadata import (
+        inject_seo_metadata
     )
 
     global _HEADER_SECTION
@@ -91,7 +91,7 @@ def build_html(template_file, out_file=None):
         source,
         source_file=template_file.as_posix()
     )
-    source = inject_og_metadata(
+    source = inject_seo_metadata(
         source,
         source_file=template_file
     )

@@ -3,16 +3,19 @@
    
  
 <head>
+    <link rel="canonical" href="https://alister-chowdhury.github.io/posts/20221230-bluenoise-generator/"/>
     <meta property="og:title" content="Bluenoise Generator">
     <meta property="og:url" content="https://alister-chowdhury.github.io/posts/20221230-bluenoise-generator/">
     <meta property="og:type" content="article">
     <meta property="og:description" content="WEGBL2 Bluenoise generator, using a void and cluster variant.">
+    <meta property="og:image" itemprop="image" content="https://alister-chowdhury.github.io/posts/20221230-bluenoise-generator/_thumbnail.png">
     <meta property="og:article:published_time" content="2022-12-30T00:00:00">
     <meta property="og:article:tag" content="bluenoise">
     <meta property="og:article:tag" content="void and cluster">
     <meta property="og:article:tag" content="rendering">
     <meta property="og:article:tag" content="dithering">
     <meta property="og:article:tag" content="low discrepancy sequence">
+<script data-rh="true" type="application/ld+json">{"@context":"http://schema.org","@type":"Article","author":[{"@type":"Person","name":"By Alister Chowdhury"}],"name":"Bluenoise Generator","url":"https://alister-chowdhury.github.io/posts/20221230-bluenoise-generator/","description":"WEGBL2 Bluenoise generator, using a void and cluster variant.","thumbnailUrl":"https://alister-chowdhury.github.io/posts/20221230-bluenoise-generator/_thumbnail.png","datePublished":"2022-12-30T00:00:00"}</script>
 
       <meta charset="utf-8">
       <meta name="author" content="Alister Chowdhury">
@@ -603,6 +606,7 @@ Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.
        // Resizing viewport logic
        function vpResizeBegin(event)
        {
+           event.preventDefault();
            if(event.type == "mousedown")
            {
                document.documentElement.addEventListener("mousemove", vpResizeIter, false);
@@ -618,6 +622,7 @@ Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.
 
        function vpResizeIter(event)
        {
+           event.preventDefault();
            var viewportWrapper = document.getElementById("viewportWrapper");
            const bounds = viewportWrapper.getBoundingClientRect();
            const resizerMid = 11;
@@ -634,6 +639,7 @@ Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.
 
        function vpResizeEnd(event)
        {
+           event.preventDefault();
            if(event.type == "mouseup")
            {
                document.documentElement.removeEventListener("mousemove", vpResizeIter, false);

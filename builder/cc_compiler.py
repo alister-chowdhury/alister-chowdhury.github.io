@@ -269,7 +269,7 @@ def get_linker_args(
     ]
 
     if stack_size is not None:
-        args.extend("-z", "stack-size={0}".format(stack_size))
+        args.extend(("-z", "stack-size={0}".format(stack_size)))
 
     if extra_args:
         args.extend(_tuple_if_str(extra_args))

@@ -4,7 +4,8 @@ class AsyncBarrier
     constructor()
     {
         this.num = 0;
-        this.p = [];
+        this.p = null; // promise lock
+        this.r = null; // resolve promise
     }
 
     ready()
@@ -12,9 +13,14 @@ class AsyncBarrier
         return this.num == 0;
     }
 
-    enqueue(task, name=null)
+    enqueue(task, name=null, copyAttrs=null)
     {
         const s = this;
+        if(s.p == null)
+        {
+            s.p = new Promise((resolve)=>{s.r = resolve;});
+        }
+
         ++s.num;
         task.then(
             result =>
@@ -23,33 +29,40 @@ class AsyncBarrier
                 {
                     s[name] = result;
                 }
+                if(copyAttrs != null)
+                {
+                    copyAttrs.forEach(x=>{
+                        s[x] = result[x];
+                    });
+                }
                 if(--s.num == 0)
                 {
-                    let promises = s.p;
-                    s.p = [];
-                    promises.forEach(f => f());
+                    s.r();
                 }
             }
         );
         return s;
     }
 
-    then(f)
+    async selfBarrier()
     {
-        const s = this;
-        return new Promise(
-            resolve =>
-            {
-                if(s.num<1)
-                {
-                    resolve(f());
-                }
-                else
-                {
-                    s.p.push(()=>{resolve(f())});
-                }
-            }
-        );
+        let s = this;
+        await s.then(()=>{});
+        // Not sure why, but returning this will returned `undefined`
+        // when returned directly, but when part of another object, it's
+        // fine, so we are making a spread copy of itself to combat this.
+        return {...s};
+    }
+
+    async then(f)
+    {
+        let s = this;
+        while(s.num != 0)
+        {
+            await s.p;
+        }
+        const c = f();
+        return c;
     }
 };
 
@@ -152,6 +165,17 @@ export function deleteShaders(GL, ...shaders)
             GL.deleteShader(shader);
         }
     }
+}
+
+
+export function isElementVisible(element)
+{
+    const bbox = element.getBoundingClientRect();
+    return bbox.bottom >= 0
+        && bbox.right >= 0
+        && bbox.top < (window.innerHeight || document.documentElement.clientHeight)
+        && bbox.left < (window.innerWidth || document.documentElement.clientWidth)
+        ;
 }
 
 

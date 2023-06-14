@@ -2,5 +2,6 @@
     "index.html": {"minify": true},
     "gpunumbers_webgl2.js": {"minify": true},
     "shaders/compiled/*": {"minify": true},
-    "encode_number_web.wasm": {}
+    "encode_number_web.wasm": {},
+    "_thumbnail.png": {}
 }

@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /res/
+Disallow: /thirdparty/
+
+Sitemap: https://alister-chowdhury.github.io/sitemap.xml

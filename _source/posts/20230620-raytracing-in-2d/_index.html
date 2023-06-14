@@ -1,0 +1,549 @@
+
+ <head>
+    <title>Raytracing In 2D</title>
+    <meta name="description" content="How to go about raytracing a 2D scene on the GPU, using purely vertex and fragment shaders.">
+    <meta name="keywords" content="raytracing, BVH, 2D, rendering, graphics">
+
+    <script>
+        
+        window.bvh1ModuleLoaded = false;
+        window.afterBvh1ModuleLoaded = [];
+
+        window.bvh1DataLoaded = false;
+        window.afterBvh1DataLoaded = [];
+
+        function addAfterBvh1ModuleLoaded(f)
+        {
+            if(!window.bvh1ModuleLoaded)
+            {
+                window.afterBvh1ModuleLoaded.push(f);
+            }
+            else
+            {
+                f();
+            }
+        }
+
+        function addAfterBvh1DataLoaded(f)
+        {
+            if(!window.bvh1DataLoaded)
+            {
+                window.afterBvh1DataLoaded.push(f);
+            }
+            else
+            {
+                f();
+            }
+        }
+    </script>
+    <script type="module">
+
+        import { onResourcesLoaded, getDefaultLines, generateBVH, bindBvh1Context, onBvh1DataLoaded } from './rtrace_bvh_v1.js';
+
+        onBvh1DataLoaded(()=>{
+            window.getDefaultLines = getDefaultLines;
+            window.generateBVH = generateBVH;
+            window.bvh1DataLoaded = true;
+            window.afterBvh1DataLoaded.forEach(f => {f()});
+        })
+
+        window.bindBvh1Context = bindBvh1Context;
+        window.bvh1ModuleLoaded = true;
+        window.afterBvh1ModuleLoaded.forEach(f => {f()});
+    </script>
+
+    <style>
+
+        #drawCanvasControls
+        {
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 1em;
+        }
+
+        #drawCanvasControls > div
+        {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr 2fr;
+            border: #7373c3 1px solid;
+            border-top: 0;
+        }
+
+        #drawCanvasControls > div:first-of-type
+        {
+            border-top: #7373c3 1px solid;
+        }
+
+        #drawCanvasControls > div > div
+        {
+            text-align: center;
+            padding-left: 0.5em;
+            padding-right: 0.5em;
+            margin-top: auto;
+            margin-bottom: auto;
+        }
+
+        #drawCanvasControls > div > div:last-of-type
+        {
+            border-left: #7373c3 1px solid;
+            height: 100%;
+        }
+
+        .knuckleRadio input[type="radio"]
+        {
+            display: none;
+        }
+        .knuckleRadio input[type="radio"]+label,
+        input[type="button"]
+        {
+          background-color: #1f1f1f;
+          cursor: pointer;
+          border: #7373c3 2px outset;
+          padding:5px;
+          display: inline-block;
+          margin-top: 5px;
+          margin-bottom: 5px;
+          color: #d3d3d3;
+          font-family: monospace;
+        }
+
+        .knuckleRadio input[type="radio"]:checked+label,
+        input[type="button"]:active
+        {
+          color: #00d5ff;
+          background-color: #400778;
+          cursor: pointer;
+          border: #7373c3 2px inset;
+          padding:5px;
+          display: inline-block;
+          margin-top: 5px;
+          margin-bottom: 5px;
+          font-family: monospace;
+        }
+
+        #bvhGenerationStepsContainer
+        {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            text-align: center;
+        }
+        
+        #bvhGenerationStepsContainer > div
+        {
+            border: #7373c3 1px solid;
+            margin: 5px;
+        }
+
+        #bvhGenerationStepsContainer > div > img {
+            width: 238px;
+            height: 163px;
+        }
+
+        #benchmarkGenBtnContainer
+        {
+            justify-content: center;
+            align-content: center;
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #benchmarkGenBtn
+        {
+            padding-left: 50px;
+            padding-right: 50px;
+        }
+
+        #benchmarkGenCanvas
+        {
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        canvas
+        {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;   
+        }
+
+
+    </style>
+
+ </head>
+ <body>
+
+  <main>
+<markdown>
+
+# Raytracing In 2D
+
+
+## Background
+During Covid times, me and a group of friends got very into using <a target="_blank" href="https://www.dnd-compendium.com/dm-resources/virtual-tabletops">virtual tabletops</a>, and while
+playing them, a certain friend who was DMing really wanted to boost the graphics quality, which scaled pretty horribly, especially on older hardware.
+
+One of the biggest bottlenecks seemed to be around how many blockers they would put in their scene, around 10-20 seemed to be ok, but when they started getting
+into full level designer mode and adding like 200+ it would be basically unplayable.
+
+I can't say I'm sure exactly how this particular VTT implemented this, but I assume it involved a linear loop, line intersecting against every blocker, which
+in the world of raytracing is a big no-no.
+
+For the specific case of vision blocking, raytracing doesn't seem like something you'd want to do full-frame, every frame and I actually already
+have a solution which involves projecting and incrementing a stencil buffer (in a similar sort of vibe to <a target="_blank" href="https://en.wikipedia.org/wiki/Shadow_volume">shadow volumes</a>),
+which seemed to work rather nicely and I may post about at some point.
+
+And likewise for lights, using a circular shadowmap, offline polygon generation or simply baking lighting data seems like a more reasonable approach (also may
+cover some implementations for those I've been playing with).
+
+Regardless, I thought it would be interesting to implement raytracing on the GPU (targeting web broswers and not assuming good hardware) from scratch.
+
+
+## Building The BVH
+
+Arguably the most important part about accelerating raytracing is the <a target="_blank" href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">BVH</a>, how this is structured will basically
+define how you go about discarding batches of lines from being processed any further.
+
+I settled on using a b-tree based approach, where each node is made of 48 bytes (3 x float4) is stored in a linear buffer and has the following layout:
+
+```c
+struct BvhNodeV1
+{
+    uint    leftType;
+    uint    leftId;
+
+    uint    rightType;
+    uint    rightId;
+
+    float4  leftData;
+    float4  rightData;
+};
+``` 
+
+Where:
+* `type` is 0 if it's a **node** or 1 if it's a **line**.
+* `id` is buffer index of a **node** or `lineId` of a **line**.
+* `data` is the bbox of the **node** or line parameters of a **line**.
+
+You may think using an entire 128bits for both the types and ids may seem wasteful (do we really need 16 bytes for two bools and a two offsets).
+And you would be right, however by aligning the result into a float4, it means actually fetching the data is reasonably GPU friendly.
+
+
+```glsl
+uniform sampler1D bvh;
+...
+vec4 v0 = texelFetch(bvh, offset);          // types and ids (asuint / floatBitsToInt)
+vec4 v1 = texelFetch(bvh, offset + 1);      // left data
+vec4 v2 = texelFetch(bvh, offset + 2);      // right data
+```
+
+To construct the BVH we repeatedly subdivide the number of lines in half, this is done by:
+* Calculating the box that contains the **center** point each line.
+* <a target="_blank" href="https://en.cppreference.com/w/cpp/algorithm/nth_element">Partial soting</a> `centerX` or `centerY` depending on which axis was longer in the previously calculated box, using [size/2] as the mid point.
+* Partitioning the left to be `[0, size/2)` and right to be `[size/2, size)`.
+
+
+<div id="bvhGenerationStepsContainer">
+  <div><img alt="lines0" src="res/lines0.png"><br>Input Lines</div>
+  <div><img alt="lines1" src="res/lines1.png"><br>First Level</div>
+  <div><img alt="lines2" src="res/lines2.png"><br>Second Level</div>
+</div>
+
+
+The BVH generation code was written in C++ (link to source at the bottom) and even when targetting WASM, should be rather quick, you can run a little benchmark here (`n log(n)` time):
+<div id="benchmarkGenBtnContainer">
+<input type="button" id="benchmarkGenBtn" disabled value="Run">
+<canvas id="benchmarkGenCanvas" style="display:none"></canvas>
+<div id="benchmarkGenInfo" style="display:none"></div>
+</div>
+
+So much so, an interesting idea would be to offline calculate a BVH for static elements and per frame generate
+another BVH for dynamic elements and simply merge their root nodes together (perhaps for another time).
+
+
+## Shader Traversal
+
+To get around the problem of not having arbitary recursion in shaders, a stack based approach is used instead,
+as a (very) simplified psuedo-code (python) outline:
+
+```python
+def find_closest_hit(ro, rd):
+    closest_hit = float("inf")
+
+    stack_offsets = fixed_size_array(MAX_STACK_SIZE)
+    stack_offsets.push(0) # Root node
+
+    while stack_offsets:
+        offset = stack_offsets.pop()
+        node_data = fetch_bvh_data(offset)
+
+        left, right = split_left_right(node_data)
+        to_add = []
+        
+        for side in (left, right):
+            if side.is_line():
+                hit_dist = ray_intersection_dist(ro, rd, side.data)
+                if hit_dist < closest_hit:
+                    closest_hit = hit_dist
+
+            else:
+                hit_dist = ray_intersction_bbox_dist(ro, rd, side.data):
+                
+                # Only push the node for evaluation if it may result in
+                # a closer intersection
+                if hit_dist < closest_hit:
+                    to_add_entry = {"dist": hit_dist, "offset": data.idx}
+                    # and keep the closest local intersection at the back,
+                    # so it's evaluated first.
+                    if to_add.empty() or to_add[0]["dist"] > hist_dist:
+                        to_add.append(to_add_entry)
+                    else:
+                        to_add.insert(0, to_add_entry)
+
+        for to_add_entry in to_add:
+            stack_offsets.push(to_add_entry["offset"])
+
+    return closest_hit
+```
+
+
+And here is a little demo of it in action, for reference, on a Intel UHD Graphics 630, it takes ~9ms to do
+a full 1920x1080 pass, so not something you'd want to use directly for lighting.
+
+<div>
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<div id="drawCanvasControls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1" style="display:table-cell; width:100%"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="numLinesSliderDivLabel">Number of lines to use</div>
+<!--    --><div><input aria-labelledby="numLinesSliderDivLabel" id="numLinesSlider" disabled type="range" min="0" max="1" value="1" step="1" style="display:table-cell; width:100%"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div>BVH Overlay</div>
+<!--    --><div class="knuckleRadio">
+<!--        --><input disabled type="radio" id="drawBvhCtrl-off" name="drawBvhCtrl"><label for="drawBvhCtrl-off">Off</label>
+<!--        --><input disabled type="radio" id="drawBvhCtrl-lines" name="drawBvhCtrl" checked="checked"><label for="drawBvhCtrl-lines">Lines</label>
+<!--        --><input disabled type="radio" id="drawBvhCtrl-bboxes" name="drawBvhCtrl"><label for="drawBvhCtrl-bboxes">BBoxes</label>
+<!--        --><input disabled type="radio" id="drawBvhCtrl-all" name="drawBvhCtrl"><label for="drawBvhCtrl-all">All</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Ray Vis Type</div>
+<!--    --><div class="knuckleRadio">
+<!--        --><input disabled type="radio" id="rayVisTypeCtrl-pointlight" name="rayVisTypeCtrl" checked="checked"><label for="rayVisTypeCtrl-pointlight">Pointlight</label>
+<!--        --><input disabled type="radio" id="rayVisTypeCtrl-visibility" name="rayVisTypeCtrl"><label for="rayVisTypeCtrl-visibility">Visibility</label>
+<!--        --><input disabled type="radio" id="rayVisTypeCtrl-numIntersections" name="rayVisTypeCtrl"><label for="rayVisTypeCtrl-numIntersections">Num Intersections</label>
+<!--        --><input disabled type="radio" id="rayVisTypeCtrl-numVisits" name="rayVisTypeCtrl"><label for="rayVisTypeCtrl-numVisits">Num Node Visits</label>
+<!--        --><input disabled type="radio" id="rayVisTypeCtrl-composite" name="rayVisTypeCtrl"><label for="rayVisTypeCtrl-composite">Composite</label>
+<!--        --><input disabled type="radio" id="rayVisTypeCtrl-lineId" name="rayVisTypeCtrl"><label for="rayVisTypeCtrl-lineId">Line ID</label>
+<!--    --></div>
+<!----></div>
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+
+Worth nothing, that it's incredibly simple to generate a distance field from a BVH (`findNearestDistanceBvhV1`), switching to a SDF model can reduce
+a full frame evaluation down from 9ms to 3ms at the cost.
+
+
+Here are all the relevant source code files:
+* BVH generation (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/bvh_v1/generate_bvh_v1.cpp">generate_bvh_v1.cpp</a>
+* Ray traversal (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/shaders/v1_tracing.glsli">v1_tracing.glsli</a>
+* Visualisers (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/shaders/v1_tracing_test.frag">v1_tracing_test.frag</a>
+* Line / BBOX overlays (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/shaders/v1_draw_bvh.vert">v1_draw_bvh.vert</a>
+
+
+---
+
+Slighly off tangent, but I ended up putting together a subset of the <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/tree/master/_source/ministl">C std and C++ stl</a> while making this.
+
+</markdown>
+  </main>
+
+
+<script>
+
+    // Bootstrap the render region to be somewhat reasonable
+    {
+        let canvasSize = Math.round(
+            Math.min(
+                (window.innerHeight || document.documentElement.clientHeight),
+                (window.innerWidth || document.documentElement.clientWidth)
+            ) * 0.6
+        );
+        const resolutionCtrl = document.getElementById("resolutionCtrl");
+
+        canvasSize = Math.min(resolutionCtrl.max, Math.max(resolutionCtrl.min, Math.round(canvasSize)));
+        resolutionCtrl.value = canvasSize;
+        
+        const drawCanvas = document.getElementById("drawCanvas");
+        drawCanvas.style.width = canvasSize + "px";
+        drawCanvas.style.height = canvasSize + "px";
+    }
+
+    addAfterBvh1ModuleLoaded(()=>
+    {
+        // We can happily start bootstrapping the canvas ahead of all the resources being loaded
+        const drawCanvas = document.getElementById("drawCanvas");
+        const drawCtx = window.bindBvh1Context(drawCanvas);
+        if(drawCtx.valid)
+        {
+            drawCtx.resourceLoaded.then(()=>{
+                const numLinesSlider = document.getElementById("numLinesSlider");
+                const resolutionCtrl = document.getElementById("resolutionCtrl");
+                const allLines = window.getDefaultLines();
+                numLinesSlider.max = allLines.length / 4;
+                numLinesSlider.value = numLinesSlider.max;
+                numLinesSlider.disabled = false;
+                const updateLines = ()=>{
+                    drawCtx.updateGpuBvhTexture(allLines.slice(0, numLinesSlider.value * 4));
+                    drawCtx.redraw();
+                };
+                numLinesSlider.oninput = updateLines;
+                numLinesSlider.onchange = updateLines;
+
+
+                resolutionCtrl.disabled = false;
+                const updateRes = ()=>
+                {
+                    const value = Math.min(resolutionCtrl.max, Math.max(resolutionCtrl.min, Math.round(resolutionCtrl.value)));
+                    if(resolutionCtrl.value != value)
+                    {
+                        resolutionCtrl.value = value;
+                    }
+                    drawCanvas.style.width = value + "px";
+                    drawCanvas.style.height = drawCanvas.style.width;
+                    drawCtx.redraw();
+                };
+                resolutionCtrl.onchange = updateRes;
+
+
+                const drawBvhCtrlSuffixs = ["off", "lines", "bboxes", "all"];
+                for(let i=0; i<drawBvhCtrlSuffixs.length; ++i)
+                {
+                    const fossilizedIndex = i;
+                    const element = document.getElementById("drawBvhCtrl-" + drawBvhCtrlSuffixs[i]);
+                    element.disabled = false;
+                    element.onchange = ()=>{
+                        drawCtx.drawBvhOverlayMode = fossilizedIndex;
+                        drawCtx.redraw();
+                    };
+                }
+
+                const rayVisTypeCtrlSuffixs = ["pointlight",
+                                               "visibility",
+                                               "numIntersections",
+                                               "numVisits",
+                                               "composite",
+                                               "lineId"];
+                for(let i=0; i<rayVisTypeCtrlSuffixs.length; ++i)
+                {
+                    const fossilizedIndex = i;
+                    const element = document.getElementById("rayVisTypeCtrl-" + rayVisTypeCtrlSuffixs[i]);
+                    element.disabled = false;
+                    element.onchange = ()=>{
+                        drawCtx.rayVisMode = fossilizedIndex;
+                        drawCtx.redraw();
+                    };
+                }
+
+            });
+        }
+        else
+        {
+            drawCanvas.style.display = "none";
+            document.getElementById("drawCanvasControls").style.display = "none";
+            var notSupported = document.getElementById("notSupportedBrowser");
+            notSupported.style.display = "block";
+            notSupported.innerHTML = "WebGL2 not supported :(";
+            return;
+        }
+    });
+
+
+    // Hook up benchmark logic
+    addAfterBvh1DataLoaded(()=>
+    {
+        const defaultLines = window.getDefaultLines();
+        const numLines = defaultLines.length / 4;
+        const generateBVH = window.generateBVH;
+        const benchmarkGenBtn = document.getElementById("benchmarkGenBtn");
+        const benchmarkGenCanvas = document.getElementById("benchmarkGenCanvas");
+        const benchmarkGenInfo = document.getElementById("benchmarkGenInfo");
+
+        benchmarkGenBtn.onclick = ()=>
+        {
+            const numWarmup = 5;
+            const numIters = 100;
+            let results = new Array(numLines);
+            results[0] = 0;
+
+            for(let num=1; num < numLines; ++num)
+            {
+                const localLines = defaultLines.slice(0, 4 * num);
+                for(let i=0; i<numWarmup; ++i)
+                {
+                    generateBVH(localLines);
+                }
+
+                // We'd ideally use the median, however javascripts
+                // performance api is liable to return 0ms, presumably
+                // due to meltdown / spectre exploits.
+                const t0 = performance.now();
+                for(let i=0; i<numIters; ++i)
+                {
+                    generateBVH(localLines);
+                }
+                const t1 = performance.now();
+                results[num] = ((t1-t0) / numIters);
+            }
+
+            const minValue = Math.min(...results);
+            const maxValue = Math.max(...results);
+            const dY = 1.0 / (maxValue - minValue);
+
+            benchmarkGenCanvas.style.display = "block";
+            benchmarkGenCanvas.width  = numLines;
+            benchmarkGenCanvas.height = numLines;
+            const ctx = benchmarkGenCanvas.getContext("2d");
+            const height = benchmarkGenCanvas.height;
+
+            // flip y and scale 0->height => minValue->maxValue
+            ctx.setTransform(1, 0, 0, -height * dY, -minValue, height);
+            ctx.clearRect(0, 0, benchmarkGenCanvas.width, maxValue);
+            ctx.rect(0, 0, benchmarkGenCanvas.width, maxValue);
+            ctx.fillStyle = "#400778";
+            ctx.fill();
+
+            const widthNormalize = benchmarkGenCanvas.width / (results.length - 1);
+
+            ctx.strokeStyle = "#00d5ff";
+            for(let i=0; i<results.length; ++i)
+            {
+                const x = widthNormalize * i;
+                const y = results[i];
+                ctx.beginPath();
+                ctx.moveTo(x , 0);
+                ctx.lineTo(x , y);
+                ctx.stroke();
+            }
+
+
+            benchmarkGenInfo.style.display = "block";
+            benchmarkGenInfo.innerHTML = `Max lines: ${numLines}<br>Max time: ${maxValue}ms`;
+
+        };
+        benchmarkGenBtn.disabled = false;
+    });
+
+</script>
+
+ </body>

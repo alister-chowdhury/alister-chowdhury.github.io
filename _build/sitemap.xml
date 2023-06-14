@@ -2,22 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
  <url>
   <loc>https://alister-chowdhury.github.io/</loc>
-  <lastmod>2023-03-07</lastmod>
+  <lastmod>2023-06-18</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20221230-bluenoise-generator/</loc>
-  <lastmod>2023-03-07</lastmod>
+  <lastmod>2023-06-19</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20230120-simplifying-drawing-numbers-on-the-gpu/</loc>
-  <lastmod>2023-03-07</lastmod>
+  <lastmod>2023-06-19</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20230131-various-rendering-related-visualisations/</loc>
-  <lastmod>2023-04-09</lastmod>
+  <lastmod>2023-06-19</lastmod>
+ </url>
+ <url>
+  <loc>https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/</loc>
+  <lastmod>2023-06-19</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/</loc>
-  <lastmod>2023-03-07</lastmod>
+  <lastmod>2023-06-18</lastmod>
  </url>
 </urlset>

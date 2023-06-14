@@ -1,0 +1,9 @@
+{
+    "index.html": {"minify": true},
+    "rtrace_bvh_v1.js": {"minify": true},
+    "shaders/compiled/*": {"minify": true},
+    "res/*.png": {},
+    "lines.f32": {},
+    "bvh_v1.wasm": {},
+    "_thumbnail.png": {}
+}

@@ -86,6 +86,7 @@ typedef float float_t;
 #define islessgreater __builtin_islessgreater
 #define isgreater __builtin_isgreater
 #define isgreaterequal __builtin_isgreaterequal
+
 #endif // !__MISTL_CPP
 
 
