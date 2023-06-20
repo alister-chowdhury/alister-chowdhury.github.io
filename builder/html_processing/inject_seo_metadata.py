@@ -42,7 +42,9 @@ def inject_seo_metadata(source, source_file):
             thumbnail_file_path.relative_to(_SOURCE_ROOT).as_posix()
         )
     else:
-        thumbnail_url = None
+        thumbnail_url = "{0}/res/favicon.png".format(
+            _WEBSITE_ROOT
+        )
 
     # Sanatise the name etc
     add_url_slash = False
@@ -87,11 +89,10 @@ def inject_seo_metadata(source, source_file):
             )
         )
 
-    if thumbnail_url:
-        head_to_inject += (
-            '    <meta property="og:image" itemprop="image" content="{0}">\n'
-            .format(thumbnail_url)
-        )
+    head_to_inject += (
+        '    <meta property="og:image" itemprop="image" content="{0}">\n'
+        .format(thumbnail_url)
+    )
 
     # Add tags and publish time to posts
     if is_post:
@@ -107,8 +108,7 @@ def inject_seo_metadata(source, source_file):
         if "description" in metatags:
             schema["description"] = metatags["description"]
 
-        if thumbnail_url:
-            schema["thumbnailUrl"] = thumbnail_url
+        schema["thumbnailUrl"] = thumbnail_url
 
         # Extract the posttime from the url itself
         article_url = url[len("posts/"):]

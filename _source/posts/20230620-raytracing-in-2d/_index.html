@@ -208,7 +208,7 @@ Regardless, I thought it would be interesting to implement raytracing on the GPU
 Arguably the most important part about accelerating raytracing is the <a target="_blank" href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">BVH</a>, how this is structured will basically
 define how you go about discarding batches of lines from being processed any further.
 
-I settled on using a b-tree based approach, where each node is made of 48 bytes (3 x float4) is stored in a linear buffer and has the following layout:
+I settled on using a b-tree based approach, where each node is made of 48 bytes (3 x float4) stored in a linear buffer and has the following layout:
 
 ```c
 struct BvhNodeV1
@@ -242,7 +242,7 @@ vec4 v2 = texelFetch(bvh, offset + 2);      // right data
 ```
 
 To construct the BVH we repeatedly subdivide the number of lines in half, this is done by:
-* Calculating the box that contains the **center** point each line.
+* Calculating the box that contains the **center** point of each line.
 * <a target="_blank" href="https://en.cppreference.com/w/cpp/algorithm/nth_element">Partial soting</a> `centerX` or `centerY` depending on which axis was longer in the previously calculated box, using [size/2] as the mid point.
 * Partitioning the left to be `[0, size/2)` and right to be `[size/2, size)`.
 

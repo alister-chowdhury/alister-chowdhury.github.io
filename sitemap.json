@@ -1,34 +1,34 @@
 {
  "data": [
   {
-   "lastmod": "2023-06-18",
+   "lastmod": "2023-06-20",
    "loc": "index.html",
-   "hash": "dd023f1777f224b19540a405c6f5efe4"
+   "hash": "13e1207bb7da438e6848550723584d9a"
   },
   {
-   "lastmod": "2023-06-19",
+   "lastmod": "2023-06-20",
    "loc": "posts/20221230-bluenoise-generator/index.html",
-   "hash": "dd0801d83ea87f30203557bdb59bef8c"
+   "hash": "57471ca0383d7a89661ca15c22fc6cf1"
   },
   {
-   "lastmod": "2023-06-19",
+   "lastmod": "2023-06-20",
    "loc": "posts/20230120-simplifying-drawing-numbers-on-the-gpu/index.html",
-   "hash": "cc4a8315d884ebcd7021d1dced6d4259"
+   "hash": "e53a1b20a1bfb8a48ca4358966032f14"
   },
   {
-   "lastmod": "2023-06-19",
+   "lastmod": "2023-06-20",
    "loc": "posts/20230131-various-rendering-related-visualisations/index.html",
-   "hash": "25d4c7632a612dae3c44c2d7b52f131f"
+   "hash": "b8e2395e3acd80c8c668300d5bee9b35"
   },
   {
-   "lastmod": "2023-06-19",
+   "lastmod": "2023-06-20",
    "loc": "posts/20230620-raytracing-in-2d/index.html",
-   "hash": "c41699788f473a475383f4aaf2578990"
+   "hash": "71cf5799deef8f8fa83d1a092ef659ea"
   },
   {
-   "lastmod": "2023-06-18",
+   "lastmod": "2023-06-20",
    "loc": "posts/index.html",
-   "hash": "873db260a04418fec97cd5ce80b5b4c8"
+   "hash": "bd18eeb8bf4f718db72d95844c71e732"
   }
  ]
 }

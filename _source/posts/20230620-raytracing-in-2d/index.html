@@ -23,6 +23,8 @@
       <link href="/css.css" rel="stylesheet">
       <meta property="og:site_name" content="Stuff And Also Things">
       <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" type="image/png" sizes="32x32" href="/res/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/res/favicon-16x16.png">
    
     <title>Raytracing In 2D</title>
     <meta name="description" content="How to go about raytracing a 2D scene on the GPU, using purely vertex and fragment shaders.">
@@ -229,7 +231,7 @@ cover some implementations for those I've been playing with).</p>
 <h2>Building The BVH</h2>
 <p>Arguably the most important part about accelerating raytracing is the <a target="_blank" href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">BVH</a>, how this is structured will basically
 define how you go about discarding batches of lines from being processed any further.</p>
-<p>I settled on using a b-tree based approach, where each node is made of 48 bytes (3 x float4) is stored in a linear buffer and has the following layout:</p>
+<p>I settled on using a b-tree based approach, where each node is made of 48 bytes (3 x float4) stored in a linear buffer and has the following layout:</p>
 <pre><code class="language-c">struct BvhNodeV1
 {
     uint    leftType;
@@ -258,7 +260,7 @@ vec4 v2 = texelFetch(bvh, offset + 2);      // right data
 </code></pre>
 <p>To construct the BVH we repeatedly subdivide the number of lines in half, this is done by:</p>
 <ul>
-<li>Calculating the box that contains the <strong>center</strong> point each line.</li>
+<li>Calculating the box that contains the <strong>center</strong> point of each line.</li>
 <li><a target="_blank" href="https://en.cppreference.com/w/cpp/algorithm/nth_element">Partial soting</a> <code>centerX</code> or <code>centerY</code> depending on which axis was longer in the previously calculated box, using [size/2] as the mid point.</li>
 <li>Partitioning the left to be <code>[0, size/2)</code> and right to be <code>[size/2, size)</code>.</li>
 </ul>
