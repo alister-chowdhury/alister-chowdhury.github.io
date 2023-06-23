@@ -1,34 +1,39 @@
 {
  "data": [
   {
-   "lastmod": "2023-06-20",
+   "lastmod": "2023-06-27",
    "loc": "index.html",
-   "hash": "13e1207bb7da438e6848550723584d9a"
+   "hash": "1d9f5ff8fcbc7eed16ac164c827db54e"
   },
   {
-   "lastmod": "2023-06-23",
+   "lastmod": "2023-06-27",
    "loc": "posts/20221230-bluenoise-generator/index.html",
-   "hash": "c866123d5a2b6d1548b3df3e60e37afd"
+   "hash": "749d431280346e45af56fd5bfb97239d"
   },
   {
-   "lastmod": "2023-06-23",
+   "lastmod": "2023-06-27",
    "loc": "posts/20230120-simplifying-drawing-numbers-on-the-gpu/index.html",
-   "hash": "6e9f15205e9439f3533e0d2d57d4d7b7"
+   "hash": "a32e74515f076ff5bde072db762a7455"
   },
   {
-   "lastmod": "2023-06-20",
+   "lastmod": "2023-06-27",
    "loc": "posts/20230131-various-rendering-related-visualisations/index.html",
-   "hash": "b8e2395e3acd80c8c668300d5bee9b35"
+   "hash": "5ec3940f25acb0c79c073d542f1cbfa1"
   },
   {
-   "lastmod": "2023-06-23",
+   "lastmod": "2023-06-27",
    "loc": "posts/20230620-raytracing-in-2d/index.html",
-   "hash": "4e94ee2f45893f665c522e400ddd7fe2"
+   "hash": "72015c1419d7090eeac8d28fbd6e6dec"
   },
   {
-   "lastmod": "2023-06-20",
+   "lastmod": "2023-06-27",
+   "loc": "posts/20230628-project-and-stencil/index.html",
+   "hash": "7e8a77c7ee45ae6c4c1ba216a1b9805f"
+  },
+  {
+   "lastmod": "2023-06-27",
    "loc": "posts/index.html",
-   "hash": "bd18eeb8bf4f718db72d95844c71e732"
+   "hash": "f28f949ec7329e957d66f8f95ed326e5"
   }
  ]
 }

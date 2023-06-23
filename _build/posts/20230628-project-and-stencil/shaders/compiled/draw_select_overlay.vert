@@ -1,0 +1,2 @@
+#version 300 es
+uniform highp vec4 bbox;out vec2 localNDC;void main(){int _;do{if(gl_VertexID<3){_=gl_VertexID;break;}_=gl_VertexID-2;break;}while(false);float a=float(_&1);float b=float(_>>1);localNDC=(vec2(a,b)*2.)-vec2(1.);gl_Position=vec4(mix(bbox.x,bbox.z,a),mix(bbox.y,bbox.w,b),0.,1.);}

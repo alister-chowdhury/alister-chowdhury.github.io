@@ -6,7 +6,7 @@ namespace std
 {
 
 template<class _T, class _F>
-constexpr __MINSTL_FORCEINLINE bit_cast(const _F& __x)
+constexpr __MINSTL_FORCEINLINE _T bit_cast(const _F& __x)
 {
     return __builtin_bit_cast(_T, __x);
 }

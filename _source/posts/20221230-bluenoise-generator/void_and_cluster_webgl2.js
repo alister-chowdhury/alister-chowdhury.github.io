@@ -1,5 +1,6 @@
 import {
     AsyncBarrier,
+    loadCommonShaderSource,
     createShader,
     createGraphicsProgram,
     getUniformLocation,
@@ -87,14 +88,14 @@ function randomSeed()
 
 
 const _SHADERS = new AsyncBarrier()
-    .enqueue(loadShaderSource("draw_full_screen.vert"), "DRAW_FULL_SCREEN_VS_SRC")
+    .enqueue(loadCommonShaderSource("draw_full_screen.vert"), "DRAW_FULL_SCREEN_VS_SRC")
+    .enqueue(loadCommonShaderSource("draw_full_screen_uvs.vert"), "DRAW_FULL_SCREEN_WITH_UVS_VS_SRC")
     .enqueue(loadShaderSource("void_and_cluster_init.frag"), "VOID_AND_CLUSTER_INIT_FS_SRC")
     .enqueue(loadShaderSource("void_and_cluster_reduce_init.frag"), "VOID_AND_CLUSTER_REDUCE_INIT_FS_SRC")
     .enqueue(loadShaderSource("void_and_cluster_reduce_iter.frag"), "VOID_AND_CLUSTER_REDUCE_ITER_FS_SRC")
     .enqueue(loadShaderSource("void_and_cluster_update.frag"), "VOID_AND_CLUSTER_UPDATE_FS_SRC")
     .enqueue(loadShaderSource("void_and_cluster_partial_update.vert"), "VOID_AND_CLUSTER_PARTIAL_UPDATE_VS_SRC")
     .enqueue(loadShaderSource("vis_bluenoise_tiled.frag"), "VIS_BLUENOISE_TILED_FS_SRC")
-    .enqueue(loadShaderSource("draw_full_screen_with_uvs.vert"), "DRAW_FULL_SCREEN_WITH_UVS_VS_SRC")
     .enqueue(loadShaderSource("vis_bluenoise_scaled.frag"), "VIS_BLUENOISE_SCALED_FS_SRC")
     .enqueue(loadShaderSource("export_first_channel.frag"), "EXPORT_FIRST_CHANNEL_FS_SRC")
     .enqueue(loadShaderSource("bc4_compress.frag"), "BC4_COMPRESS_FS_SRC")
@@ -644,7 +645,8 @@ class BluenoiseGeneratorCanvasContext
 {
     constructor(canvas)
     {
-        const GL = canvas.getContext("webgl2"); 
+        // https://registry.khronos.org/webgl/specs/latest/1.0/#5.2
+        const GL = canvas.getContext("webgl2", {"alpha": false, "antialias": false, "depth": false, "stencil": false});
         this.renderContext = null;
         this.canvas = canvas;
         this.GL = GL;

@@ -68,6 +68,11 @@ class AsyncBarrier
 
 
 
+export function loadCommonShaderSource(name)
+{
+    return fetch("/res/shaders/compiled/" + name).then(src => src.text());
+}
+
 export function createShader(GL, source, shaderType)
 {
     if(!GL)
@@ -102,10 +107,24 @@ export function createGraphicsProgram(GL, vertexShader, fragmentShader=null)
     const program = GL.createProgram();
     GL.attachShader(program, vertexShader);
 
-    if(fragmentShader != null)
+    // WebGL2 cannot support proper vertex only shaders for whatever weird design
+    // reasons, so we're basically going to create a dummy one.
+    //
+    // "The program must contain objects to form both a vertex and fragment shader."
+    if(fragmentShader == null)
     {
-        GL.attachShader(program, fragmentShader);
+        if(GL.dummyFragmentShader == undefined)
+        {
+            GL.dummyFragmentShader = createShader(
+                GL,
+                "#version 300 es\nvoid main(){}",
+                GL.FRAGMENT_SHADER
+            );
+        }
+        fragmentShader = GL.dummyFragmentShader;
     }
+
+    GL.attachShader(program, fragmentShader);
     GL.linkProgram(program);
 
     if(!GL.getProgramParameter(program, GL.LINK_STATUS))
@@ -120,11 +139,7 @@ export function createGraphicsProgram(GL, vertexShader, fragmentShader=null)
     }
 
     GL.detachShader(program, vertexShader);
-    
-    if(fragmentShader != null)
-    {
-        GL.detachShader(program, fragmentShader);
-    }
+    GL.detachShader(program, fragmentShader);
 
     return program
 }
@@ -178,5 +193,33 @@ export function isElementVisible(element)
         ;
 }
 
+
+export const IS_LITTLE_ENDIAN = new DataView(new Uint32Array([902392147]).buffer).getUint32(0, true) == 902392147;
+
+
+export const loadF32Lines = IS_LITTLE_ENDIAN ?
+    async filepath =>
+        fetch(filepath).then(x =>
+            x.blob().then(y =>
+                y.arrayBuffer().then(z =>
+                    new Float32Array(z)
+                )
+            )
+        )
+    :
+    async filepath =>
+        fetch(filepath).then(x =>
+            x.blob().then(y =>
+                y.arrayBuffer().then(z => {
+                    const num = Math.floor(z.byteLength / 4);
+                    const dv = new DataView(z);
+                    let r = new Float32Array(num);
+                    for (let i = 0; i < num; ++i) {
+                        r[i] = dv.getFloat32(i * 4, true);
+                    }
+                    return r;
+                })
+            )
+        );
 
 export { AsyncBarrier };

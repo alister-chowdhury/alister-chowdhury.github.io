@@ -1,13 +1,14 @@
 import {
     AsyncBarrier,
+    loadCommonShaderSource,
     createShader,
     createGraphicsProgram,
     getUniformLocation,
-    deleteShaders
+    deleteShaders,
+    loadF32Lines
 } from '../../util.js';
 
 
-const IS_LITTLE_ENDIAN = new DataView(new Uint32Array([902392147]).buffer).getUint32(0, true) == 902392147;
 
 function loadShaderSource(name)
 {
@@ -15,39 +16,13 @@ function loadShaderSource(name)
 }
 
 
-const loadF32Lines = IS_LITTLE_ENDIAN ?
-    async filepath =>
-        fetch(filepath).then(x =>
-            x.blob().then(y =>
-                y.arrayBuffer().then(z =>
-                    new Float32Array(z)
-                )
-            )
-        )
-    :
-    async filepath =>
-        fetch(filepath).then(x =>
-            x.blob().then(y =>
-                y.arrayBuffer().then(z => {
-                    const num = Math.floor(z.byteLength / 4);
-                    const dv = new DataView(z);
-                    let r = new Float32Array(num);
-                    for (let i = 0; i < num; ++i) {
-                        r[i] = dv.getFloat32(i * 4, true);
-                    }
-                    return r;
-                })
-            )
-        );
-
-
 const _BVH1_DATA = new AsyncBarrier()
-    .enqueue(loadF32Lines("lines.f32"), "DEFAULT_LINES")
-    .enqueue(WebAssembly.instantiateStreaming(fetch("bvh_v1.wasm")).then(o => o.instance.exports), "BVH_V1")
+    .enqueue(loadF32Lines("/res/lines.f32"), "DEFAULT_LINES")
+    .enqueue(WebAssembly.instantiateStreaming(fetch("/res/bvh_v1.wasm")).then(o => o.instance.exports), "BVH_V1")
     ;
 
 const _GLOBAL_SHADERS_DATA = new AsyncBarrier()
-    .enqueue(loadShaderSource("draw_full_screen_uvs.vert"), "DRAW_FULL_SCREEN_UVS_VERT")
+    .enqueue(loadCommonShaderSource("draw_full_screen_uvs.vert"), "DRAW_FULL_SCREEN_UVS_VERT")
     ;
 
 // Resources needed for BVH1 demo
@@ -122,7 +97,8 @@ class BvhV1CanvasContext
 {
     constructor(canvas)
     {
-        const GL = canvas.getContext("webgl2");
+        // https://registry.khronos.org/webgl/specs/latest/1.0/#5.2
+        const GL = canvas.getContext("webgl2", {"alpha": false, "depth": false});
         this.canvas = canvas;
         this.valid = !!GL;
         this.redraw = ()=>{};
@@ -312,8 +288,20 @@ class BvhV1CanvasContext
             self.drawBvhOverlayMode = 1; // lines
             self.rayVisMode = 0; // pointlight
             self.visTargetUV = [0.4, 0.6];
+            self.allowWallClipping = true;
             canvas.width  = canvas.clientWidth;
             canvas.height = canvas.clientHeight;
+
+            const bvh_v1 = _RESOURCES.BVH_V1;
+            const numCpuTraceDataEntries = (
+                1       // hitLineId            [0]
+                + 1     // hitDistSq            [1]
+                + 4     // line                 [2]
+                + 1     // hitLineInterval      [6]
+                + 2     // dUV                  [7]
+                //                              [9]
+            );
+
             restoreViewportState();
             updateGpuBvhTexture(_RESOURCES.DEFAULT_LINES);
             redraw();
@@ -328,8 +316,26 @@ class BvhV1CanvasContext
                             : [event.clientX, event.clientY]
                             ;
 
-                self.visTargetUV = [(ref[0] - bbox.x) / bbox.width,
-                                    1.0 - (ref[1] - bbox.y) / bbox.height]
+                let newVisTargetUV = [(ref[0] - bbox.x) / bbox.width,
+                                    1.0 - (ref[1] - bbox.y) / bbox.height];
+
+                if(!self.allowWallClipping)
+                {
+
+                    if(bvh_v1.traceBvh(self.visTargetUV[0],
+                                       self.visTargetUV[1],
+                                       newVisTargetUV[0] - self.visTargetUV[0],
+                                       newVisTargetUV[1] - self.visTargetUV[1],
+                                       1.0,
+                                       0))
+                    {
+                        // Would be nice to go as far forward rather than not move at all.
+                        newVisTargetUV = self.visTargetUV;
+                    }
+                }
+
+                self.visTargetUV = newVisTargetUV;
+
                 redraw();
             };
 

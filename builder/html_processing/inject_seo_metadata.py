@@ -90,7 +90,7 @@ def inject_seo_metadata(source, source_file):
         )
 
     head_to_inject += (
-        '    <meta property="og:image" itemprop="image" content="{0}">\n'
+        '    <meta property="og:image" content="{0}">\n'
         .format(thumbnail_url)
     )
 

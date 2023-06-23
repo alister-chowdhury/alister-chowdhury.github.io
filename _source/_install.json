@@ -2,8 +2,12 @@
     "thirdparty/**": {"minify": false},
     "res/*.svg": {},
     "res/*.png": {},
+    "res/*.wasm": {},
+    "res/*.f32": {},
+    "res/shaders/compiled/*": {"minify": true},
     "css.css": {"minify": true},
     "index.html": {"minify": true},
     "util.js": {"minify": true},
+    "robots.txt": {},
     "favicon.ico": {}
 }

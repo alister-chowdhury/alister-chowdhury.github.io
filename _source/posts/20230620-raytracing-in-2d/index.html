@@ -3,20 +3,6 @@
    
  
 <head>
-    <link rel="canonical" href="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/"/>
-    <meta property="og:title" content="Raytracing In 2D">
-    <meta property="og:url" content="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/">
-    <meta property="og:type" content="article">
-    <meta property="og:description" content="How to go about raytracing a 2D scene on the GPU, using purely vertex and fragment shaders.">
-    <meta property="og:image" itemprop="image" content="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/thumbnail.png">
-    <meta property="og:article:published_time" content="2023-06-20T00:00:00">
-    <meta property="og:article:tag" content="raytracing">
-    <meta property="og:article:tag" content="BVH">
-    <meta property="og:article:tag" content="2D">
-    <meta property="og:article:tag" content="rendering">
-    <meta property="og:article:tag" content="graphics">
-<script data-rh="true" type="application/ld+json">{"@context":"http://schema.org","@type":"Article","author":[{"@type":"Person","name":"By Alister Chowdhury"}],"name":"Raytracing In 2D","url":"https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/","description":"How to go about raytracing a 2D scene on the GPU, using purely vertex and fragment shaders.","thumbnailUrl":"https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/thumbnail.png","datePublished":"2023-06-20T00:00:00"}</script>
-
       <meta charset="utf-8">
       <meta name="author" content="Alister Chowdhury">
       <meta name="theme-color" content="#2b2b2b">
@@ -25,7 +11,33 @@
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <link rel="icon" type="image/png" sizes="32x32" href="/res/favicon-32x32.png">
       <link rel="icon" type="image/png" sizes="16x16" href="/res/favicon-16x16.png">
+      <!-- Google tag (gtag.js) -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WDZZ2C662"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        // Don't push stuff if we're testing things locally
+        if(window.location.hostname == "alister-chowdhury.github.io")
+        {
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-1WDZZ2C662');
+        }
+      </script>
    
+    <link rel="canonical" href="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/"/>
+    <meta property="og:title" content="Raytracing In 2D">
+    <meta property="og:url" content="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/">
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="How to go about raytracing a 2D scene on the GPU, using purely vertex and fragment shaders.">
+    <meta property="og:image" content="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/thumbnail.png">
+    <meta property="og:article:published_time" content="2023-06-20T00:00:00">
+    <meta property="og:article:tag" content="raytracing">
+    <meta property="og:article:tag" content="BVH">
+    <meta property="og:article:tag" content="2D">
+    <meta property="og:article:tag" content="rendering">
+    <meta property="og:article:tag" content="graphics">
+<script data-rh="true" type="application/ld+json">{"@context":"http://schema.org","@type":"Article","author":[{"@type":"Person","name":"By Alister Chowdhury"}],"name":"Raytracing In 2D","url":"https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/","description":"How to go about raytracing a 2D scene on the GPU, using purely vertex and fragment shaders.","thumbnailUrl":"https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/thumbnail.png","datePublished":"2023-06-20T00:00:00"}</script>
+
     <title>Raytracing In 2D</title>
     <meta name="description" content="How to go about raytracing a 2D scene on the GPU, using purely vertex and fragment shaders.">
     <meta name="keywords" content="raytracing, BVH, 2D, rendering, graphics">
@@ -80,90 +92,6 @@
 
     <style>
 
-        #drawCanvasControls
-        {
-            width: fit-content;
-            margin-left: auto;
-            margin-right: auto;
-            padding: 1em;
-        }
-
-        #drawCanvasControls > div
-        {
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: 1fr 2fr;
-            border: #7373c3 1px solid;
-            border-top: 0;
-        }
-
-        #drawCanvasControls > div:first-of-type
-        {
-            border-top: #7373c3 1px solid;
-        }
-
-        #drawCanvasControls > div > div
-        {
-            text-align: center;
-            padding-left: 0.5em;
-            padding-right: 0.5em;
-            margin-top: auto;
-            margin-bottom: auto;
-        }
-
-        #drawCanvasControls > div > div:last-of-type
-        {
-            border-left: #7373c3 1px solid;
-            height: 100%;
-        }
-
-        .knuckleRadio input[type="radio"]
-        {
-            display: none;
-        }
-        .knuckleRadio input[type="radio"]+label,
-        input[type="button"]
-        {
-          background-color: #1f1f1f;
-          cursor: pointer;
-          border: #7373c3 2px outset;
-          padding:5px;
-          display: inline-block;
-          margin-top: 5px;
-          margin-bottom: 5px;
-          color: #d3d3d3;
-          font-family: monospace;
-        }
-
-        .knuckleRadio input[type="radio"]:checked+label,
-        input[type="button"]:active
-        {
-          color: #00d5ff;
-          background-color: #400778;
-          cursor: pointer;
-          border: #7373c3 2px inset;
-          padding:5px;
-          display: inline-block;
-          margin-top: 5px;
-          margin-bottom: 5px;
-          font-family: monospace;
-        }
-
-        #bvhGenerationStepsContainer
-        {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-content: center;
-            text-align: center;
-        }
-        
-        #bvhGenerationStepsContainer > div
-        {
-            border: #7373c3 1px solid;
-            margin: 5px;
-        }
-
         #bvhGenerationStepsContainer > div > img {
             width: 238px;
             height: 163px;
@@ -194,9 +122,8 @@
         {
             display: block;
             margin-left: auto;
-            margin-right: auto;   
+            margin-right: auto;
         }
-
 
     </style>
 
@@ -223,11 +150,12 @@ into full level designer mode and adding like 200+ it would be basically unplaya
 <p>I can't say I'm sure exactly how this particular VTT implemented this, but I assume it involved a linear loop, line intersecting against every blocker, which
 in the world of raytracing is a big no-no.</p>
 <p>For the specific case of vision blocking, raytracing doesn't seem like something you'd want to do full-frame, every frame and I actually already
-have a solution which involves projecting and incrementing a stencil buffer (in a similar sort of vibe to <a target="_blank" href="https://en.wikipedia.org/wiki/Shadow_volume">shadow volumes</a>),
+have a solution which involves <a href="https://alister-chowdhury.github.io/posts/20230628-project-and-stencil/">projecting and incrementing a stencil buffer</a> (in a similar sort of vibe to <a target="_blank" href="https://en.wikipedia.org/wiki/Shadow_volume">shadow volumes</a>),
 which seemed to work rather nicely and I may post about at some point.</p>
-<p>And likewise for lights, using a circular shadowmap, offline polygon generation or simply baking lighting data seems like a more reasonable approach (also may
+<p>And likewise for lights, using a circular shadow map, offline polygon generation or simply baking lighting data seems like a more reasonable approach (also may
 cover some implementations for those I've been playing with).</p>
-<p>Regardless, I thought it would be interesting to implement raytracing on the GPU (targeting web broswers and not assuming good hardware) from scratch.</p>
+<p>Regardless, I thought it would be interesting to implement raytracing on the GPU (targeting web browsers and not assuming good hardware) from scratch.</p>
+<p>(The same logic can be used to perform traces on the CPU as well, which probably has a more direct use of preventing people from clipping through walls)</p>
 <h2>Building The BVH</h2>
 <p>Arguably the most important part about accelerating raytracing is the <a target="_blank" href="https://en.wikipedia.org/wiki/Bounding_volume_hierarchy">BVH</a>, how this is structured will basically
 define how you go about discarding batches of lines from being processed any further.</p>
@@ -250,7 +178,7 @@ define how you go about discarding batches of lines from being processed any fur
 <li><code>id</code> is buffer index of a <strong>node</strong> or <code>lineId</code> of a <strong>line</strong>.</li>
 <li><code>data</code> is the bbox of the <strong>node</strong> or line parameters of a <strong>line</strong>.</li>
 </ul>
-<p>You may think using an entire 128bits for both the types and ids may seem wasteful (do we really need 16 bytes for two bools and a two offsets).
+<p>You may think using an entire 128bits for both the types and ids may seem wasteful (do we really need 16 bytes for two bools and two offsets).
 And you would be right, however by aligning the result into a float4, it means actually fetching the data is reasonably GPU friendly.</p>
 <pre><code class="language-glsl">uniform sampler1D bvh;
 ...
@@ -261,15 +189,15 @@ vec4 v2 = texelFetch(bvh, offset + 2);      // right data
 <p>To construct the BVH we repeatedly subdivide the number of lines in half, this is done by:</p>
 <ul>
 <li>Calculating the box that contains the <strong>center</strong> point of each line.</li>
-<li><a target="_blank" href="https://en.cppreference.com/w/cpp/algorithm/nth_element">Partial soting</a> <code>centerX</code> or <code>centerY</code> depending on which axis was longer in the previously calculated box, using [size/2] as the mid point.</li>
+<li><a target="_blank" href="https://en.cppreference.com/w/cpp/algorithm/nth_element">Partial sorting</a> <code>centerX</code> or <code>centerY</code> depending on which axis was longer in the previously calculated box, using [size/2] as the mid point.</li>
 <li>Partitioning the left to be <code>[0, size/2)</code> and right to be <code>[size/2, size)</code>.</li>
 </ul>
-<div id="bvhGenerationStepsContainer">
+<div id="bvhGenerationStepsContainer" class="imTable">
   <div><img alt="lines0" src="res/lines0.png"><br>Input Lines</div>
   <div><img alt="lines1" src="res/lines1.png"><br>First Level</div>
   <div><img alt="lines2" src="res/lines2.png"><br>Second Level</div>
 </div>
-<p>The BVH generation code was written in C++ (link to source at the bottom) and even when targetting WASM, should be rather quick, you can run a little benchmark here (<code>n log(n)</code> time):</p>
+<p>The BVH generation code was written in C++ (link to source at the bottom) and even when targeting WASM, should be rather quick, you can run a little benchmark here (<code>n log(n)</code> time):</p>
 <div id="benchmarkGenBtnContainer">
 <input type="button" id="benchmarkGenBtn" disabled value="Run">
 <canvas id="benchmarkGenCanvas" style="display:none"></canvas>
@@ -278,8 +206,8 @@ vec4 v2 = texelFetch(bvh, offset + 2);      // right data
 <p>So much so, an interesting idea would be to offline calculate a BVH for static elements and per frame generate
 another BVH for dynamic elements and simply merge their root nodes together (perhaps for another time).</p>
 <h2>Shader Traversal</h2>
-<p>To get around the problem of not having arbitary recursion in shaders, a stack based approach is used instead,
-as a (very) simplified psuedo-code (python) outline:</p>
+<p>To get around the problem of not having arbitrary recursion in shaders, a stack based approach is used instead,
+as a (very) simplified pseudo-code (python) outline:</p>
 <pre><code class="language-python">def find_closest_hit(ro, rd):
     closest_hit = float(&quot;inf&quot;)
 
@@ -318,22 +246,26 @@ as a (very) simplified psuedo-code (python) outline:</p>
 
     return closest_hit
 </code></pre>
-<p>And here is a little demo of it in action, for reference, on a Intel UHD Graphics 630, it takes ~9ms to do
+<p>And here is a little demo of it in action. For reference, on an Intel UHD Graphics 630, it takes ~9ms to do
 a full 1920x1080 pass, so not something you'd want to use directly for lighting.</p>
 <div>
 <canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
-<div id="drawCanvasControls">
+<div class="twoxnctrls" id="drawCanvasControls">
 <!----><div>
 <!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
-<!--    --><div><input input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1" style="display:table-cell; width:100%"><br/></div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1" style="display:table-cell; width:100%"><br/></div>
 <!----></div>
 <!----><div>
 <!--    --><div id="numLinesSliderDivLabel">Number of lines to use</div>
 <!--    --><div><input aria-labelledby="numLinesSliderDivLabel" id="numLinesSlider" disabled type="range" min="0" max="1" value="1" step="1" style="display:table-cell; width:100%"><br/></div>
 <!----></div>
 <!----><div>
+<!--    --><div id="enableWallClippingLabel">Walk through walls</div>
+<!--    --><div><input aria-labelledby="enableWallClippingLabel" id="enableWallClippingCtrl" disabled type="checkbox" checked style="display:table-cell; width:100%"><br/></div>
+<!----></div>
+<!----><div>
 <!--    --><div>BVH Overlay</div>
-<!--    --><div class="knuckleRadio">
+<!--    --><div class="knkRadio">
 <!--        --><input disabled type="radio" id="drawBvhCtrl-off" name="drawBvhCtrl"><label for="drawBvhCtrl-off">Off</label>
 <!--        --><input disabled type="radio" id="drawBvhCtrl-lines" name="drawBvhCtrl" checked="checked"><label for="drawBvhCtrl-lines">Lines</label>
 <!--        --><input disabled type="radio" id="drawBvhCtrl-bboxes" name="drawBvhCtrl"><label for="drawBvhCtrl-bboxes">BBoxes</label>
@@ -342,7 +274,7 @@ a full 1920x1080 pass, so not something you'd want to use directly for lighting.
 <!----></div>
 <!----><div>
 <!--    --><div>Ray Vis Type</div>
-<!--    --><div class="knuckleRadio">
+<!--    --><div class="knkRadio">
 <!--        --><input disabled type="radio" id="rayVisTypeCtrl-pointlight" name="rayVisTypeCtrl" checked="checked"><label for="rayVisTypeCtrl-pointlight">Pointlight</label>
 <!--        --><input disabled type="radio" id="rayVisTypeCtrl-visibility" name="rayVisTypeCtrl"><label for="rayVisTypeCtrl-visibility">Visibility</label>
 <!--        --><input disabled type="radio" id="rayVisTypeCtrl-numIntersections" name="rayVisTypeCtrl"><label for="rayVisTypeCtrl-numIntersections">Num Intersections</label>
@@ -354,14 +286,17 @@ a full 1920x1080 pass, so not something you'd want to use directly for lighting.
 </div>
 <div id="notSupportedBrowser"></div>
 </div>
-<p>Worth nothing, that it's incredibly simple to generate a distance field from a BVH (<code>findNearestDistanceBvhV1</code>), switching to a SDF model can reduce
+<p>Worth noting, that it's incredibly simple to generate a distance field from a BVH (<code>findNearestDistanceBvhV1</code>), switching to a SDF model can reduce
 a full frame evaluation down from 9ms to 3ms at the cost.</p>
 <p>Here are all the relevant source code files:</p>
 <ul>
-<li>BVH generation (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/bvh_v1/generate_bvh_v1.cpp">generate_bvh_v1.cpp</a></li>
-<li>Ray traversal (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/shaders/v1_tracing.glsli">v1_tracing.glsli</a></li>
+<li>BVH generation (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/bvh_v1/generate_bvh_v1.cpp">generate_bvh_v1.cpp</a></li>
+<li>Ray traversal (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/bvh_v1/trace_bvh_v1.cpp">trace_bvh_v1.cpp</a></li>
+<li>Ray traversal (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/shaders/include/v1_tracing.glsli">v1_tracing.glsli</a></li>
 <li>Visualisers (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/shaders/v1_tracing_test.frag">v1_tracing_test.frag</a></li>
 <li>Line / BBOX overlays (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/shaders/v1_draw_bvh.vert">v1_draw_bvh.vert</a></li>
+<li>JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230620-raytracing-in-2d/rtrace_bvh_v1.js">rtrace_bvh_v1.js</a></li>
+<li>WASM binary: <a target="_blank" href="/res/bvh_v1.wasm">bvh_v1.wasm</a></li>
 </ul>
 <hr />
 <p>Slighly off tangent, but I ended up putting together a subset of the <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/tree/master/_source/ministl">C std and C++ stl</a> while making this.</p>
@@ -399,6 +334,7 @@ a full frame evaluation down from 9ms to 3ms at the cost.</p>
             drawCtx.resourceLoaded.then(()=>{
                 const numLinesSlider = document.getElementById("numLinesSlider");
                 const resolutionCtrl = document.getElementById("resolutionCtrl");
+                const enableWallClippingCtrl = document.getElementById("enableWallClippingCtrl");
                 const allLines = window.getDefaultLines();
                 numLinesSlider.max = allLines.length / 4;
                 numLinesSlider.value = numLinesSlider.max;
@@ -425,6 +361,11 @@ a full frame evaluation down from 9ms to 3ms at the cost.</p>
                 };
                 resolutionCtrl.onchange = updateRes;
 
+                enableWallClippingCtrl.disabled = false;
+                enableWallClippingCtrl.onchange = ()=>
+                {
+                    drawCtx.allowWallClipping = enableWallClippingCtrl.checked;
+                };
 
                 const drawBvhCtrlSuffixs = ["off", "lines", "bboxes", "all"];
                 for(let i=0; i<drawBvhCtrlSuffixs.length; ++i)

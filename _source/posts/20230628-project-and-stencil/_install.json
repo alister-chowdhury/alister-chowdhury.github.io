@@ -1,0 +1,7 @@
+{
+    "index.html": {"minify": true},
+    "pas.js": {"minify": true},
+    "shaders/compiled/*": {"minify": true},
+    "res/*.png": {},
+    "thumbnail.png": {}
+}

@@ -10,6 +10,17 @@ _GLSLC_EXEC = distutils.spawn.find_executable("glslc")
 _SPIRV_CROSS_EXEC = distutils.spawn.find_executable("spirv-cross")
 
 
+GLOBAL_SHADER_INCLUDE_DIR = os.path.abspath(os.path.join(
+    __file__,
+    "..",
+    "..",
+    "_source",
+    "res",
+    "shaders",
+    "include"
+))
+
+
 def validate_has_glsl_executables():
     """Validate the local machine has the relevant executables needed.
 
@@ -85,12 +96,13 @@ def _spirv_to_webgl(spv_path):
     return result
 
 
-def compile_glsl(filepath, macros=None):
+def compile_glsl(filepath, macros=None, includes=None):
     """Compiles desktop glsl into webgl glsl.
 
     Args:
         filepath(str): Filepath of shader to compile.
         macros(dict): Macros to define. (Default: None)
+        includes(iterable): Directories to include. (Default: None)
 
     Return:
         str: Compiled webgl glsl.
@@ -119,6 +131,10 @@ def compile_glsl(filepath, macros=None):
         if macros:
             for key, value in macros.items():
                 glslc_command.append("-D{0}={1}".format(key, value))
+
+        if includes:
+            for include in includes:
+                glslc_command.extend(("-I", include))
 
         subprocess.check_call(glslc_command)
         return _spirv_to_webgl(tmp_spv.name)

@@ -1,5 +1,6 @@
 import {
     AsyncBarrier,
+    loadCommonShaderSource,
     createShader,
     createGraphicsProgram,
     getUniformLocation,
@@ -30,10 +31,10 @@ export let encodeNumber = undefined;
 
 
 const _RESOURCES = new AsyncBarrier()
-    .enqueue(loadShaderSource("draw_number.vert"), "DRAW_NUMBER_VS_SRC")
+    .enqueue(loadCommonShaderSource("draw_full_screen_uvs.vert"), "DRAW_NUMBER_VS_SRC")
     .enqueue(loadShaderSource("draw_number.frag"), "DRAW_NUMBER_FS_SRC")
     .enqueue(
-        WebAssembly.instantiateStreaming(fetch("encode_number_web.wasm")).then(
+        WebAssembly.instantiateStreaming(fetch("/res/encode_number_web.wasm")).then(
             obj => {
             const funcs = obj.instance.exports;
             funcs.init();

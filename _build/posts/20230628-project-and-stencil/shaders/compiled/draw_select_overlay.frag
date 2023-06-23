@@ -1,0 +1,2 @@
+#version 300 es
+precision highp float;precision highp int;in highp vec2 localNDC;layout(location=0)out highp vec4 outCol;void main(){highp float _=length(localNDC);outCol=vec4(1.)*max(step(_,1.)*step(.9,_),step(_,.1));}

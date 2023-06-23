@@ -3,13 +3,6 @@
    
  
 <head>
-    <link rel="canonical" href="https://alister-chowdhury.github.io/posts/"/>
-    <meta property="og:title" content="Posts">
-    <meta property="og:url" content="https://alister-chowdhury.github.io/posts/">
-    <meta property="og:type" content="website">
-    <meta property="og:description" content="List of posts that I have posted.">
-    <meta property="og:image" itemprop="image" content="https://alister-chowdhury.github.io/res/favicon.png">
-
       <meta charset="utf-8">
       <meta name="author" content="Alister Chowdhury">
       <meta name="theme-color" content="#2b2b2b">
@@ -18,7 +11,26 @@
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <link rel="icon" type="image/png" sizes="32x32" href="/res/favicon-32x32.png">
       <link rel="icon" type="image/png" sizes="16x16" href="/res/favicon-16x16.png">
+      <!-- Google tag (gtag.js) -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WDZZ2C662"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        // Don't push stuff if we're testing things locally
+        if(window.location.hostname == "alister-chowdhury.github.io")
+        {
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-1WDZZ2C662');
+        }
+      </script>
    
+    <link rel="canonical" href="https://alister-chowdhury.github.io/posts/"/>
+    <meta property="og:title" content="Posts">
+    <meta property="og:url" content="https://alister-chowdhury.github.io/posts/">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="List of posts that I have posted.">
+    <meta property="og:image" content="https://alister-chowdhury.github.io/res/favicon.png">
+
     <title>Posts</title>
     <meta name="description" content="List of posts that I have posted.">
     <meta name="keywords" content="rendering, graphics, posts">
@@ -57,6 +69,11 @@
 
 
 <h1>Posts</h1>
+<div class="entry">
+<h3><a href='20230628-project-and-stencil/'>Blocking 2D Player Visibility</a></h3>
+<p class="desc">How to shadow parts of a 2D scene that a player (or players) cannot see using a project and stencil method of occlusion.</p>
+<p class="date">28 June 2023</p>
+</div>
 <div class="entry">
 <h3><a href='20230620-raytracing-in-2d/'>Raytracing In 2D</a></h3>
 <p class="desc">How to go about raytracing a 2D scene on the GPU, using purely vertex and fragment shaders.</p>

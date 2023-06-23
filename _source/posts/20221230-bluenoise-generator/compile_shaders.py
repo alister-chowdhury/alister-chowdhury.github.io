@@ -14,7 +14,7 @@ sys.path.insert(
     )
 )
 
-from builder.shader_compiler import compile_glsl
+from builder.shader_compiler import compile_glsl, GLOBAL_SHADER_INCLUDE_DIR
 
 
 _SRC_DIR = os.path.abspath(
@@ -27,17 +27,6 @@ _COMPILED_DIR = os.path.abspath(
 
 
 _SHADER_MAPPING = {
-    "draw_full_screen.vert" : {
-        "filepath": "draw_full_screen.vert",
-    },
-
-    "draw_full_screen_with_uvs.vert" : {
-        "filepath": "draw_full_screen.vert",
-        "macros": {
-            "VS_OUTPUT_UV": 0,
-        }
-    },
-
     "void_and_cluster_init.frag" : {
         "filepath": "void_and_cluster_init.frag",
     },
@@ -88,6 +77,6 @@ if __name__ == "__main__":
         src = os.path.join(_SRC_DIR, src_data["filepath"])
         macros = src_data.get("macros")
         print("Compiling\nSrc: {0}\nDst: {1}\nDefines={2}\n".format(src, dst, macros))
-        compiled_glsl = compile_glsl(src, macros)
+        compiled_glsl = compile_glsl(src, macros, includes=(GLOBAL_SHADER_INCLUDE_DIR,))
         with open(dst, "w") as out_fp:
             out_fp.write(compiled_glsl)

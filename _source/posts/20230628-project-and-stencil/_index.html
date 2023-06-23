@@ -1,0 +1,579 @@
+
+ <head>
+    <title>Blocking 2D Player Visibility</title>
+    <meta name="description" content="How to shadow parts of a 2D scene that a player (or players) cannot see using a project and stencil method of occlusion.">
+    <meta name="keywords" content="shadows, blocking, visibility, 2D, rendering, graphics, stencil, depth, rasterizing">
+
+    <script>
+        window.pasModuleLoaded = false;
+        window.afterPasModuleLoaded = [];
+
+        function addAfterPasModuleLoaded(f)
+        {
+            if(!window.pasModuleLoaded)
+            {
+                window.afterPasModuleLoaded.push(f);
+            }
+            else
+            {
+                f();
+            }
+        }
+    </script>
+    <script type="module">
+        import { bindPasContext } from './pas.js';
+        window.bindPasContext = bindPasContext;
+        window.pasModuleLoaded = true;
+        window.afterPasModuleLoaded.forEach(f => {f()});
+    </script>
+
+    <style>
+        #pasStages > div > img
+        {
+            width: 128px;
+            height: 128px;
+        }
+
+        #project_vis > div > img
+        {
+            width: 312px;
+            width: 312px;
+        }
+
+        canvas
+        {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+
+ </head>
+ <body>
+
+  <main>
+<markdown>
+
+# Blocking 2D Player Visibility
+
+
+## Background
+
+Blocking the players vision is an important part of any top down game / virtual tabletop, but doing it isn't exactly trivial (especially doing it efficiently).
+
+You <u>*could*</u> awkwardly use something like raytracing (<a target="_blank" href="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/">Raytracing In 2D</a>) or possibly something more sensible like raymarching, both of these have some pretty bad drawbacks.
+
+Raytracing is obscenely slow when applied per pixel that you've basically just blown out your entire frame budget (and forget about sharing vision between players).
+
+Raymarching is faster, but requires a pretty big texture buffer to accurately represent an entire scene and isn't something you'd want to totally generate at runtime.
+
+### Enter project and stencil!
+
+This has the per-pixel accuracy of raytracing, is usually faster or on-par with raymarching, requires substantially less memory then both, needs no offline processing and can be used to share vision between multiple players.
+
+This involves projecting lines to the edge of the screen and incrementing the stencil buffer only if it also occludes all previous players, as far as I can tell is a novel idea. (Which has similar vibes to <a target="_blank" href="https://en.wikipedia.org/wiki/Shadow_volume">Shadow Volumes</a>).
+
+Effectively, it flips the problem of masking what you see, into masking what you cannot see, while exploiting what GPUs do best, rasterization!
+
+While I suppose this <u>*could*</u> be used for light shadows, this is probably a better technique to use exclusively for player visibility, since while it provides perfect shadows, realistically won't scale to hundreds of lights but should scale to roughly 1-8 players with shared vision.
+
+
+## Projection
+
+The first stage involves projecting the edges of each blocking line to the edge of the screen, from the perspective of a player.
+This covers all pixels that the player cannot possibly see, using the GPUs rasterization hardware!
+
+I'm using a 5-gon for the projected polygon itself, as it handles some of the more extreme projections that could result in coordinates near
+infinity, if the player is right up next to the line.
+
+Additionally there is no reason to compute these polygons on the CPU and upload vertex buffers, this can all be done with a vertex shader and a texture that holds all the lines.
+
+<details>
+<summary>Projection Vertex Shader</summary>
+
+```glsl
+// Dispatch with GL_TRIANGLES with `9 * numLines` vertices.
+
+uint vertexIdToShadowVertexId(uint idx)
+{
+    // 0-----1
+    // |  \  |
+    // 4 __\ 2
+    //  \   /
+    //    3
+    // 0 1 2 => 0, 1, 2
+    // 3 4 5 => 2, 3, 4
+    // 6 7 8 => 2, 4, 0
+    switch(idx)
+    {
+        case 0u:
+        case 8u:
+            return 0u;
+        case 1u:
+            return 1u;
+        case 2u:
+        case 3u:
+        case 6u:
+            return 2u;
+        case 4u:
+            return 3u;
+        default: // 5, 7
+            return 4u;
+    }
+}
+
+
+// Extends a line out into a 5-gon
+//
+// 0-----1
+// |     |
+// 4     2
+//  \   /
+//    3
+//
+// https://www.geogebra.org/calculator/gjz8fexq
+vec2 getShadowCoord(vec2 P,
+                    vec2 A,
+                    vec2 B,
+                    uint shadowVertexId)
+{
+    if(shadowVertexId == 0u) return A;
+    if(shadowVertexId == 1u) return B;
+
+    vec2 PB = B - P;
+
+    float BInterval = max(0., max(
+        ((PB.x >= 0. ? 1. : -1.) - B.x) / PB.x,
+        ((PB.y >= 0. ? 1. : -1.) - B.y) / PB.y
+    ));
+
+    vec2 projectedB = B + BInterval * PB;
+    if(shadowVertexId == 2u) return projectedB;
+
+    vec2 PA = A - P;
+    float AInterval = max(0., max(
+            ((PA.x >= 0. ? 1. : -1.) - A.x) / PA.x,
+            ((PA.y >= 0. ? 1. : -1.) - A.y) / PA.y
+        ));
+
+    vec2 projectedA = A + AInterval * PA;
+    if(shadowVertexId == 4u) return projectedA;
+
+    //
+    // shadowVertexId == 3u
+    //
+
+    // vec2 halfVector = normalize(normalize(PA) + normalize(PB));
+    // vec2 halfVector = normalize(PA * length(PB) + PB * length(PA));
+    vec2 halfVector = (PA * length(PB) + PB * length(PA));
+
+    vec2 axBy = vec2(projectedA.x, projectedB.y);
+    vec2 bxAy = vec2(projectedB.x, projectedA.y);
+
+    if(dot(halfVector, axBy - P) <= 0.) { axBy = vec2(0.); } 
+    if(dot(halfVector, bxAy - P) <= 0.) { bxAy = vec2(0.); } 
+
+    vec2 connectionXBias = (abs(axBy.x) > abs(bxAy.x)) ? axBy
+                                                        : bxAy;
+
+    vec2 connectionYBias = (abs(axBy.y) > abs(bxAy.y)) ? axBy
+                                                        : bxAy;
+
+    vec2 connectionPoint = (abs(connectionXBias.x) > abs(connectionYBias.y))
+                            ? connectionXBias
+                            : connectionYBias;
+
+    return connectionPoint;
+}
+
+
+void main()
+{
+    // NB: The lines and player position are expected to already
+    //     be transformed into NDC space, any kind of scaling or
+    //     transformation would be expected to be done beforehand.
+    uint lineIndex = gl_VertexID / 9u;
+    vec4 line = getLine(lineIndex);                 // read line from a texture
+    vec2 playerPosition = getPlayerPosition();      // read from a uniform
+    vec2 NDC = getShadowCoord(playerPosition,
+                              line.xy,
+                              line.zw,
+                              vertexIdToShadowVertexId(gl_VertexID % 9u));
+    gl_Position = vec4(NDC, 0., 1.);
+}
+```
+</details>
+
+Here is a geogebra demo illustrating this in action: <a target="_blank" href="https://www.geogebra.org/calculator/gjz8fexq">2D Line To Shadow Triangles</a>.
+
+
+<div id="project_vis" class="imTable">
+  <div><img alt="project_vis1" src="res/project_vis1.png"><br>Projected Triangles</div>
+  <div><img alt="project_vis2" src="res/project_vis2.png"><br>Resulting Mask</div>
+</div>
+
+
+If you're only concerned with a single player, just using the depth buffer and running this before you render any other elements should be enough to mask anything that needs to be hidden.
+
+e.g:
+
+```c
+// Disable depth testing / keep depth writing
+glDepthFunc(GL_ALWAYS);
+
+glUseProgram(drawBlockingLines);
+glBindVertexArray(dummyVao);
+glBindTextureUnit(0, linesTexture);
+glUniform2f(0, playerX, playerY);
+glDrawArrays(GL_TRIANGLES, 0, 9 * numLines);
+
+// Enable depth testing for other passes
+glDepthFunc(GL_LESS);
+```
+
+And that's it, you're done!
+
+
+## Project And Stencil
+
+When it comes to shared vision between players, intuitively the obvious solution would be to compute the visibility of a pixel for each player then **OR** the result.
+
+We can flip this around and compute the occlusion for each player then **AND** the result.
+
+
+<latex>(Pv_{1} \lor Pv_{2} \lor Pv_{3} \lor Pv_{3} \lor ...) = \neg ( \neg Pv_{1} \land \neg Pv_{2} \land \neg Pv_{3} \land \neg Pv_{3} \land ...) </latex>
+
+Where <latex>Pv_{x}</latex> is a single players visibility and at any given point and <latex>\neg Pv_{x}</latex> is the result of the project stage.
+
+
+We can achieve a logical AND by having the stencil test fail if the value isn't equal to the player index and incrementing it if it passes (we want it to fail if not equal to prevent overlapping projections from incrementing the same pixel multiple times).
+
+The result will be a stencil buffer where any pixel that isn't equal to the number of players is visible.
+
+<div id="pasStages" class="imTable">
+  <div><img alt="pas_s_0" src="res/pas_s_0.png"><br>Player #1 Shadow</div>
+  <div><img alt="pas_s_1" src="res/pas_s_1.png"><br>Player #2 Shadow</div>
+  <div><img alt="pas_s_2" src="res/pas_s_2.png"><br>Player #3 Shadow</div>
+  <div><img alt="pas_s_3" src="res/pas_s_3.png"><br>Player #4 Shadow</div>
+  <div><img alt="pas_s_4" src="res/pas_s_4.png"><br>Player #5 Shadow</div>
+  <div><img alt="pas_s_5" src="res/pas_s_5.png"><br>Player #6 Shadow</div>
+</div>
+
+<br>
+
+<details>
+<summary>Example GL code</summary>
+
+```c
+
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+// Only enable stencil evaluation
+glEnable(GL_STENCIL_TEST);
+glDisable(GL_DEPTH_TEST);
+glStencilMask(0xFF);
+glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+glUseProgram(drawSharedVisionPipeline);
+glBindTextureUnit(0, linesTexture);
+
+int numTriangleElements = numLines * 9;
+
+if(sharedVision)
+{
+    // On stencil/depth fail keep the existing stencil value, but on pass increment it.
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+
+    for(int i = 0; i < numPlayers; ++i)
+    {
+        // Only accept pixels which were previously covered, but also don't
+        // accept pixels a previous triangle may have covered.
+        glStencilFunc(GL_EQUAL, i, 0xFF);
+        glUniform2f(0, playerPositions[i].x, playerPositions[i].y);
+        glDrawArrays(GL_TRIANGLES, 0, numTriangleElements);
+    }    
+}
+else
+{
+    // Simple raster inplace
+    glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+    glStencilFunc(GL_ALWAYS, 1, 0xFF);
+    glUniform2f(0, playerPositions[playerId].x, playerPositions[playerId].y);
+    glDrawArrays(GL_TRIANGLES, 0, numTriangleElements);
+}
+
+
+// Re-enable normal depth features and fail the stencil test
+// for totally occluded pixels.
+glEnable(GL_DEPTH_TEST);
+glStencilFunc(GL_NOTEQUAL, sharedVision ? numPlayers : 1, 0xFF);
+glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+```
+
+</details>
+
+The obvious limitations here is you pretty much have to sacrifice your stencil buffer, however we can move the final iteration to the depth buffer, freeing the stencil for other passes (assuming you're writing `gl_Position.z = 0`).
+
+
+<details>
+<summary>Updated GL code</summary>
+
+```c
+
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+glDisable(GL_DEPTH_TEST);
+glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+glUseProgram(drawSharedVisionPipeline);
+glBindTextureUnit(0, linesTexture);
+
+int numTriangleElements = numLines * 9;
+
+if(sharedVision)
+{
+    glEnable(GL_STENCIL_TEST);
+    glStencilMask(0xFF);
+
+    // On stencil/depth fail keep the existing stencil value, but on pass increment it.
+    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+
+    for(int i = 0; i < numPlayers; ++i)
+    {
+        // Enable writing to depth on the final player
+        if(i == (numPlayers - 1))
+        {
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_ALWAYS);
+        }
+
+        // Only accept pixels which were previously covered, but also don't
+        // accept pixels a previous triangle may have covered.
+        glStencilFunc(GL_EQUAL, i, 0xFF);
+        glUniform2f(0, playerPositions[i].x, playerPositions[i].y);
+        glDrawArrays(GL_TRIANGLES, 0, numTriangleElements);
+    }
+
+    // Clear the stencil (presuming other passes want it).
+    glClear(GL_STENCIL_BUFFER_BIT);
+}
+else
+{
+    // Simple raster inplace, don't even touch the stencil
+    glDisable(GL_STENCIL_TEST);
+    glUniform2f(0, playerPositions[playerId].x, playerPositions[playerId].y);
+    glDrawArrays(GL_TRIANGLES, 0, numTriangleElements);
+    glEnable(GL_STENCIL_TEST);
+}
+
+
+// Restore the states for whatever comes after!
+glEnable(GL_DEPTH_TEST);
+glDepthFunc(GL_LESS);
+glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+```
+
+</details>
+
+
+### One Bit Per Player Variant
+
+If you aren't really using the stencil buffer for anything else, have players that don't move every frame and have a maximum of 8 players you can quite easily store each players projected occlusion in a separate bit.
+
+e.g:
+```
+player0Mask => (1 << 0);
+player1Mask => (1 << 1);
+player2Mask => (1 << 2);
+player3Mask => (1 << 3);
+```
+
+Then all you need to do is test that the stencil buffer is not equal to `((1 << numPlayers) - 1)`.
+
+Additionally this enables you lazily clear and evaluate visibility on a per player basis, rather than having to recompute every player each time one them has moved.
+
+<details>
+<summary>Example GL code</summary>
+
+```c
+
+// Only enable stencil evaluation
+glEnable(GL_STENCIL_TEST);
+glDisable(GL_DEPTH_TEST);
+glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+glStencilOp(GL_REPLACE, GL_REPLACE, GL_REPLACE);
+
+glUseProgram(drawSharedVisionPipeline);
+glBindTextureUnit(0, linesTexture);
+
+int numTriangleElements = numLines * 9;
+
+// Render each players occlusion into their own seperate bit
+for(int i = 0; i < numPlayers; ++i)
+{
+    int mask = 1 << i;
+    glStencilFunc(GL_ALWAYS, mask, mask);
+    glStencilMask(mask);
+    glUniform2f(0, playerPositions[i].x, playerPositions[i].y);
+    glDrawArrays(GL_TRIANGLES, 0, numTriangleElements);
+}
+
+
+// Restore depth / colour state and prevent writing
+// into the stencil buffer.
+glEnable(GL_DEPTH_TEST);
+glStencilMask(0xFF);
+glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+// If you want to filter for any shared visible pixel
+int anyVisibleMask = (1 << numPlayers) - 1;
+glStencilFunc(GL_NOTEQUAL, anyVisibleMask, anyVisibleMask);
+
+// If you want to filter for one or more specific players
+int specificVisibleMask = (1 << playerIdFirst) | (1 << playerIdSecond) | ...;
+glStencilFunc(GL_NOTEQUAL, specificVisibleMask, specificVisibleMask);
+```
+
+</details>
+
+And here is a little demo of it in action (you can move around the players):
+
+<div>
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<div class="twoxnctrls" id="drawCanvasControls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1" style="display:table-cell; width:100%"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawSelectOverlayLabel">Draw selection overlay</div>
+<!--    --><div><input aria-labelledby="drawSelectOverlayLabel" id="drawSelectOverlayCtrl" disabled type="checkbox" checked style="display:table-cell; width:100%"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
+<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked style="display:table-cell; width:100%"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="enablePlayersLabel">Enable players</div>
+<!--    --><div>
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer0" disabled type="checkbox" checked>
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer1" disabled type="checkbox" checked>
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer2" disabled type="checkbox" checked>
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer3" disabled type="checkbox" checked>
+           </div>
+<!----></div>
+<!----><div>
+<!--    --><div>Display type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="displayType-combined" name="displayType" checked="checked"><label for="displayType-combined">Combined</label>
+<!--        --><input disabled type="radio" id="displayType-playermasks" name="displayType"><label for="displayType-playermasks">Player masks</label>
+<!--    --></div>
+<!----></div>
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+* JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230628-project-and-stencil/pas.js">pas.js</a>
+* Project shader used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230628-project-and-stencil/shaders/project_lines.vert">project_lines.vert</a>
+
+</markdown>
+  </main>
+
+
+<script>
+
+    // Bootstrap the render region to be somewhat reasonable
+    {
+        let canvasSize = Math.round(
+            Math.min(
+                (window.innerHeight || document.documentElement.clientHeight),
+                (window.innerWidth || document.documentElement.clientWidth)
+            ) * 0.6
+        );
+        const resolutionCtrl = document.getElementById("resolutionCtrl");
+
+        canvasSize = Math.min(resolutionCtrl.max, Math.max(resolutionCtrl.min, Math.round(canvasSize)));
+        resolutionCtrl.value = canvasSize;
+
+        const drawCanvas = document.getElementById("drawCanvas");
+        drawCanvas.style.width = canvasSize + "px";
+        drawCanvas.style.height = canvasSize + "px";
+    }
+
+    addAfterPasModuleLoaded(()=>
+    {
+        // We can happily start bootstrapping the canvas ahead of all the resources being loaded
+        const drawCanvas = document.getElementById("drawCanvas");
+        const drawCtx = window.bindPasContext(drawCanvas);
+        if(drawCtx.valid)
+        {
+            drawCtx.resourceLoaded.then(()=>{
+                const resolutionCtrl = document.getElementById("resolutionCtrl");
+                resolutionCtrl.disabled = false;
+                const updateRes = ()=>
+                {
+                    const value = Math.min(resolutionCtrl.max, Math.max(resolutionCtrl.min, Math.round(resolutionCtrl.value)));
+                    if(resolutionCtrl.value != value)
+                    {
+                        resolutionCtrl.value = value;
+                    }
+                    drawCanvas.style.width = value + "px";
+                    drawCanvas.style.height = drawCanvas.style.width;
+                    drawCtx.redraw();
+                };
+                resolutionCtrl.onchange = updateRes;
+
+                const selectOverlayCtrl  = document.getElementById("drawSelectOverlayCtrl");
+                selectOverlayCtrl.disabled = false;
+                selectOverlayCtrl.onchange = ()=>{
+                    drawCtx.drawSelectOverlay = selectOverlayCtrl.checked;
+                    drawCtx.redraw();
+                };
+
+                const drawLinesOverlayCtrl = document.getElementById("drawLinesOverlayCtrl");
+                drawLinesOverlayCtrl.disabled = false;
+                drawLinesOverlayCtrl.onchange = ()=>{
+                    drawCtx.drawLinesOverlay = drawLinesOverlayCtrl.checked;
+                    drawCtx.redraw();
+                };
+
+                const displayTypeCtrlSuffixs = ["combined", "playermasks"];
+                for(let i=0; i<displayTypeCtrlSuffixs.length; ++i)
+                {
+                    const fossilizedIndex = i;
+                    const element = document.getElementById("displayType-" + displayTypeCtrlSuffixs[i]);
+                    element.disabled = false;
+                    element.onchange = ()=>{
+                        drawCtx.displayType = fossilizedIndex;
+                        drawCtx.redraw();
+                    };
+                }
+
+                for(let i=0; i<4; ++i)
+                {
+                    const fossilizedIndex = i;
+                    const element = document.getElementById("enablePlayer" + i);
+                    element.disabled = false;
+                    element.onchange = ()=>{
+                        drawCtx.players[fossilizedIndex].enabled = element.checked;
+                        drawCtx.redraw();
+                    };
+                }
+            });
+        }
+        else
+        {
+            drawCanvas.style.display = "none";
+            document.getElementById("drawCanvasControls").style.display = "none";
+            var notSupported = document.getElementById("notSupportedBrowser");
+            notSupported.style.display = "block";
+            notSupported.innerHTML = "WebGL2 not supported :(";
+            return;
+        }
+    });
+
+</script>
+
+ </body>

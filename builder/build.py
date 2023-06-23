@@ -85,15 +85,15 @@ def build_html(template_file, out_file=None):
         )
 
     source = template_file.read_text("utf8")
+    source = inject_seo_metadata(
+        source,
+        source_file=template_file
+    )
     source = merge_html(source, _HEADER_SECTION)
     source = merge_html(source, _FOOTER_SECTION, True)
     source = render_custom_html_tags(
         source,
         source_file=template_file.as_posix()
-    )
-    source = inject_seo_metadata(
-        source,
-        source_file=template_file
     )
 
     if out_file.is_file():

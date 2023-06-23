@@ -9,6 +9,18 @@
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <link rel="icon" type="image/png" sizes="32x32" href="/res/favicon-32x32.png">
       <link rel="icon" type="image/png" sizes="16x16" href="/res/favicon-16x16.png">
+      <!-- Google tag (gtag.js) -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WDZZ2C662"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        // Don't push stuff if we're testing things locally
+        if(window.location.hostname == "alister-chowdhury.github.io")
+        {
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-1WDZZ2C662');
+        }
+      </script>
    </head>
    <body>
     <div id="header">

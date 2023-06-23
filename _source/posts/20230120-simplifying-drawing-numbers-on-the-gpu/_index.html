@@ -152,9 +152,9 @@ I settled on the following charset:
 
 And went about writing encoders in a few different languages:
 * <a target="_blank" href="https://github.com/alister-chowdhury/impl-function-ref/blob/master/generic/encode_number_for_gpu_rendering.inl">C++</a> (original version, which is a bit more involved)
-* <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230120-simplifying-drawing-numbers-on-the-gpu/shaders/number_encoding.hlsli">HLSL</a> (also includes sampling logic)
-* <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230120-simplifying-drawing-numbers-on-the-gpu/shaders/number_encoding.glsli">GLSL</a> (also includes sampling logic)
-* <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230120-simplifying-drawing-numbers-on-the-gpu/encode_number_web.c">C</a> (primarily targeting <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230120-simplifying-drawing-numbers-on-the-gpu/encode_number_web.wasm">WASM</a> for JS)
+* <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/shaders/include/number_encoding.hlsli">HLSL</a> (also includes sampling logic)
+* <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/shaders/include/number_encoding.glsli">GLSL</a> (also includes sampling logic)
+* <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/encode_numbers/encode_number_web.c">C</a> (primarily targeting <a target="_blank" href="/res/encode_number_web.wasm">WASM</a> for JS)
 
 
 And here are a few examples:
@@ -185,8 +185,7 @@ And here's a little live demo using the C/WASM version + WebGL2:
 </div>
 
 
-Shaders used:
-* <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230120-simplifying-drawing-numbers-on-the-gpu/shaders/draw_number.vert">draw_number.vert</a>
+Shader used:
 * <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230120-simplifying-drawing-numbers-on-the-gpu/shaders/draw_number.frag">draw_number.frag</a>
 
 <br>
