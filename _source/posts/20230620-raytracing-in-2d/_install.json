@@ -5,5 +5,5 @@
     "res/*.png": {},
     "lines.f32": {},
     "bvh_v1.wasm": {},
-    "_thumbnail.png": {}
+    "thumbnail.png": {}
 }

@@ -35,7 +35,7 @@ def inject_seo_metadata(source, source_file):
 
     target = source_file
 
-    thumbnail_file_path = target.parent / "_thumbnail.png"
+    thumbnail_file_path = target.parent / "thumbnail.png"
     if thumbnail_file_path.exists():
         thumbnail_url = "{0}/{1}".format(
             _WEBSITE_ROOT,
