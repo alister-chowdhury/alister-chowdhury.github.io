@@ -1,0 +1,151 @@
+#ifndef LIGHTS_COMMON_GLSL_H
+#define LIGHTS_COMMON_GLSL_H
+
+
+#include "common.glsli"
+
+
+#define PLANE_BLOCKING_MODE_BINARY              0
+#define PLANE_BLOCKING_MODE_BINARY_TWOTAP_PCF   1
+
+
+#define POINTLIGHT_DATA_STRIDE              1
+
+
+struct PointLightData
+{
+    vec2  position;
+    float decayRate;
+    vec3  colour;
+};
+
+
+struct PointLightDataPacked
+{
+
+    uvec4 V0;   // .xy = position  [asfloat]
+                // .z  = decayRate [asfloat]
+                // .w  = colour    [r11g11b10f]
+};
+
+
+PointLightData unpackPointLightData(PointLightDataPacked data)
+{
+    PointLightData result;
+    result.position = uintBitsToFloat(data.V0.xy);
+    result.decayRate = uintBitsToFloat(data.V0.z);
+    result.colour = unpackR11G11B10(data.V0.w);
+    return result;
+}
+
+
+PointLightData loadPointLightData(
+#if TARGETTING_WEBGL
+    usampler2D lightingData,
+#else // TARGETTING_WEBGL
+    usampler1D lightingData,
+#endif // TARGETTING_WEBGL
+    int index)
+{
+    PointLightDataPacked packedData;
+    index *= POINTLIGHT_DATA_STRIDE;
+#if TARGETTING_WEBGL
+    packedData.V0 = texelFetch(lightingData, ivec2(index, 0), 0);
+#else // TARGETTING_WEBGL
+    packedData.V0 = texelFetch(lightingData, index, 0);
+#endif // TARGETTING_WEBGL
+    return unpackPointLightData(packedData);
+}
+
+
+float evaluatePointLightAttenuation(float dist, float decayRate)
+{
+    return pow(dist + 1.0, -decayRate);
+}
+
+
+vec3 evaluatePointLightContrib(float dist, vec3 col, float decayRate)
+{
+    return col * evaluatePointLightAttenuation(dist, decayRate);
+}
+
+
+float getPlaneMapSampleU(vec2 uv, vec2 center)
+{
+    vec2 duv = uv - center;
+    return fastAtan2_div2pi(duv.y, duv.x);
+}
+
+
+float getBinaryPlaneVisibility(vec2 uv, vec3 sampledNormalAndDistance, float bias /* = 0.5 / lightPlaneMapSize.x */)
+{
+    return 1.0 - smoothstep(sampledNormalAndDistance.z - bias,
+                            sampledNormalAndDistance.z + bias,
+                            dot(uv, sampledNormalAndDistance.xy));
+}
+
+
+// Two taps and two binary plane tests, texture width is assumed to be a power of 2,
+// more expensive, but generally just looks better.
+float getPCFPlaneVisibility(sampler2D lightPlaneMap,
+                            vec2 localUv, // uv local to the lights center
+                            vec2 planeMapUV,
+                            ivec2 lightPlaneMapSize,
+                            float bias /* = 0.5 / lightPlaneMapSize.x */)
+{
+    float sampleXBase = (planeMapUV.x + 1.0) * lightPlaneMapSize.x - 0.5;
+    int sampleY = int(planeMapUV.y * lightPlaneMapSize.y);
+    
+    int sampleX0 = int(sampleXBase);
+    int sampleX1 = sampleX0 + 1;
+    sampleX0 &= (lightPlaneMapSize.x - 1);
+    sampleX1 &= (lightPlaneMapSize.x - 1);
+
+    vec3 planeAndDistance0 = texelFetch(lightPlaneMap, ivec2(sampleX0, sampleY), 0).xyz;
+    vec3 planeAndDistance1 = texelFetch(lightPlaneMap, ivec2(sampleX1, sampleY), 0).xyz;
+    planeAndDistance0.xy = planeAndDistance0.xy * 2.0 - 1.0;
+    planeAndDistance1.xy = planeAndDistance1.xy * 2.0 - 1.0;
+
+    float visbility0 = getBinaryPlaneVisibility(localUv, planeAndDistance0, bias);
+    float visbility1 = getBinaryPlaneVisibility(localUv, planeAndDistance1, bias);
+
+    float lerpWeight = fract(sampleXBase);
+          lerpWeight = smoothstep(0, 1, lerpWeight);
+    return mix(visbility0, visbility1, lerpWeight);
+}
+
+
+vec3 evaluateLightWithPlaneShadowing(sampler2D lightPlaneMap,
+                                     float linemapV, // lights linemap V coordinate
+                                     vec2 localUv,   // uv local to the lights center
+                                     ivec2 lightPlaneMapSize,
+                                     vec4 colourAndDecayRate,
+                                     float bias /* = 1.0 / lightPlaneMapSize.x */,
+                                     int mode /* = PLANE_BLOCKING_MODE_XXX [should be compile time constant]*/)
+{
+    float dist = length(localUv);
+    vec2 planeUV = vec2(getPlaneMapSampleU(localUv, vec2(0)), linemapV);
+    float visbility = 0.0;
+
+    if(mode == PLANE_BLOCKING_MODE_BINARY_TWOTAP_PCF)
+    {
+        visbility = getPCFPlaneVisibility(lightPlaneMap,
+                                          localUv,
+                                          planeUV,
+                                          lightPlaneMapSize,
+                                          bias);
+    }
+    else // PLANE_BLOCKING_MODE_BINARY
+    {
+        vec3 planeAndDistance = texture(lightPlaneMap, planeUV).xyz;
+        planeAndDistance.xy = planeAndDistance.xy * 2.0 - 1.0;
+        visbility = getBinaryPlaneVisibility(localUv, planeAndDistance, bias);
+    }
+
+    return evaluatePointLightContrib(dist,
+                                     colourAndDecayRate.xyz,
+                                     colourAndDecayRate.w) * visbility;
+
+}
+
+#endif // LIGHTS_COMMON_GLSL_H

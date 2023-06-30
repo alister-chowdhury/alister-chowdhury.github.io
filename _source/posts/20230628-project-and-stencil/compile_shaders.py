@@ -39,9 +39,6 @@ _SHADER_MAPPING = {
             "TARGETTING_WEBGL": 1
         }
     },
-    "const_col.frag" : {
-        "filepath": "const_col.frag"
-    },
     "draw_select_overlay.vert" : {
         "filepath": "draw_select_overlay.vert"
     },

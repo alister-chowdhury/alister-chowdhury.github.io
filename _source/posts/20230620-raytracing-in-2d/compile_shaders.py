@@ -50,12 +50,6 @@ _SHADER_MAPPING = {
             "TARGETTING_WEBGL": 1
         }
     },
-    "v1_draw_bvh.frag" : {
-        "filepath": "v1_draw_bvh.frag",
-        "macros": {
-            "TARGETTING_WEBGL": 1
-        }
-    }
 }
 
 

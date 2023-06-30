@@ -63,7 +63,7 @@ Blocking the players vision is an important part of any top down game / virtual 
 
 You <u>*could*</u> awkwardly use something like raytracing (<a target="_blank" href="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/">Raytracing In 2D</a>) or possibly something more sensible like raymarching, both of these have some pretty bad drawbacks.
 
-Raytracing is obscenely slow when applied per pixel that you've basically just blown out your entire frame budget (and forget about sharing vision between players).
+Raytracing is so obscenely slow when applied per pixel that you've basically just blown out your entire frame budget (and forget about sharing vision between players).
 
 Raymarching is faster, but requires a pretty big texture buffer to accurately represent an entire scene and isn't something you'd want to totally generate at runtime.
 

@@ -27,6 +27,9 @@ _COMPILED_DIR = os.path.abspath(
 
 
 _SHADER_MAPPING = {
+    "const_col.frag" : {
+        "filepath": "const_col.frag",
+    },
     "draw_full_screen.vert" : {
         "filepath": "draw_full_screen.vert",
     },
@@ -48,6 +51,31 @@ _SHADER_MAPPING = {
             "VS_OUTPUT_UV": 0,
             "VS_OUTPUT_NDC": 1,
         }
+    },
+    "draw_rect.vert" : {
+        "filepath": "draw_rect.vert",
+    },
+    "draw_rect_uvs.vert" : {
+        "filepath": "draw_rect.vert",
+        "macros": {
+            "VS_OUTPUT_UV": 0,
+        }
+    },
+    "draw_rect_ndc.vert" : {
+        "filepath": "draw_rect.vert",
+        "macros": {
+            "VS_OUTPUT_NDC": 0,
+        }
+    },
+    "draw_rect_uvs_ndc.vert" : {
+        "filepath": "draw_rect.vert",
+        "macros": {
+            "VS_OUTPUT_UV": 0,
+            "VS_OUTPUT_NDC": 1,
+        }
+    },
+    "draw_col.frag" : {
+        "filepath": "draw_col.frag",
     },
 }
 

@@ -3,6 +3,7 @@
 // dispatch GL_LINES, 16 * numNodes
 
 #define LINE_BVH_V1_LOC 0
+#include "common.glsli"
 #include "v1_tracing.glsli"
 
 
@@ -17,30 +18,6 @@
 
 layout(location=0) out vec3 vsToFsCol;
 
-uint wang_hash(uint seed)
-{
-    seed = (seed ^ 61) ^ (seed >> 16);
-    seed *= 9;
-    seed = seed ^ (seed >> 4);
-    seed *= 0x27d4eb2d;
-    seed = seed ^ (seed >> 15);
-    return seed;
-}
-
-
-vec3 hs1(float H)
-{
-    float R = abs(H * 6 - 3) - 1;
-    float G = 2 - abs(H * 6 - 2);
-    float B = 2 - abs(H * 6 - 4);
-    return clamp(vec3(R,G,B), vec3(0), vec3(1));
-}
-
-
-vec3 randomHs1Col(uint idx)
-{
-    return hs1((wang_hash(idx) & 0xffff) / 65535.0);
-}
 
 void main()
 {

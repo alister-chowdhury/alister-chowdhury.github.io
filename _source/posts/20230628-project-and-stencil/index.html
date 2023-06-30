@@ -109,7 +109,7 @@
 <h2>Background</h2>
 <p>Blocking the players vision is an important part of any top down game / virtual tabletop, but doing it isn't exactly trivial (especially doing it efficiently).</p>
 <p>You <u><em>could</em></u> awkwardly use something like raytracing (<a target="_blank" href="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/">Raytracing In 2D</a>) or possibly something more sensible like raymarching, both of these have some pretty bad drawbacks.</p>
-<p>Raytracing is obscenely slow when applied per pixel that you've basically just blown out your entire frame budget (and forget about sharing vision between players).</p>
+<p>Raytracing is so obscenely slow when applied per pixel that you've basically just blown out your entire frame budget (and forget about sharing vision between players).</p>
 <p>Raymarching is faster, but requires a pretty big texture buffer to accurately represent an entire scene and isn't something you'd want to totally generate at runtime.</p>
 <h3>Enter project and stencil!</h3>
 <p>This has the per-pixel accuracy of raytracing, is usually faster or on-par with raymarching, requires substantially less memory then both, needs no offline processing and can be used to share vision between multiple players.</p>
