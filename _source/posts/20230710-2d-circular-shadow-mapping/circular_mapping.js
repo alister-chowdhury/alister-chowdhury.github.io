@@ -412,6 +412,7 @@ class CircularMappingCanvasContext
 
             const redraw = ()=>
             {
+                self.redrawRequested = false;
                 const invalidPlaneMapTexture = (self.currentPlaneMapResolution != self.newPlaneMapResolution);
                 const invalidPlaneMap = invalidPlaneMapTexture || (self.currentScene != self.newScene);
                 const invalidBounds = (self.currentlyUsingOBbox != self.newUsingOBbox);
@@ -631,6 +632,15 @@ class CircularMappingCanvasContext
                 }
             };
 
+            const redrawRequest = ()=>
+            {
+                if(!self.redrawRequested)
+                {
+                    self.redrawRequested = true;
+                    window.requestAnimationFrame(redraw);
+                }
+            };
+
             self.maxLights = maxLights;
             self.lights = lights;
             self.dirtyLights = [];
@@ -647,7 +657,10 @@ class CircularMappingCanvasContext
             self.usePCF = true;
             self.drawLines = true;
             self.drawBounds = false;
-            self.redraw = redraw;
+            self.drawRequested = false;
+            self.drawing = false;
+            self.redrawRequested = false;
+            self.redraw = redrawRequest;
 
             redraw();
         });
