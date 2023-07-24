@@ -152,4 +152,14 @@ vec3 randomHs1Col(uint idx)
 }
 
 
+// Uses the last 23bits to construct a linear range
+// [0, 1) = [0, 0.9999998808]
+float randomBounded(uint seed)
+{
+    // 1x shift_add
+    // 1x add
+    seed = 0x3f800000u + (seed & 0x7fffffu);
+    return uintBitsToFloat(seed) - 1.0f;
+}
+
 #endif

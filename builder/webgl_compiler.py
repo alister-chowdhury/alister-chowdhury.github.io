@@ -96,6 +96,35 @@ def _spirv_to_webgl(spv_path):
     return result
 
 
+def _compile_to_spirv(out_spv_path, filepath, macros=None, includes=None):
+    """Compiles desktop glsl into spirv.
+
+    Args:
+        out_spv_path(str): filepath to write spirv.
+        filepath(str): Filepath of shader to compile.
+        macros(dict): Macros to define. (Default: None)
+        includes(iterable): Directories to include. (Default: None)
+    """
+    glslc_command = [
+        _GLSLC_EXEC,
+        "--target-env=opengl4.5",
+        "-O",
+        "-g",
+        filepath,
+        "-o", out_spv_path
+    ]
+
+    if macros:
+        for key, value in macros.items():
+            glslc_command.append("-D{0}={1}".format(key, value))
+
+    if includes:
+        for include in includes:
+            glslc_command.extend(("-I", include))
+
+    subprocess.check_call(glslc_command)
+
+
 def compile_glsl(filepath, macros=None, includes=None):
     """Compiles desktop glsl into webgl glsl.
 
@@ -119,24 +148,7 @@ def compile_glsl(filepath, macros=None, includes=None):
     # although that itself, is not very fast.
     try:
         tmp_spv.close()
-        glslc_command = [
-            _GLSLC_EXEC,
-            "--target-env=opengl4.5",
-            "-O",
-            "-g",
-            filepath,
-            "-o", tmp_spv.name
-        ]
-
-        if macros:
-            for key, value in macros.items():
-                glslc_command.append("-D{0}={1}".format(key, value))
-
-        if includes:
-            for include in includes:
-                glslc_command.extend(("-I", include))
-
-        subprocess.check_call(glslc_command)
+        _compile_to_spirv(tmp_spv.name, filepath, macros=macros, includes=includes)
         return _spirv_to_webgl(tmp_spv.name)
 
     finally:

@@ -1,0 +1,140 @@
+
+https://shadertoyunofficial.wordpress.com/2017/11/11/playable-games-in-shadertoy/
+
+
+[SH17B] Pixel Shader Dungeon 
+https://www.shadertoy.com/view/Xs2fWD
+
+
+---
+
+Game idea:
+
+Rougelike RPG (inspired by pixel shader dungeon)
+-------------
+
+
+https://github.com/marukrap/RoguelikeDevResources
+
+
+
+Map generation
+    BSP: https://eskerda.com/bsp-dungeon-generation/
+    - Need to come up with a way to generate a line list
+        Generate lines by sweeping up Y and going across X
+    - Use waveform collapse
+
+Lighting:
+    - Use project and stencil for player visibility
+    - Use FOW stuff to store history
+
+    - If needed could probably generate a line bvh for
+      raytracing due to using a grid layout.
+
+Nice to have:
+    - Classes
+        - Barbarian => Tank / ???
+        - Mage  =>  Shoots projectiles / ???
+        - Rouge =>  Stealth / Backstab / ???
+
+    Character customization
+        - Render character sprites into buffer ???
+
+    - Progressively harder enemies
+    - meaningful loot
+    - keys???
+    - Bosses?
+
+
+Turn-based:
+    - Use action points
+    - 1ap to walk
+    - 2ap to attack
+
+    Enemies:
+        - Keep track of last player position seen
+          and always attempt to move towards that.
+        - Can move through each other, but can't
+          rest on the same space.
+        - Pick a tile to move too via |dx| > |dy|
+          sign(dx), sign(dy).
+        - Will attempt to surround the player, this
+          prevents the player from moving and also
+          prevents them from block each other getting
+          to the player (melee).
+
+
+Animation:
+    - 12 frames per second tick rate
+        CPU can cacluate ticks + tell the GPU which frames have
+        tick updates
+
+Very nice to have
+    - Different tilesets
+
+
+
+
+Structure
+---------
+
+Use a series of indirect calls to enable different "stages", a stage being
+like "main menu", "character editor" or anything you would expect to have a
+sufficiently different pipeline.
+
+
+Example shader to run at the beginning of the frame:
+```
+Buffer<uint>    stage;
+Buffer<uint4>   mappings;   // series of configurations to apply
+                            // .x = stages to support (bitmask)
+                            // .y = indirection buffer offset
+                            // .z = true value
+                            // .w = false value
+RWBuffer<uint>  outIndirectionBuffer;
+
+
+void enableStagePipelinesCs(uint dispatchId)
+{
+    const uint currentStage = stage.load(0);
+    const uint4 currentMapping = mappings.load(dispatchId);
+    outIndirectionBuffer[currentMapping.y] = ((currentStage & (currentMapping.x)) != 0)
+                                             ? currentMapping.z
+                                             : currentMapping.w
+                                             ;
+}
+```
+
+
+Example usage:
+```
+
+function addMainMenuCommands(indirectAllocator)
+{
+    const drawButtonsOffset = indirectAllocator.allocDrawIndexed(
+        6 * 4,  // 4 buttons
+        1,
+        0,
+        0,
+        0
+    );
+
+    // Disable the command but setting the instance count to 0 when
+    // not drawing the main menu.
+    indirectAllocator.addMapping(STAGE_MAIN_MENU,
+                                 drawButtonsOffset + 1,
+                                 1,
+                                 0);
+
+    // Callback to run actual draw commands, when the indirect allocator
+    // has a proper buffer backing it.
+    return ()=>
+    {
+        bindShader(...);
+        drawIndexedIndirect(indirectAllocator.buffer,
+                            drawButtonsOffset,
+                            ...);
+    };
+}
+```
+

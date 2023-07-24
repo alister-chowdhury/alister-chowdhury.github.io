@@ -11,6 +11,8 @@ Uses a custom static site generator (which lives under `builder`).
 * * xxhash (Optional)
 * nodejs (Been using 12.18.2, optional, Latex won't be prerendered without it)
 * LLVM (Been using 16.0.0), optional to compile C/C++
+* VulkanSDK (Been using 1.3.211.0), optional to compile to WebGPU and WGSL
+* tint, optional to compile to WGSL (needs SPIRV reader and WGSL writer options enabled).
 
 
 ## Layout

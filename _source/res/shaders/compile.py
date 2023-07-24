@@ -14,7 +14,7 @@ sys.path.insert(
     )
 )
 
-from builder.shader_compiler import compile_glsl, GLOBAL_SHADER_INCLUDE_DIR
+from builder.webgl_compiler import compile_glsl, GLOBAL_SHADER_INCLUDE_DIR
 
 
 _SRC_DIR = os.path.abspath(
