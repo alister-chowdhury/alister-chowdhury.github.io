@@ -12,10 +12,10 @@ layout(location=0) out vec2 outNoiseEnergy;
 
 
 // Uses the last 23bits to construct a (non-linear) range
-// [0, 1.08420210e-19]
+// [0, 1.17549421069e-38]
 float backgroundEnergyBounded(uint Seed)
 {
-    return uintBitsToFloat(Seed & 0x1fffffffu);
+    return uintBitsToFloat(Seed & 0x007fffffu);
 }
 
 
