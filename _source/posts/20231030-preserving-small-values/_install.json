@@ -1,0 +1,7 @@
+{
+    "index.html": {"minify": true},
+    "*.js": {"minify": true},
+    "res/*.png": {},
+    "res/calc_ulp_error.wasm": {},
+    "thumbnail.png": {}
+}

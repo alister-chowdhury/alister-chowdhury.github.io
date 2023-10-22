@@ -222,4 +222,29 @@ export const loadF32Lines = IS_LITTLE_ENDIAN ?
             )
         );
 
+
+
+export const bitcast = (()=>
+{
+    const u32tmp = new Uint32Array(1);
+    const i32tmp = new Float32Array(u32tmp.buffer);
+    const f32tmp = new Float32Array(u32tmp.buffer);
+
+    const setAndFetch = (x, A, B)=>{A[0] = x; return B[0]; };
+
+    return {
+        f32:      (x)=>setAndFetch(x, f32tmp, f32tmp),
+        u32:      (x)=>setAndFetch(x, u32tmp, u32tmp),
+        i32:      (x)=>setAndFetch(x, i32tmp, i32tmp),
+        f32tou32: (x)=>setAndFetch(x, f32tmp, u32tmp),
+        u32tof32: (x)=>setAndFetch(x, u32tmp, f32tmp),
+        f32toi32: (x)=>setAndFetch(x, f32tmp, i32tmp),
+        i32tof32: (x)=>setAndFetch(x, i32tmp, f32tmp),
+        u32toi32: (x)=>setAndFetch(x, u32tmp, i32tmp),
+        i32tou32: (x)=>setAndFetch(x, i32tmp, u32tmp)
+    };
+
+})();
+
+
 export { AsyncBarrier };

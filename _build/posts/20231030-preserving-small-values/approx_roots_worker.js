@@ -1,0 +1,1 @@
+(e=>{WebAssembly.instantiateStreaming(fetch("res/calc_ulp_error.wasm")).then(e=>e.instance.exports).then(a=>{e.addEventListener("message",function(t){let{invExponent:r,magic:s,gid:n,applyMagicAsFloat:g}=t.data,i=a.calc_magic_error(r,s,g),c=a.get_max_ulp_err(),l=a.get_avg_ulp_err();e.postMessage({taskGid:n,magic:s,weight:i,maxerr:c,avgerr:l})}),e.postMessage(null)})})(self);

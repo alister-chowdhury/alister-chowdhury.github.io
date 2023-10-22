@@ -165,6 +165,12 @@ input[type="button"]:disabled
     margin-bottom: auto;
 }
 
+.twoxnctrls > div > div > input
+{
+    display:table-cell;
+    width: 100%;
+}
+
 .twoxnctrls > div > div:last-of-type
 {
     border-left: #7373c3 1px solid;

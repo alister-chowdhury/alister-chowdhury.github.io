@@ -1,0 +1,662 @@
+
+ <head>
+    <title>Preserving Small Values</title>
+    <meta name="description" content="A low level deep dive into approximating exponents to help preserve smaller values when quantized, by exploiting the inner workings of IEEE-754 floats.">
+    <meta name="keywords" content="approximation, fast inverse square root, textures, magic numbers, rendering, graphics, gpu">
+
+    <script>
+        window.resourcesReady = false;
+        window.afterLoaded = [];
+        window.highlightC = ()=>{}; // dummy until c highlighting is loaded
+        function addAfterLoaded(f)
+        {
+            if(!window.resourcesReady)
+            {
+                window.afterLoaded.push(f);
+            }
+            else
+            {
+                f();
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { ApproxRoots } from './approx_roots.js';
+        import { NormSmallFloat } from './norm_small_float.js';
+        window.resourcesReady = true;
+        window.ApproxRoots = ApproxRoots;
+        window.NormSmallFloat = NormSmallFloat;
+        window.afterLoaded.forEach(f => {f()});
+    </script>
+
+    <style>
+        #approxRootProgressWrapper
+        {
+            display: block;
+            position: relative;
+            width: 100%;
+            margin-top: 5px;
+            background-color: #d3d3d3;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+
+        #approxRootProgress
+        {
+            width: 0;
+            height: 1.2em;
+            border: 0;
+            position: absolute;
+            background-color: #3c3c3c;
+        }
+
+        #approxRootProgressValue
+        {
+            display: inline-block;
+            text-align: center;
+            color: #fff;
+            font-weight: bold;
+            mix-blend-mode: difference;
+            padding: 0;
+            margin: 0;
+        }
+
+        #approxRootProgressValue, #approxRootProgress
+        {
+            font-size: 1.5em;
+        }
+
+        .rootContainer
+        {
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+
+        #approxRootContainerHead
+        {
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .nomargin
+        {
+            margin: 0;
+        }
+
+        .flexcode
+        {
+            text-align: left;
+        }
+
+        .flexcode > div
+        {
+            border: 0;
+        }
+
+        .passTable > div > img
+        {
+            width: 150px;
+            height: 150px;
+        }
+
+        canvas
+        {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+
+ </head>
+ <body>
+
+
+<main>
+<markdown>
+
+# Preserving Small Values
+
+## Background
+
+It's not massively uncommon to want a higher level of precision for smaller values.
+A good example of this is luminance, our eyes can detect subtle changes in low light much better than in a bright room.
+There is a reason modern computers use <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank">IEE-754 floats</a> rather than fixed, which does this (very cleverly) by design.
+Allowing us to describe both very small numbers and very big numbers with a relative amount of accuracy.
+
+In the world of GPU rendering, memory constraints are a very real thing, while it would be nice to be able to
+use float32 (even float16 would be nice) for every texture or buffer, this isn't practical due to bandwidth and actually available VRAM.
+
+Usually you'll end up attempting to store values between 0 and 1 in a 8bit UNORM texture (and if it's not a runtime texture, you'll have <a href="https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/" target="_blank">block compression</a> applied on top).
+This is always stored linearly, which is often fine, but what about when it's not?
+
+You could try using `log2` and `exp2`:
+
+```c
+float4 encode(float4 x)
+{
+    return log2(x + 1);     // 1 x full rate + 1 x half rate
+}
+
+float4 decode(float4 x)
+{
+    return exp2(x) - 1;     // 1 x full rate + 1 x quater rate
+}
+```
+
+A better and cheaper solution is to `sqrt` and square the value upon read:
+
+```c
+float4 encode(float4 x)
+{
+    return sqrt(x);         // 1 x quater rate
+}
+
+float4 decode(float4 x)
+{
+    return x * x;           // 1 x full rate
+}
+```
+
+If you want to push precision further for smaller values, you may attempt to use `pow`, which starts to get
+a bit expensive:
+
+```c
+float4 encode(float4 x)
+{
+    return pow(x, 1.0 / 2.5);   // 1 x full rate + 1 x half rate + 1 x quater rate
+}
+
+float4 decode(float4 x)
+{
+    return pow(x, 2.5);         // 1 x full rate + 1 x half rate + 1 x quater rate
+}
+```
+
+
+So what other less travelled alternatives are there?
+
+
+## Approximating Roots
+
+If using `pow` is a bit on the expensive side, what if we approximated it?
+We don't necessarily care if the approximation is fully accurate, as long as it gets us in the right ball park and we can reverse it.
+
+Most (graphics) people at one point or another have come across the legendary <a href="https://en.wikipedia.org/wiki/Fast_inverse_square_root" target="_blank">fast inverse square root</a>.
+
+```c
+float q_rsqrt(float number)
+{
+  long i;
+  float x2, y;
+  const float threehalfs = 1.5F;
+
+  x2 = number * 0.5F;
+  y  = number;
+  i  = * ( long * ) &y;                       // evil floating point bit level hacking
+  i  = 0x5f3759df - ( i >> 1 );               // what the fuck?
+  y  = * ( float * ) &i;
+  y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
+  // y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
+
+  return y;
+}
+```
+
+With the normal response being somewhere between horror, confusion and admiration.
+As it turns out <a href="https://en.wikipedia.org/wiki/Hacker%27s_Delight" target="_blank">Hackers Delight</a> has a section (17.4) explaining how this works.
+
+While we aren't concerned with solving negative exponents, we can use the same methods to solve positive ones.
+
+(<a href="https://musl.libc.org/" target="_blank">MUSLs</a> `cbrt` implementation uses the same technique, but never got any of the appreciation it deserves).
+
+We aren't going to be doing any Newton or Halley iterations, they aren't really relevant to us and if we want to use fractional powers, make everything messy.
+
+<br>
+
+We first derive the exponent via `uint(127 - 127 / power) << 23`, leaving us to solve the 23bit mantissa.
+
+This can be done by probing the maximum ulp error for different mantissa values and keeping whichever one has the least error.
+
+It might sound like this requires an enormous amount of computing, but it doesn't.
+
+When determining the max ulp error, you don't need to consider every possible 32bit float, in fact just
+evaluating every mantissa bit is enough (so `0.5 -> 1.0` or `1.0 -> 2.0`).
+
+Additionally you don't need to solve the max ulp error for every possible value, you can do something similar to a binary search.
+For reasons I cannot explain, every power has a value it clearly converges towards (so much so, it may be possible to analytically derive it).
+
+The actual way I do this is through a series of passes.
+
+<details>
+<summary>Explanation of passes</summary>
+
+```
+Each pass will pick up where the last pass left off,
+solving (nsearchbits-1) each time, except for the last
+pass, which will solve nsearchbits.
+A bit confusing, but hopefully the example below, will
+make this a bit clearer:
+
+
+If the first pass searches 8 bits, it'll test out
+    00000000000000000000000 => 11111111000000000000000
+
+Lets say the value with the minimum error was:
+    00111000000000000000000
+
+We will now limit our search +/- 00000001000000000000000
+    00110111000000000000000 => 00111001000000000000000
+
+Which leaves us with 2^16 values, and 16 bits to solve,
+abstractly telling us we have solved 7 bits.
+
+---
+
+If the second pass solves 6 bits, it will search
+    00110111000000000000000 + [0000000000000000 => 1111110000000000]
+
+Lets say the value with the minimum error was:
+    00110111101010000000000
+
+We will now limit our search +/- 0000010000000000
+    00110111101000000000000 => 00110111101100000000000
+
+Which leaves us with 2^11 values, and 11 bits to solve,
+telling us we have solved a further 6 bits.
+
+---
+
+This carries on until we've reached some point where
+we we're comparing the least significant bits, at which
+point our magic number as been solved!
+```
+
+</details>
+
+Here's a visualisation of the different passes used to solve the cuberoot, solving 4 bits at a time, it's a set
+of normalised offsets with the max ulp error appearing on y (lower is better).
+
+
+<div class="imTable passTable">
+    <div><img src="res/f-pass-1.png" alt="f-pass-1"><div></div><div>Pass 1<br>0x2a000000 - 0x2a780000</div></div>
+    <div><img src="res/f-pass-2.png" alt="f-pass-2"><div></div><div>Pass 2<br>0x2a480000 - 0x2a570000</div></div>
+    <div><img src="res/f-pass-3.png" alt="f-pass-3"><div></div><div>Pass 3<br>0x2a500000 - 0x2a51e000</div></div>
+    <div><img src="res/f-pass-4.png" alt="f-pass-4"><div></div><div>Pass 4<br>0x2a508000 - 0x2a50bc00</div></div>
+    <div><img src="res/f-pass-5.png" alt="f-pass-5"><div></div><div>Pass 5<br>0x2a50a000 - 0x2a50a780</div></div>
+    <div><img src="res/f-pass-6.png" alt="f-pass-6"><div></div><div>Pass 6<br>0x2a50a200 - 0x2a50a2f0</div></div>
+    <div><img src="res/f-pass-7.png" alt="f-pass-7"><div></div><div>Pass 7<br>0x2a50a290 - 0x2a50a2ae</div></div>
+    <div><img src="res/f-pass-8.png" alt="f-pass-8"><div></div><div>Pass 8<br>0x2a50a29a - 0x2a50a29d</div></div>
+</div>
+
+
+<br>
+
+Here is an example of us having solved a cuberoot:
+
+<div class="imTable flexcode">
+<div>
+
+```c
+float encode(float x)
+{
+    // 4 x full rate
+    float y = float(asuint(x));
+    y = y * 0.3333333333333333f;
+    uint z = uint(y);
+    return asfloat(z + 0x2a50a29du);
+}
+```
+
+</div>
+<div>
+
+
+```c
+float decode(float x)
+{
+    // 4 x full rate
+    uint z = asuint(x) - 0x2a50a29du;
+    float y = float(z);
+    y = y * 3.0f;
+    return asfloat(uint(y));
+}
+```
+
+</div>
+</div>
+
+
+We can actually reduce the amount of instructions to 3, if we're willing to evaluate the magic number as a float (for a very very very small amount of precision error):
+
+
+<div class="imTable flexcode">
+<div>
+
+```c
+float encode(float x)
+{
+    // 3 x full rate
+    float y = float(asuint(x));
+    y = y * 0.3333333333333333f
+          + 709927552.0f;
+    return asfloat(uint(y));
+}
+```
+
+</div>
+<div>
+
+
+```c
+float decode(float x)
+{
+    // 3 x full rate
+    float y = float(asuint(x));
+    y = y * 3.0f
+          - 2129782656.0f;
+    return asfloat(uint(y));
+}
+```
+
+</div>
+</div>
+
+
+The precision error can be seen as the passes begin to break down at later stages:
+<div class="imTable passTable">
+    <div><img src="res/t-pass-5.png" alt="t-pass-5"><div></div><div>Pass 5<br>0x2a50a000 - 0x2a50a780</div></div>
+    <div><img src="res/t-pass-6.png" alt="t-pass-6"><div></div><div>Pass 6<br>0x2a50a200 - 0x2a50a2f0</div></div>
+    <div><img src="res/t-pass-7.png" alt="t-pass-7"><div></div><div>Pass 7<br>0x2a50a270 - 0x2a50a28e</div></div>
+    <div><img src="res/t-pass-8.png" alt="t-pass-8"><div></div><div>Pass 8<br>0x2a50a27e - 0x2a50a281</div></div>
+</div>
+
+
+<hr>
+
+### Live demo
+
+<div class="rootContainer">
+<!----><div id="approxRootContainerHead">
+<!-- --><div class="twoxnctrls">
+<!-- ----><div>
+<!-- --    --><div id="calcRootLabel">Root</div>
+<!-- --    --><div><input aria-labelledby="calcRootLabel" id="calcRootInput" type="number" min="0.0001" value="3" step="0.0001"><br/></div>
+<!-- ----></div>
+<!-- ----><div>
+<!-- --    --><div id="threeInstrLabel">Magic as float<br>(1 less instruction)</div>
+<!-- --    --><div><input aria-labelledby="threeInstrLabel" id="calcRoomThreeInstr" type="checkbox" checked style="width:auto"><br/></div>
+<!-- ----></div>
+<!-- ----><div>
+<!-- --    --><div></div>
+<!-- --    --><div><input aria-label="calcRoot" disabled id="calcRootSubmit" type="button" value="Calculate"><br/></div>
+<!-- ----></div>
+<!-- --></div>
+<!-- --><div id="approxRootProgressWrapper">
+<!--   --><div id="approxRootProgress"></div>
+<!--   --><span id="approxRootProgressValue">0x00000000</span>
+<!-- --></div>
+<!----></div>
+<!----><br>
+<!----><div id="approxRooResultsContainer" style="display:none">
+<!--  --><h4>Quantized Preview</h4>
+<!--  --><div>
+<!--    --><div><canvas id="approxRootQuantVis" style="width:256px;height:256px"></canvas></div>
+<!--   --><div class="twoxnctrls">
+<!--   ----><div>
+<!--   --    --><div id="approxRootQuantLabel">Quantized bits</div>
+<!--   --    --><div><input aria-labelledby="approxRootQuantLabel" id="approxRootQuantInput" type="number" min="2" max="8" value="4" step="1"><br/></div>
+<!--   ----></div>
+<!--   --></div>
+<!--  --></div>
+<!--  --><h4>Shader source</h4>
+<!--  --><div class="imTable flexcode">
+<!--    --><div><pre class="nomargin"><code class="language-c" id="approxRootEncodeSource"></code></pre></div>
+<!--    --><div><pre class="nomargin"><code class="language-c" id="approxRootDecodeSource"></code></pre></div>
+<!--  --></div>
+<!--  --><h4>Refinement Steps</h4>
+<!--  --><div id="approxRootRefinementPasses" class="imTable">
+<!--  --></div>
+<!----></div>
+</div>
+
+<hr>
+
+Here are all the relevant source code files:
+* Approx root (JS): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/approx_roots.js">approx_roots.js</a> and <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/approx_roots_worker.js">approx_roots_worker.js</a>
+* Code to determine the "goodness" of a magic number (C): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/res/calc_ulp_error/calc_ulp_error.c">calc_ulp_error.c</a>
+* WASM binary: <a target="_blank" href="res/calc_ulp_error.wasm">calc_ulp_error.wasm</a>
+
+
+
+## Making tiny floats
+
+Floats already do a pretty good job of preserving small values, so can we use this to our advantage?
+
+As it turns out, yes!
+If we logically split an 8 bit number to have a few bits dedicated to the exponent and the rest the mantissa, we
+should be able to arrive at the same result.
+
+For example, if we stored a 3 bit exponent and 5 bit mantissa, we would be able to represent:
+`2^[-9, -1] * (1 + [0, 31/32])`
+
+Now actually manually extracting bits, handling rounding and dealing with representing 1.0 doesn't seem particularly simple, but
+we can use the power of floats to achieve this for us!
+
+Let's take our example of wanting a 3 bit exponent, if we just multiply our `[0, 1]` number by the biggest float32 value with 3 signed exponent bits.
+(This happens to be `1.50463267937e-36`, when treated as an integer `67108863 [0x3ffffff]`).
+
+Then the resulting number will scale in integer format from `0 -> 67108863` with all the floating point rules applied.
+From here, simply cast back to float and divide by `67108863`, giving us a normalised number.
+
+(A float within a float if you will).
+
+
+Here are some examples of the output:
+
+```
+    0    => 0
+    0.05 => 0.4499999947845935
+    0.1  => 0.5749999966472387
+    0.15 => 0.650000000745058
+    0.2  => 0.6999999985098838
+    0.25 => 0.7499999962747096
+    0.3  => 0.7750000026077033
+    0.35 => 0.7999999940395355
+    0.4  => 0.8250000003725291
+    0.45 => 0.8500000067055227
+    0.5  => 0.8749999981373549
+    0.55 => 0.8875000013038516
+    0.6  => 0.9000000044703484
+    0.65 => 0.9125000076368452
+    0.7  => 0.9249999959021806
+    0.75 => 0.9374999990686774
+    0.8  => 0.9500000022351742
+    0.85 => 0.962500005401671
+    0.9  => 0.9750000085681678
+    0.95 => 0.9874999968335032
+    1    => 1
+```
+
+Both encoding and decoding can be done with 3 full rate instructions, and if we want to handle `[-1, 1]` this can be
+done at the cost of two extra instructions.
+
+What's sort of neat, is really we can introduce the concept of _partial_ exponent bits.
+If we take `2.5` as the number of exponent bits, simply lerp between `1 << (23 + 2) - 1` and `1 << (23 + 3) - 1`.
+
+
+<hr>
+
+### Live demo
+
+<div class="rootContainer">
+<!----><div class="twoxnctrls">
+<!--  --><div>
+<!--      --><div id="smFloatExpBitsLabel">Exponent Bits</div>
+<!--      --><div><input aria-labelledby="smFloatExpBitsLabel" id="smFloatExpBitsInput" type="range" min="1" max="7" value="2" step="0.00001"></div>
+<!--  --></div>
+<!--  --><div>
+<!--      --><div id="smFloatSignLabel">Signed</div>
+<!--      --><div><input aria-labelledby="smFloatSignLabel" id="smFloatSignedInput" type="checkbox" style="width:auto"></div>
+<!--  --></div>
+<!--   ----><div>
+<!--   --    --><div id="smFloatQuantLabel">Quantized bits</div>
+<!--   --    --><div><input aria-labelledby="smFloatQuantLabel" id="smFloatQuantInput" type="number" min="2" max="8" value="4" step="1"><br/></div>
+<!--   ----></div>
+<!----></div>
+<!----><h4>Quantized Preview</h4>
+<!----><div><canvas id="smFloatQuantVis" style="width:256px;height:256px"></canvas></div>
+<!----><h4>Shader source</h4>
+<!----><div class="imTable flexcode">
+<!--  --><div><pre class="nomargin"><code class="language-c" id="smFloatEncodeSource"></code></pre></div>
+<!--  --><div><pre class="nomargin"><code class="language-c" id="smFloatDecodeSource"></code></pre></div>
+<!----></div>
+</div>
+
+<hr>
+
+Here are all the relevant source code files:
+* Norm small float (JS): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/norm_small_float.js">norm_small_float.js</a>
+
+</markdown>
+  </main>
+
+
+<script>
+
+    const calcRootInput = document.getElementById("calcRootInput");
+    calcRootInput.onchange = function()
+    {
+        if(calcRootInput.value < calcRootInput.min)
+        {
+            calcRootInput.value = calcRootInput.min;
+        }
+    };
+
+    addAfterLoaded(()=>{
+
+        const calcRootSubmit = document.getElementById("calcRootSubmit");
+        const calcRoomThreeInstr = document.getElementById("calcRoomThreeInstr");
+        calcRootSubmit.disabled = false;
+        calcRootSubmit.onclick = function()
+        {
+            const root = calcRootInput.value * 1;
+            const threeInstr = calcRoomThreeInstr.checked;
+            window.ApproxRoots.newJob(root, threeInstr);
+        };
+
+        var approxRootProgress = document.getElementById("approxRootProgress");
+        var approxRootProgressValue = document.getElementById("approxRootProgressValue");
+ 
+        const approxRooResultsContainer = document.getElementById("approxRooResultsContainer");
+        const approxRootEncodeSource = document.getElementById("approxRootEncodeSource");
+        const approxRootDecodeSource = document.getElementById("approxRootDecodeSource");
+
+        const approxRootRefinementPasses = document.getElementById("approxRootRefinementPasses");
+        const approxRootQuantVis = document.getElementById("approxRootQuantVis");
+        const approxRootQuantInput = document.getElementById("approxRootQuantInput");
+
+        ApproxRoots.onProgress((progress)=>{
+               approxRootProgress.style.width = `${progress*100}%`;
+        });
+
+        ApproxRoots.onMagicUpdate((bestPick)=>{
+               approxRootProgressValue.innerHTML = `0x${bestPick.magic.toString(16)}`;
+        });
+
+        ApproxRoots.onFinish(()=>{
+
+            approxRooResultsContainer.style.display = "block";
+
+            // On show refinement stages 
+            ApproxRoots.makeRefinementGraphStages(
+                document,
+                approxRootRefinementPasses
+            );
+
+            const generatedSource = ApproxRoots.generateSourceCode()
+            approxRootEncodeSource.innerHTML = generatedSource[0];
+            approxRootDecodeSource.innerHTML = generatedSource[1];
+            window.highlightC(approxRootEncodeSource);
+            window.highlightC(approxRootDecodeSource);
+
+            const updateApproxRootQuantVis = function()
+            {
+                ApproxRoots.makeComparisonGraph(
+                    approxRootQuantVis,
+                    approxRootQuantInput.value * 1
+                );
+            };
+
+            approxRootQuantInput.oninput = updateApproxRootQuantVis;
+            approxRootQuantInput.onchange = updateApproxRootQuantVis;
+            updateApproxRootQuantVis();
+        });
+
+        const smFloatExpBitsInput = document.getElementById("smFloatExpBitsInput");
+        const smFloatSignedInput = document.getElementById("smFloatSignedInput");
+        const smFloatQuantInput = document.getElementById("smFloatQuantInput");
+        const smFloatQuantVis = document.getElementById("smFloatQuantVis");
+        const smFloatEncodeSource = document.getElementById("smFloatEncodeSource");
+        const smFloatDecodeSource = document.getElementById("smFloatDecodeSource");
+
+        let currentSmFloatCoefs = null;
+        const smFloatUpdateVis = function()
+        {
+            window.NormSmallFloat.drawGraph(
+                smFloatQuantVis,
+                currentSmFloatCoefs,
+                smFloatSignedInput.checked,
+                smFloatQuantInput.value * 1
+            );
+
+            const generatedSource = NormSmallFloat.generateSourceCode(
+                currentSmFloatCoefs,
+                smFloatSignedInput.checked
+            );
+            smFloatEncodeSource.innerHTML = generatedSource[0];
+            smFloatDecodeSource.innerHTML = generatedSource[1];
+            window.highlightC(smFloatEncodeSource);
+            window.highlightC(smFloatDecodeSource);
+        };
+
+        const smFloatUpdateCoefs = function()
+        {
+            currentSmFloatCoefs = window.NormSmallFloat.calcCoefs(smFloatExpBitsInput.value * 1);
+            smFloatUpdateVis();
+        };
+
+        smFloatExpBitsInput.onchange = smFloatUpdateCoefs;
+        smFloatExpBitsInput.oninput = smFloatUpdateCoefs;
+        smFloatSignedInput.onchange = smFloatUpdateVis;
+        smFloatSignedInput.oninput = smFloatUpdateVis;
+        smFloatQuantInput.onchange = smFloatUpdateVis;
+        smFloatQuantInput.oninput = smFloatUpdateVis;
+
+        smFloatUpdateCoefs();
+
+    });
+
+</script>
+
+<script>
+async function hsForC(){
+    let script = document.createElement("script");
+    script.src = "/thirdparty/languages/c.min.js";
+    script.async = true;
+    script.onload = function()
+    {
+        window.highlightC = (e)=>
+        {
+            hljs.highlightElement(e);
+        };
+    };
+    document.body.appendChild(script);
+}
+</script>
+<script async src="/thirdparty/highlight.min.js" onload="hsForC();"></script>
+
+ </body>

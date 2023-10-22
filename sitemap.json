@@ -21,24 +21,29 @@
    "hash": "5ec3940f25acb0c79c073d542f1cbfa1"
   },
   {
-   "lastmod": "2023-06-27",
+   "lastmod": "2023-10-29",
    "loc": "posts/20230620-raytracing-in-2d/index.html",
-   "hash": "72015c1419d7090eeac8d28fbd6e6dec"
+   "hash": "ea311000857c98a04cf6141493103d58"
   },
   {
-   "lastmod": "2023-07-11",
+   "lastmod": "2023-10-29",
    "loc": "posts/20230628-project-and-stencil/index.html",
-   "hash": "d8fc7b415a5c0637dc531cb432fed8af"
+   "hash": "f76d2ec88a345181d36e6f54fc7b8a72"
   },
   {
-   "lastmod": "2023-07-11",
+   "lastmod": "2023-10-29",
    "loc": "posts/20230710-2d-circular-shadow-mapping/index.html",
-   "hash": "26c6dac0834dc0af3040233b3b46c7bf"
+   "hash": "90230db59821aec3218d56e9deaf4dd5"
   },
   {
-   "lastmod": "2023-07-11",
+   "lastmod": "2023-10-29",
+   "loc": "posts/20231030-preserving-small-values/index.html",
+   "hash": "6bb5eb23e197c5af58495586a85368dc"
+  },
+  {
+   "lastmod": "2023-10-29",
    "loc": "posts/index.html",
-   "hash": "2c833e2726f9e48c4f17a430939ddfea"
+   "hash": "02bb734a73585f719b3aeae4b3e93b73"
   }
  ]
 }
