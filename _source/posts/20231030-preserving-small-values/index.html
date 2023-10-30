@@ -410,7 +410,7 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 <li>Code to determine the &quot;goodness&quot; of a magic number (C): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/res/calc_ulp_error/calc_ulp_error.c">calc_ulp_error.c</a></li>
 <li>WASM binary: <a target="_blank" href="res/calc_ulp_error.wasm">calc_ulp_error.wasm</a></li>
 </ul>
-<h2>Making tiny floats</h2>
+<h2>Making Tiny Floats</h2>
 <p>Floats already do a pretty good job of preserving small values, so can we use this to our advantage?</p>
 <p>As it turns out, yes!
 If we logically split an 8 bit number to have a few bits dedicated to the exponent and the rest the mantissa, we
@@ -481,6 +481,109 @@ If we take <code>2.5</code> as the number of exponent bits, simply lerp between 
 <ul>
 <li>Norm small float (JS): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/norm_small_float.js">norm_small_float.js</a></li>
 </ul>
+<h2>Finally Actually Packing Bits</h2>
+<p>Once you've chosen whatever method seems most appropriate, you may wish to actually pack your data inside of a single uint.</p>
+<p>For example, maybe you want to pack RGB into a uint32, with the following layout:</p>
+<pre><code class="language-c">struct PackedRgb
+{
+    uint R:11;
+    uint G:12;
+    uint B:9;
+};
+</code></pre>
+<p>The most common way you'd see this be done is something like:</p>
+<pre><code class="language-c">uint pack(float3 rgb)
+{
+    uint R = uint(rgb.x * 2047.0 + 0.5); // (1 &lt;&lt; 11) - 1
+    uint G = uint(rgb.y * 4095.0 + 0.5); // (1 &lt;&lt; 12) - 1
+    uint B = uint(rgb.z * 511.0 + 0.5);  // (1 &lt;&lt; 9) - 1
+    return R | (G &lt;&lt; 11) | (B &lt;&lt; 23);
+}
+
+float3 unpack(uint packed)
+{
+    float R = float(packed         &amp; 2047u) * 1.0/2047.0;
+    float G = float((packed &gt;&gt; 11) &amp; 4095u) * 1.0/4095.0;
+    float B = float((packed &gt;&gt; 23) &amp; 511u)  * 1.0/511.0;
+    return float3(R, G, B);
+}
+</code></pre>
+<p>Each component required 2 full rate instructions to be converted into their integer form:</p>
+<pre><code class="language-c">    // 1 x mad
+    // 1 x cvt f32 to u32
+    uint R = uint(rgb.x * 2047.0 + 0.5);
+</code></pre>
+<h3>Optimization For Encoding</h3>
+<p>Assuming the target architecture handles denormals correctly (which may not be the case on all GPUs),
+we can reduce the number of instructions from 2 to 1:</p>
+<pre><code class="language-c">    // 1 x mul
+    uint R = asuint(rgb.x * asfloat(2047));
+</code></pre>
+<p>This works, by once again expoiting the fact the mantissa works linearly and would
+work up to 23bits.</p>
+<pre><code class="language-c">uint pack(float3 rgb)
+{
+    uint R = asuint(rgb.x * asfloat(2047u)); // (1 &lt;&lt; 11) - 1
+    uint G = asuint(rgb.y * asfloat(4095u)); // (1 &lt;&lt; 12) - 1
+    uint B = asuint(rgb.z * asfloat(511u));  // (1 &lt;&lt; 9) - 1
+    return R | (G &lt;&lt; 11) | (B &lt;&lt; 23);
+}
+</code></pre>
+<h3>Theoretical Optimization For Decoding</h3>
+<p>Unfortunately, we can't simply do the inverse of the above, since by definition of it being a denormal,
+it has no representable inverse.</p>
+<p>We can however shift our number such that the most significant bit lies on the least significant exponent bit.
+(Once again, this may not work correctly on GPUs that don't respect denormals correctly).</p>
+<p>e.g:</p>
+<pre><code>8bits = 0b11111111
+
+s eeeeeee mmmmmmmmmmmmmmmmmmmmmmm
+0 0000000 00000000000000011111111
+
+value &lt;&lt; (24 - 8)
+
+s eeeeeee mmmmmmmmmmmmmmmmmmmmmmm
+0 0000001 11111110000000000000000
+</code></pre>
+<p>This can be inverted and since this is the first not denormalised range,
+the value is still totally linear.</p>
+<p>The reason this is theoretically an optimization is because if you were to unpack bits from a
+single uint, you'd already be doing a shift and mask, you're now just changing that shift to
+be at a new address.</p>
+<p>At the very least, it is never more instructions than the baseline, with the main optimization
+coming from removing a cast to float:</p>
+<pre><code class="language-c">float unpackNorm(uint src, uint shift, uint numbits)
+{
+    // These should be evaluated statically at compile-time
+    uint maxValue = (1u &lt;&lt; numbits) - 1u;
+    uint floatShift = 24u - numbits;
+    uint mask = maxValue &lt;&lt; floatShift;
+    float norm = 1.0 / asfloat(mask);
+
+    // This branch should be folded and be a constant
+    // single shift.
+    if(floatShift &lt; shift)
+    {
+        src &gt;&gt;= (shift - floatShift);
+    }
+    else
+    {
+        src &lt;&lt;= (floatShift - shift);
+    }
+
+    src &amp;= mask;
+    return asfloat(src) * norm;
+}
+
+
+float3 unpack(uint packed)
+{
+    float R = unpackNorm(packed, 0u, 11u);
+    float G = unpackNorm(packed, 11u, 12u);
+    float B = unpackNorm(packed, 23u, 9u);
+    return float3(R, G, B);
+}
+</code></pre>
 
   </main>
 
