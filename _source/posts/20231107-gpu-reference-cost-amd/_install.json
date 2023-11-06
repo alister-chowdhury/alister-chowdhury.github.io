@@ -1,0 +1,4 @@
+{
+    "index.html": {"minify": true},
+    "*.js": {"minify": true}
+}

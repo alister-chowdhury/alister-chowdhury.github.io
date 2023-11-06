@@ -1,13 +1,13 @@
-import distutils.spawn
 import os
 import re
 import subprocess
 import tempfile
 
+from .find_exec import find_executable
 
-_DXC_EXEC = distutils.spawn.find_executable("dxc")
-_GLSLC_EXEC = distutils.spawn.find_executable("glslc")
-_SPIRV_CROSS_EXEC = distutils.spawn.find_executable("spirv-cross")
+_DXC_EXEC = find_executable("dxc", "DXC_PATH")
+_GLSLC_EXEC = find_executable("glslc", "GLSLC_PATH")
+_SPIRV_CROSS_EXEC = find_executable("spirv-cross", "SPIRV_CROSS_PATH")
 
 
 GLOBAL_SHADER_INCLUDE_DIR = os.path.abspath(os.path.join(

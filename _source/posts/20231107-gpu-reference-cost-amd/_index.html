@@ -1,0 +1,75 @@
+
+ <head>
+    <title>Cost Of Common Shader Expressions (AMD)</title>
+    <meta name="description" content="A reference for evaluating the cost of common shader expressions, targetting AMD GPUs as a baseline.">
+    <meta name="keywords" content="shaders, cost, expense, amd, rendering, graphics, gpu">
+
+    <script>
+    </script>
+
+    <script type="module">
+    </script>
+
+    <style>
+    </style>
+
+ </head>
+ <body>
+
+
+<main>
+<markdown>
+
+# Cost Of Common Shader Expressions (AMD)
+
+## Background
+
+It's not uncommon for both artists and even graphics programmers to not know how expensive certain operations are when making a material or writing a shader.
+
+This reference serves as a way to to make a better informed decision when optimizing (targetting AMD, with most costs being roughly equivilant on NVIDIA).
+
+We're not going to deep dive into compiler optimizations, register juggling or any specific arcitecture.
+That would take far too long and somewhat defeat the purpose of this being a high level, grain of salt reference.
+
+I'm using <a href="https://gpuopen.com/rga/" target="_blank">Radeon GPU Analyzer</a> Version: 2.8.0.20 (09/17/2023), first compiling into SPIR-V then using the RGA offline compiler.
+
+Some concepts that are worth noting though are:
+
+### VGPR (vector register)
+Nothing to do with vector types (e.g `float2`, `float3`, `float4`), GPUs will *typically* treat every component individually (there are exceptions, but we're not covering them).
+
+These are basically variables that are *thread-specific*, usually if you're GPU is being under utilized, it's because
+you are using too many VGPRs at the same time (low occupancy).
+
+For example, if you're sampling a texture, you'll be using 2 VGPRs for the UV and 4 VGPRs for the sampled colour (give or take).
+
+
+### SGPR (scalar register)
+These are basically constants (e.g frame number), specifically values that are constant within the same WAVE (group of threads).
+
+Bound textures and samplers also use SGPRs, but this is typically more of a low level detail.
+
+It is possible to have low occupancy due to using too many SGPRs, but this is rare compared to using too many VGPRs.
+
+
+### Abs and negation are free
+Abs and negation (for floats) are nearly always free, every GPU I'm aware of (including mobiles), reserve two bits to call `abs` and negate an input.
+
+(This also includes `-abs(x)`).
+
+
+### Bitcasting is free
+Bitcasting (not converting) is always free, registers hold 32bit values that can be treated as `float`, `uint`, `int` and `bool` on a whim.
+
+
+
+
+</markdown>
+  </main>
+
+
+<script>
+</script>
+
+
+ </body>
