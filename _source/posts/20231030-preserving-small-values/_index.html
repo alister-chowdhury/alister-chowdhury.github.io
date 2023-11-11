@@ -565,9 +565,20 @@ Each component required 2 full rate instructions to be converted into their inte
     uint R = uint(rgb.x * 2047.0 + 0.5);
 ```
 
-### Optimization For Encoding
+### Optimization For Encoding / Decoding using Denormals
 
-Assuming the target architecture handles denormals correctly (which may not be the case on all GPUs),
+<br>
+
+<div style="color:#fc0;font-weight:bold">&#9888; Denormal support (atleast with WebGL) is spotty at best &#9888;</div>
+
+
+Massive thanks to the lovely people at shadertoy for doing a little survey: <a href="https://www.shadertoy.com/view/dlcyD7" target="_blank">Does Your GPU Support Denormals?</a>
+
+<br>
+
+#### Encoding
+
+Assuming the target architecture handles denormals correctly,
 we can reduce the number of instructions from 2 to 1:
 
 ```c
@@ -588,13 +599,12 @@ uint pack(float3 rgb)
 }
 ```
 
-### Theoretical Optimization For Decoding
+#### Theoretical Optimization For Decoding
 
 Unfortunately, we can't simply do the inverse of the above, since by definition of it being a denormal,
 it has no representable inverse.
 
 We can however shift our number such that the most significant bit lies on the least significant exponent bit.
-(Once again, this may not work correctly on GPUs that don't respect denormals correctly).
 
 e.g:
 

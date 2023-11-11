@@ -156,7 +156,7 @@ float3 unpack(uint packed)
 </code></pre> <p>Each component required 2 full rate instructions to be converted into their integer form:</p> <pre><code class=language-c>    // 1 x mad
     // 1 x cvt f32 to u32
     uint R = uint(rgb.x * 2047.0 + 0.5);
-</code></pre> <h3>Optimization For Encoding</h3> <p>Assuming the target architecture handles denormals correctly (which may not be the case on all GPUs), we can reduce the number of instructions from 2 to 1:</p> <pre><code class=language-c>    // 1 x mul
+</code></pre> <h3>Optimization For Encoding / Decoding using Denormals</h3> <br> <div style=color:#fc0;font-weight:bold>&#9888; Denormal support (atleast with WebGL) is spotty at best &#9888;</div> <p>Massive thanks to the lovely people at shadertoy for doing a little survey: <a href=https://www.shadertoy.com/view/dlcyD7 target=_blank>Does Your GPU Support Denormals?</a></p> <br> <h4>Encoding</h4> <p>Assuming the target architecture handles denormals correctly, we can reduce the number of instructions from 2 to 1:</p> <pre><code class=language-c>    // 1 x mul
     uint R = asuint(rgb.x * asfloat(2047));
 </code></pre> <p>This works, by once again expoiting the fact the mantissa works linearly and would work up to 23bits.</p> <pre><code class=language-c>uint pack(float3 rgb)
 {
@@ -165,7 +165,7 @@ float3 unpack(uint packed)
     uint B = asuint(rgb.z * asfloat(511u));  // (1 &lt;&lt; 9) - 1
     return R | (G &lt;&lt; 11) | (B &lt;&lt; 23);
 }
-</code></pre> <h3>Theoretical Optimization For Decoding</h3> <p>Unfortunately, we can't simply do the inverse of the above, since by definition of it being a denormal, it has no representable inverse.</p> <p>We can however shift our number such that the most significant bit lies on the least significant exponent bit. (Once again, this may not work correctly on GPUs that don't respect denormals correctly).</p> <p>e.g:</p> <pre><code>8bits = 0b11111111
+</code></pre> <h4>Theoretical Optimization For Decoding</h4> <p>Unfortunately, we can't simply do the inverse of the above, since by definition of it being a denormal, it has no representable inverse.</p> <p>We can however shift our number such that the most significant bit lies on the least significant exponent bit.</p> <p>e.g:</p> <pre><code>8bits = 0b11111111
 
 s eeeeeee mmmmmmmmmmmmmmmmmmmmmmm
 0 0000000 00000000000000011111111
