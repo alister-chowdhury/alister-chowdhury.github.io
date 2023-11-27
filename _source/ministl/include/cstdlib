@@ -1,0 +1,12 @@
+#pragma once
+
+#include "stdlib.h"
+
+namespace std
+{
+
+__MINSTL_FORCEINLINE void* malloc(__SIZE_TYPE__ __sz) { return ::malloc(__sz); }
+__MINSTL_FORCEINLINE void* realloc(void* __p, __SIZE_TYPE__ __sz) { return ::realloc(__p, __sz); }
+__MINSTL_FORCEINLINE void free(void* __p) { return ::free(__p); }
+
+} // namespace std

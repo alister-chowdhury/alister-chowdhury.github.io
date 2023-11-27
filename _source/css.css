@@ -52,6 +52,14 @@ main pre
 }
 
 
+.full100
+{
+  width: 100vw;
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+
 h1,h2,h3,h4
 {
     text-decoration: underline;

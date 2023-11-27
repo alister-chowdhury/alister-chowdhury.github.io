@@ -1,0 +1,2 @@
+#version 300 es
+precision highp float;precision highp int;uniform highp vec4 v1HybridParams;uniform highp usampler2D v1DfTexture;in highp vec2 uv;layout(location=0)out highp vec4 col;void main(){uvec4 _=texelFetch(v1DfTexture,ivec2(uv*v1HybridParams.xx),0);uint a=_.x;highp float b=float(a&255u)*.015686275;highp float c=float((a>>8u)&255u)*.25;col=vec4(b,c,length(vec2(b,c)),1.);}

@@ -7,6 +7,7 @@ __MINSTL_EXTERN_C_START
 
 
 void* malloc(__SIZE_TYPE__);
+void* realloc(void*, __SIZE_TYPE__);
 void free(void*);
 
 

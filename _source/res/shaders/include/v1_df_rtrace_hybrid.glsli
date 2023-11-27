@@ -1,0 +1,164 @@
+#ifndef DF_RTRACE_V1_GLSLI
+#define DF_RTRACE_V1_GLSLI
+
+
+layout(binding=DF_RTRACE_DFTEX_V1_LOC)      uniform usampler2D v1DfTexture;
+
+// WebGL doesn't support 1D textures
+#if TARGETTING_WEBGL
+layout(binding=DF_RTRACE_LINES_V1_LOC)      uniform sampler2D v1LinesBuffer;
+#define V1_DFRT_TEXEL_FETCH(P) texelFetch(v1LinesBuffer, ivec2((P), 0), 0)
+#else // TARGETTING_WEBGL
+layout(binding=DF_RTRACE_LINES_V1_LOC)      uniform sampler1D v1LinesBuffer;
+#define V1_DFRT_TEXEL_FETCH(P) texelFetch(v1LinesBuffer, (P), 0)
+#endif // TARGETTING_WEBGL
+
+layout(location=DF_RTRACE_PARAMS_V1_LOC)    uniform vec4 v1HybridParams; // .x = res, .yzw = unused
+
+
+struct TraceHybridV1Result
+{
+    bool    hit;
+    float   hitDistSq;
+    vec4    line; // ptA = line.xy, ptB = line.xy - line.zw
+    float   hitLineInterval;
+    vec2    dUV; // ro + dUV = intersection point
+    uint    numIterations;
+    uint    numLineIntersections;
+};
+
+
+TraceHybridV1Result traceHybridV1(vec2 ro, vec2 rd, float maxDist)
+{
+    const int maxSteps = 128;
+
+    TraceHybridV1Result result;
+    result.hit = true;
+    result.line = vec4(ro + rd, vec2(-rd.y, rd.x));
+    result.hitDistSq = maxDist * maxDist;
+    result.dUV = rd * maxDist;
+    result.numIterations = 0;
+    result.numLineIntersections = 0;
+
+    float distTravelled = 0;
+    vec2 uv = ro;
+
+    // If ro starts outside of [0, 0] => [1, 1]
+    // then we should do an intersection
+    // and start from there.
+    if((min(uv.x, uv.y) <= 0.0)
+        || (max(uv.x, uv.y) >= 1.0))
+    {
+        // https://www.geogebra.org/calculator/gcmwgqhk
+        vec2 invRd = 1.0 / rd;
+        vec2 bboxMin = vec2(0);
+        vec2 bboxMax = vec2(1);
+        vec2 xintervals = (vec2(bboxMin.x, bboxMax.x) - ro.xx) * invRd.x;
+        vec2 yintervals = (vec2(bboxMin.y, bboxMax.y) - ro.yy) * invRd.y;
+        if(xintervals.x > xintervals.y) { xintervals.xy = xintervals.yx; }
+        if(yintervals.x > yintervals.y) { yintervals.xy = yintervals.yx; }
+        
+        vec2 intervals = vec2(max(xintervals.x, yintervals.x), min(xintervals.y, yintervals.y));
+        intervals.x = max(0, intervals.x);
+
+        if((intervals.x < intervals.y) && ((intervals.x * intervals.x) < result.hitDistSq))
+        {
+            intervals.x += 1e-5;
+            distTravelled = intervals.x;
+            uv += rd * intervals.x;
+        }
+    }
+
+    // Cache to prevent evaluating the same ranges
+    uint currentCacheKey = 0u;
+
+    bool done = false;
+    while(!done)
+    {
+        uint numLines = 0;
+        uint offset = 0;
+
+        // Find the next intersection bucket
+        for(;result.numIterations < maxSteps; ++result.numIterations)
+        {
+            if((distTravelled >= maxDist)
+                || (min(uv.x, uv.y) < 0.0)
+                || (max(uv.x, uv.y) > 1.0))
+            {
+                result.hit = false;
+                break;
+            }
+
+            ivec2 coord = ivec2(uv * v1HybridParams.xx);
+            uint texelData = texelFetch(v1DfTexture, coord, 0).x;
+
+            float dist = float(texelData & 0xff) / 255.0;
+            distTravelled += dist;
+            numLines = (texelData >> 8) & 0xff;
+            offset = texelData >> 16;
+            uv += rd * dist;
+
+            if(numLines > 0)
+            {
+                uint cacheKey = texelData >> 8u;
+                if(currentCacheKey == cacheKey)
+                {
+                    numLines = 0u;
+                }
+                else
+                {
+                    currentCacheKey = cacheKey;
+                }
+            }
+
+            if(numLines > 0)
+            {
+                break;
+            }
+        }
+
+        if(numLines == 0)
+        {
+            done = true;
+            break;
+        }
+
+        // Run intersections
+        result.numLineIntersections += numLines;
+        
+        uint start = offset;
+        uint end = offset + numLines;
+        for(; start < end; ++start)
+        {
+            // https://www.geogebra.org/calculator/ytnhzgzb
+
+            vec4 data = V1_DFRT_TEXEL_FETCH(int(start));
+            vec2 A = ro;
+            vec2 AB = -result.dUV;
+            vec2 C = data.xy;
+            vec2 CD = data.zw;
+            vec2 AC = A - C;
+
+            float d = AB.x * CD.y - AB.y * CD.x; // cross(AB, CD)
+            float u = AC.x * AB.y - AC.y * AB.x; // cross(AC, AB)
+            float v = AC.x * CD.y - AC.y * CD.x; // cross(AC, CD)
+
+            uint dSign = floatBitsToUint(d) & 0x80000000u;
+            u = uintBitsToFloat(floatBitsToUint(u) ^ dSign); // u *= sign(d);
+            v = uintBitsToFloat(floatBitsToUint(v) ^ dSign); // v *= sign(d);
+
+            if((min(u, v) > 0.0) && (max(u, v) < abs(d)))
+            {
+                result.hitLineInterval = -u / abs(d);
+                result.line = data;
+                result.dUV *= v / abs(d);
+                result.hitDistSq = dot(result.dUV, result.dUV);
+                done = true;
+            }
+        }
+    }
+
+    return result;
+}
+
+#endif // DF_RTRACE_V1_GLSLI

@@ -12,7 +12,6 @@ typedef __UINTPTR_TYPE__ uintptr;
 #define MALLOC_DEBUG 0
 #endif // MALLOC_DEBUG
 
-
 // Simplified malloc just uses a single unsorted bin, rather
 // having specific bins for different sizes.
 //
@@ -72,6 +71,8 @@ WASM_EXPORT int malloc_take_last_error()
 #define _SUBBYTES(addr, size) ((void*)((uintptr)addr - size))
 #define _MAXALLOC ((_TOMBSTONE - (_TOMBSTONE & (_GRAINSIZE - 1))) - sizeof(memblk))
 #define _MINALLOC (sizeof(memblk))
+
+#define _GRAINALIGN(x) ((x + (_GRAINSIZE - 1)) & ~(_GRAINSIZE - 1))
 
 #define _BIN_ALLOCATED 0
 #define _BIN_UNSORTED 1
@@ -320,7 +321,7 @@ WASM_EXPORT_IF_DEBUG void* malloc(sz bytes)
     }
 
     // Align to grainsize
-    bytes = ((bytes - 1) | (_GRAINSIZE - 1)) + 1;
+    bytes = _GRAINALIGN(bytes);
 
     bytes += sizeof(memblk_header);
     if (bytes < _MINALLOC)
@@ -396,4 +397,117 @@ WASM_EXPORT_IF_DEBUG void* malloc(sz bytes)
 
     // Failed allocation
     return 0;
+}
+
+
+#define REALLOC_STATE_NULLPTR   0
+#define REALLOC_STATE_FAILED    1
+#define REALLOC_STATE_NOOP      2
+#define REALLOC_STATE_STEAL     3
+#define REALLOC_STATE_FULL      4
+
+
+void* realloc(void* mem, sz bytes)
+{
+    int state;
+    sz currentbytes;
+    sz bestsize;
+    sz stealbytes;
+    void* newmem;
+
+    do
+    {
+        if(!mem)
+        {
+            state = REALLOC_STATE_NULLPTR;
+            break;
+        }
+
+        if (bytes == 0 || bytes > _MAXALLOC)
+        {
+            state = REALLOC_STATE_FAILED;
+            break;
+        }
+
+        memblk* blk = ((memblk*)_SUBBYTES(mem, sizeof(memblk_header)));
+
+#if MALLOC_DEBUG
+        IF_UNLIKELY(blk->header.bin != _BIN_ALLOCATED)
+        {
+            last_error = MALLOC_ERROR_DOUBLE_FREE;
+            return 0;
+        }
+#endif // MALLOC_DEBUG
+
+        currentbytes = blk->header.size - sizeof(memblk_header);
+
+        if(currentbytes >= bytes)
+        {
+            state = REALLOC_STATE_NOOP;
+            break;
+        }
+
+        bestsize = _GRAINALIGN(bytes) + sizeof(memblk_header);
+        stealbytes = bestsize - blk->header.size;
+        memblk* next = ((memblk*)_ADDBYTES(blk, blk->header.size));
+        if (next->header.bin != _BIN_ALLOCATED
+                && next->header.size >= stealbytes
+                && next->header.size != _TOMBSTONE)
+        {
+            state = REALLOC_STATE_STEAL;
+            break;
+        }
+
+        state = REALLOC_STATE_FULL;
+    }
+    while(0);
+
+    if(state == REALLOC_STATE_NOOP || state == REALLOC_STATE_STEAL)
+    {
+        newmem = mem;
+        if(state == REALLOC_STATE_STEAL)
+        {
+            memblk* blk = ((memblk*)_SUBBYTES(mem, sizeof(memblk_header)));
+            memblk* next = ((memblk*)_ADDBYTES(blk, blk->header.size));
+            _POP_MEMBLK_LINKS(next);
+
+            if((next->header.size - stealbytes) <= sizeof(memblk))
+            {
+                blk->header.size += next->header.size;
+                ((memblk*)_ADDBYTES(blk, blk->header.size))->header.prevsize = 0;
+            }
+            else
+            {
+                blk->header.size = bestsize;
+                sz split_size = next->header.size - stealbytes;
+                memblk* split = ((memblk*)_ADDBYTES(blk, blk->header.size));
+                split->header.size = split_size;
+                split->header.prevsize = 0;
+                split->header.bin = _BIN_UNSORTED;
+                ((memblk*)_ADDBYTES(split, split->header.size))->header.prevsize = split_size;
+                _PUSH_MEMBLK_LINKS(&unsorted_bin, split)
+            }
+        }
+    }
+
+    if(state == REALLOC_STATE_NULLPTR || state == REALLOC_STATE_FULL)
+    {
+        newmem = malloc(bytes);
+        if((state == REALLOC_STATE_FULL) && newmem)
+        {
+            sz copybytes = currentbytes;
+            if(copybytes > bytes)
+            {
+                copybytes = bytes;
+            }
+            __builtin_memcpy(newmem, mem, copybytes);
+        }
+    }
+
+    if(state == REALLOC_STATE_FAILED || state == REALLOC_STATE_FULL)
+    {
+        free(mem);
+    }
+
+    return newmem;
 }

@@ -1,0 +1,18 @@
+#pragma once
+
+#include "string.h"
+
+namespace std
+{
+
+__MINSTL_FORCEINLINE void* memcpy(void* __dst, const void* __src, __SIZE_TYPE__ __sz) { return __builtin_memcpy(__dst, __src, __sz); }
+__MINSTL_FORCEINLINE void* memmove(void* __dst, const void* __src, __SIZE_TYPE__ __sz) { return __builtin_memmove(__dst, __src, __sz); }
+__MINSTL_FORCEINLINE void* memset(void* __dest, int __c, __SIZE_TYPE__ __n) { return __builtin_memset(__dest, __c, __n); }
+
+
+__MINSTL_FORCEINLINE __attribute__((const)) int memcmp(const void* __a, const void* __b, __SIZE_TYPE__ __sz)
+{
+    return ::memcmp(__a, __b, __sz);
+}
+
+} // namespace std

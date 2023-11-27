@@ -1,0 +1,8 @@
+{
+    "index.html": {"minify": true},
+    "dfrt_v1.js": {"minify": true},
+    "dfrt_v1_worker.js": {"minify": true},
+    "shaders/compiled/*": {"minify": true},
+    "res/*.png": {},
+    "thumbnail.png": {}
+}

@@ -1,0 +1,463 @@
+
+ <head>
+    <title>Hybrid Distance Field / Raytracing In 2D</title>
+    <meta name="description" content="A look at how to combine the performance of distance fields, with the precision of raytracing.">
+    <meta name="keywords" content="raytracing, distance field, shadows, blocking, visibility, 2D, rendering, graphics">
+
+    <script>
+        window.resourcesReady = false;
+        window.afterLoaded = [];
+        function addAfterLoaded(f)
+        {
+            if(!window.resourcesReady)
+            {
+                window.afterLoaded.push(f);
+            }
+            else
+            {
+                f();
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { DfrtV1 } from './dfrt_v1.js';
+        window.bindDFRTV1Context = DfrtV1.bindDFRTV1Context;
+        window.resourcesReady = true;
+        window.afterLoaded.forEach(f => {f()});
+    </script>
+
+    <style>
+        canvas
+        {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .imRef0 > div > img
+        {
+            width: min(100%, 512px);
+            aspect-ratio: 1 / 1;
+        }
+
+        .imRef1 > div > img
+        {
+            width: min(100%, 568px);
+            aspect-ratio: 568 / 353;
+        }
+
+        .imRef2 > div > img
+        {
+            width: min(100%, 96px);
+            aspect-ratio: 96 / 382;
+        }
+
+        .imRef1 > div > img
+        {
+            width: min(100%, 256px);
+            aspect-ratio: 1 / 1;
+        }
+
+    </style>
+
+ </head>
+ <body>
+
+
+<main>
+<markdown>
+
+# Hybrid Distance Field / Raytracing In 2D
+
+## Background
+It's not a secret that raytracing isn't cheap, even if you're using hardware accelerated raytracing, most of the engineering
+effort ends up creatively avoiding actually raytracing (denoising, upscaling or using screen traces).
+
+Comparatively, distance field tracing is very cheap.
+
+As an example, taking the same code I wrote for <a href="/posts/20230620-raytracing-in-2d/" target="_blank">Raytracing In 2D</a>, on an
+Intel UHD 630, at 1920x1080, it takes ~10ms to shoot a single ray per pixel from some origin.<br>
+By comparison, using distance fields takes around ~4ms.
+
+So why don't we just use distance fields for everything?<br>
+Put bluntly, they aren't precise.
+
+Let's have a look:
+
+<div class="imTable imRef0">
+  <div><img alt="ref_0_512" src="res/ref_0_512.png"><br>A suspiciously good looking visibility trace</div>
+</div>
+
+<br>
+<br>
+You might look at this and go, what's the problem, it looks fine?<br>
+Well this 512x512 image needed a 512x512 distance field texture to look correct.
+<br>
+<br>
+
+What happens if we decrease the resolution and zoom in.
+
+<div class="imTable imRef1">
+  <div><img alt="ref_1_512" src="res/ref_1_512.png"><br>512x512<br>Reasonable</div>
+  <div><img alt="ref_1_256" src="res/ref_1_256.png"><br>256x256<br>Less good...</div>
+  <div><img alt="ref_1_128" src="res/ref_1_128.png"><br>128x128<br>Unforgivable</div>
+</div>
+
+<br>
+<br>
+The other problem, even at higher resolutions are thin tunnels:
+<br>
+<br>
+<div class="imTable imRef2">
+  <div><img alt="ref_2_512" src="res/ref_2_512.png"><br>All the resolution in the world won't save you from progressing too slowly.</div>
+</div>
+<br>
+<br>
+
+If you only need a very coarse visibility test for something like an AI, maybe this is fine.<br>
+Likewise if you're only concerned with what's on the screen (for instance ambient shadows), you can generate a screen-sized DF from a BVH very quickly per frame.<br>
+
+
+## Creating A Hybrid
+
+Ideally, we would be able to evaluate a distance field, up until we're near some geometry, then do proper line-ray intersections.<br>
+The immediate reaction to this idea is "I'm not storing a list of lines per pixel", an understandable response.<br>
+<br>
+But when you consider there is only a certain amount of unique sets of lines, this starts to sound more do-able.<br>
+<br>
+The pixel format I've chosen has the following layout:
+
+```c
+struct Pixel
+{
+    u8  distance;   // df component
+    u8  numLines;   // lines to intersect
+    u16 offset;     // offset to where lines start in a buffer.
+};
+```
+
+Even better, if we ignore the distance to lines that we'd be intersecting, we effectively get to bypass the tunnel issue.<br>
+For my implementation, I capture every line that is within 2 pixels distance.<br>
+<br>
+And here is a visualisation of the df and numlines components:
+
+<div class="imTable imRef3">
+  <div><img alt="ref_3_1" src="res/ref_3_1.png"><br>df</div>
+  <div><img alt="ref_3_0" src="res/ref_3_0.png"><br>numlines</div>
+</div>
+
+<br>
+The order of operations are:
+<ol>
+<li>For each pixel, evaluate the distance to non-captured lines, adding the captured lines to a set.</li>
+<li>Write the set to a buffer.</li>
+<li>Insert the buffer offset back into the image.</li>
+</ol>
+
+
+Or in psuedocode (python):
+
+```python
+lines_to_id = {}
+df_texture_data = [None] * (res * res)
+
+extra_capture_pixels = 1
+capture_dist = (0.5 + extra_capture_pixels) * sqrt(2) / res
+
+for y in range(res):
+    for x in range(res):
+
+        captured_lines = []
+        min_dist = 1.0
+
+        # capture lines + calc min distance
+        for line in lines:
+
+            dist_to_line = calc_dist_to_line((x, y), line)
+
+            if dist_to_line <= capture_dist:
+                captured_lines.append(line)
+            elif dist_to_line < min_dist:
+                dist_to_line = min_dist
+
+        # add the lines to a set if they haven't already
+        if lines not in lines_to_id:
+            lines_to_id[lines] = len(lines_to_id)
+        line_group_id = lines_to_id[lines]
+
+        df_texture_data[y * res + x] = (min_dist, line_group_id)
+
+# compact the lines into a single stream in whatever way you want.
+num_lines, offsets, line_buffer = compact_lines_to_buffer(lines_to_id)
+
+df_texture = [
+    combine(
+        min_dist,
+        num_lines[line_group_id],
+        offsets[line_group_id]
+    )
+    for min_dist, line_group_id in df_texture_data
+]
+
+return df_texture, line_buffer
+```
+
+Which all things considered, is relatively simple.<br>
+
+<br>
+
+When using a resolution of 128x128, that ~10ms raytracing time now takes around ~4ms, putting it on par with pure distance field tracing.<br>
+
+The obvious limitation here is that you wouldn't really want to generate this per frame, since it is a bit expensive.<br>
+
+<br>
+
+The traversal can be summed up to:
+
+```c
+// Cache to prevent evaluating the same ranges
+uint currentCacheKey = 0u;
+
+bool hit = true;
+bool done = false;
+while(!done)
+{
+    uint numLines = 0;
+    uint offset = 0;
+
+    // Find the next intersection bucket
+    for(;numIterations < maxSteps; ++numIterations)
+    {
+        if((distTravelled >= maxDist)
+            || (min(uv.x, uv.y) < 0.0)
+            || (max(uv.x, uv.y) > 1.0))
+        {
+            hit = false;
+            break;
+        }
+
+        ivec2 coord = ivec2(uv * dfTextureRes);
+        uint texelData = texelFetch(dfTexture, coord, 0).x;
+
+        float dist = float(texelData & 0xff) / 255.0;
+        distTravelled += dist;
+        numLines = (texelData >> 8) & 0xff;
+        offset = texelData >> 16;
+        uv += rd * dist;
+
+        if(numLines > 0)
+        {
+            // Don't intersect the same data twice.
+            uint cacheKey = texelData >> 8u;
+            if(currentCacheKey == cacheKey)
+            {
+                numLines = 0u;
+            }
+            else
+            {
+                currentCacheKey = cacheKey;
+            }
+        }
+
+        if(numLines > 0)
+        {
+            break;
+        }
+    }
+
+    if(numLines == 0)
+    {
+        done = true;
+        break;
+    }
+
+    // Run intersections    
+    uint start = offset;
+    uint end = offset + numLines;
+    for(; start < end; ++start)
+    {
+        // ... do line-line intersection ...
+        if(intersects)
+        {
+            done = true;
+        }
+    }
+}
+```
+
+
+<br>
+<div style="font-weight:bold;font-size:1.3em;text-align:center">As always, here is a live demo</div>
+<br>
+
+<div>
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<div class="twoxnctrls" id="drawCanvasControls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="dfResolutionCtrlDivLabel">DF Resolution</div>
+<!--    --><div><input aria-labelledby="dfResolutionCtrlDivLabel" id="dfResolutionCtrl" disabled type="number" min="32" max="256" value="128" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
+<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Vis Type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-pointlight" name="visModeTypeCtrl" checked="checked"><label for="visModeTypeCtrl-pointlight">Pointlight</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-visibility" name="visModeTypeCtrl"><label for="visModeTypeCtrl-visibility">Visibility</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIntersections" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIntersections">Num Intersections</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIterations" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIterations">Num DF Iterations</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-compositeray" name="visModeTypeCtrl"><label for="visModeTypeCtrl-compositeray">Composite (ray)</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-df" name="visModeTypeCtrl"><label for="visModeTypeCtrl-df">Distance Field</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numlines" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numlines">Num Lines</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-compositedf" name="visModeTypeCtrl"><label for="visModeTypeCtrl-compositedf">Composite (DF)</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Scene</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType"><label for="sceneType-simple">Simple</label>
+<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
+<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType" checked="checked"><label for="sceneType-complex">Complex</label>
+<!--    --></div>
+<!----></div>
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+Here are all the relevant source code files:
+* DFRT generation (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/df_rtrace_hybrid_v1/dfrt_generate_v1.cpp">dfrt_generate_v1.cpp</a>
+* WASM Bootstrap (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/df_rtrace_hybrid_v1/wasm_bootstreap_dfrt_v1.c">wasm_bootstreap_dfrt_v1.c</a>
+* Ray traversal (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/shaders/include/v1_df_rtrace_hybrid.glsli">v1_df_rtrace_hybrid.glsli</a>
+* Visualisers Ray (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231206-hybrid-df-rtrace-2d/shaders/dfrt_v1_tracing_test.frag">dfrt_v1_tracing_test.frag</a>
+* Visualisers DF (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231206-hybrid-df-rtrace-2d/shaders/dfrt_v1_vis_df.frag">dfrt_v1_vis_df.frag</a>
+* JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231206-hybrid-df-rtrace-2d/dfrt_v1.js">dfrt_v1.js</a> and <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231206-hybrid-df-rtrace-2d/dfrt_v1_worker.js">dfrt_v1_worker.js</a>
+* WASM binary: <a target="_blank" href="/res/dfrt_v1.wasm">dfrt_v1.wasm</a>
+
+
+</markdown>
+</main>
+
+
+<script>
+
+    // Bootstrap the render region to be somewhat reasonable
+    {
+        let canvasSize = Math.round(
+            Math.min(
+                (window.innerHeight || document.documentElement.clientHeight),
+                (window.innerWidth || document.documentElement.clientWidth)
+            ) * 0.6
+        );
+
+        const resolutionCtrl = document.getElementById("resolutionCtrl");
+        canvasSize = Math.min(resolutionCtrl.max, Math.max(resolutionCtrl.min, Math.round(canvasSize)));
+        resolutionCtrl.value = canvasSize;
+        
+        const drawCanvas = document.getElementById("drawCanvas");
+        drawCanvas.style.width = canvasSize + "px";
+        drawCanvas.style.height = canvasSize + "px";
+    }
+
+    addAfterLoaded(()=>{
+        const drawCanvas = document.getElementById("drawCanvas");
+        const drawCtx = window.bindDFRTV1Context(drawCanvas);
+        if(drawCtx.valid)
+        {
+
+            // Hookup controls
+            const resolutionCtrl = document.getElementById("resolutionCtrl");
+            resolutionCtrl.disabled = false;
+            const updateRes = (writeBack)=>
+            {
+                const value = Math.min(resolutionCtrl.max, Math.max(resolutionCtrl.min, Math.round(resolutionCtrl.value)));
+                if(writeBack && (resolutionCtrl.value != value))
+                {
+                    resolutionCtrl.value = value;
+                }
+                drawCanvas.style.width = value + "px";
+                drawCanvas.style.height = drawCanvas.style.width;
+                drawCtx.redraw();
+            };
+            resolutionCtrl.onchange = ()=>{updateRes(true) };
+            resolutionCtrl.oninput = ()=>{updateRes(false); };
+
+            const dfResolutionCtrl = document.getElementById("dfResolutionCtrl");
+            dfResolutionCtrl.disabled = false;
+            const updateDFRes = (writeBack)=>
+            {
+                const value = Math.min(dfResolutionCtrl.max, Math.max(dfResolutionCtrl.min, Math.round(dfResolutionCtrl.value)));
+                if(writeBack && (dfResolutionCtrl.value != value))
+                {
+                    dfResolutionCtrl.value = value;
+                }
+
+                if(drawCtx.dfRes != value)
+                {
+                    drawCtx.dfRes = value;
+                    drawCtx.updateDFRTState();                    
+                }
+            };
+            dfResolutionCtrl.onchange = ()=>{updateDFRes(true) };
+            dfResolutionCtrl.oninput = ()=>{updateDFRes(false); };
+
+            const drawLinesOverlayCtrl = document.getElementById("drawLinesOverlayCtrl");
+            drawLinesOverlayCtrl.disabled = false;
+            drawLinesOverlayCtrl.onchange = ()=>{
+                drawCtx.drawLines = drawLinesOverlayCtrl.checked;
+                drawCtx.redraw();
+            };
+
+            const visModeTypeCtrlSuffixs = ["pointlight",
+                                           "visibility",
+                                           "numIntersections",
+                                           "numIterations",
+                                           "compositeray",
+                                           "df",
+                                           "numlines",
+                                           "compositedf"];
+            for(let i=0; i<visModeTypeCtrlSuffixs.length; ++i)
+            {
+                const fossilizedIndex = i;
+                const element = document.getElementById("visModeTypeCtrl-" + visModeTypeCtrlSuffixs[i]);
+                element.disabled = false;
+                element.onchange = ()=>{
+                    drawCtx.visMode = fossilizedIndex;
+                    drawCtx.redraw();
+                };
+            }
+
+            const sceneCtrlSuffixs = ["simple", "moderate", "complex"];
+            const scenePaths = ["/res/lines_simple0.f32", "/res/lines_moderate0.f32", "/res/lines.f32"];
+            for(let i=0; i<sceneCtrlSuffixs.length; ++i)
+            {
+                const fossilizedPath = scenePaths[i];
+                const element = document.getElementById("sceneType-" + sceneCtrlSuffixs[i]);
+                element.disabled = false;
+                element.onchange = ()=>{
+                    drawCtx.linesPath = fossilizedPath;
+                    drawCtx.updateDFRTState();
+                };
+            }
+
+        }
+        else
+        {
+            drawCanvas.style.display = "none";
+            document.getElementById("drawCanvasControls").style.display = "none";
+            var notSupported = document.getElementById("notSupportedBrowser");
+            notSupported.style.display = "block";
+            notSupported.innerHTML = "WebGL2 not supported :(";
+            return;
+        }
+    });
+
+</script>
+
+ </body>
