@@ -13,6 +13,7 @@ Uses a custom static site generator (which lives under `builder`).
 * LLVM (Been using 16.0.0), optional to compile C/C++
 * VulkanSDK (Been using 1.3.211.0), optional to compile to WebGPU and WGSL
 * tint, optional to compile to WGSL (needs SPIRV reader and WGSL writer options enabled).
+* naga, optional to compile to WSGL (been using 0.14.0).
 
 
 ## Layout

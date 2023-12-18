@@ -1,0 +1,422 @@
+#ifndef LINE_BVH_V2_TRACING_GLSLI
+#define LINE_BVH_V2_TRACING_GLSLI
+
+
+// Should be like log2(num_lines) + 1 for maximum occupancy
+// assuming a mostly perfect binary tree.
+#ifndef LINE_BVH_V2_STACK_SIZE
+#define LINE_BVH_V2_STACK_SIZE 16
+#endif // LINE_BVH_V2_STACK_SIZE
+
+#ifndef LINE_BVH_V2_FORCE_FULL_TRAVERSAL
+#define LINE_BVH_V2_FORCE_FULL_TRAVERSAL 0
+#endif // LINE_BVH_V2_FORCE_FULL_TRAVERSAL
+
+
+readonly  layout(std430, binding = LINE_BVH_V2_BINDING) buffer v2LinesBvh_ { vec4 v2LinesBvh[]; };
+
+
+#define LINE_BVH_V2_BBOX_TYPE           0
+#define LINE_BVH_V2_LINE_BUCKET_TYPE    1
+
+
+struct LineBvhV2Stack
+{
+    int index;
+    int stack[LINE_BVH_V2_STACK_SIZE];
+};
+
+
+struct LineBvhV2Result
+{
+    bool    hit;
+    uint    hitLineId;
+    float   hitDistSq;
+    vec4    line; // ptA = line.xy, ptB = line.xy - line.zw
+    float   hitLineInterval;
+    vec2    dUV; // ro + dUV = intersection point
+    int     numNodesVisited;
+    int     numLineIntersections;
+};
+
+
+struct FindNearestLineBvhV2Result
+{
+    uint    hitLineId;
+    float   hitDistSq;
+    vec4    line; // ptA = line.xy, ptB = line.xy - line.zw
+    int     numNodesVisited;
+    int     numLineIntersections;
+};
+
+
+void lineBvhV2EvalLineBucket(vec2 ro,
+                             uint packedOffsetCount,
+                             bool stopOnFirstHit,
+                             inout LineBvhV2Result result)
+{
+    uint count = packedOffsetCount >> 24u;
+    uint offset = packedOffsetCount & 0x00ffffffu;
+    uint offsetEnd = offset + count;
+
+    if(!stopOnFirstHit)
+    {
+        result.numLineIntersections += int(count);
+    }
+
+    for(; offset < offsetEnd; ++offset)
+    {
+        vec4 data = v2LinesBvh[offset];
+        vec2 A = ro;
+        vec2 AB = -result.dUV;
+        vec2 C = data.xy;
+        vec2 CD = data.zw;
+        vec2 AC = A - C;
+
+        float d = AB.x * CD.y - AB.y * CD.x; // cross(AB, CD)
+        float u = AC.x * AB.y - AC.y * AB.x; // cross(AC, AB)
+        float v = AC.x * CD.y - AC.y * CD.x; // cross(AC, CD)
+
+        uint dSign = floatBitsToUint(d) & 0x80000000u;
+        u = uintBitsToFloat(floatBitsToUint(u) ^ dSign); // u *= sign(d);
+        v = uintBitsToFloat(floatBitsToUint(v) ^ dSign); // v *= sign(d);
+
+        if(stopOnFirstHit)
+        {
+            ++result.numLineIntersections;
+        }
+
+        if((min(u, v) > 0.0) && (max(u, v) < abs(d)))
+        {
+            result.hitLineId = offset;
+            result.hitLineInterval = -u / abs(d);
+            result.line = data;
+            result.dUV *= v / abs(d);
+            result.hitDistSq = dot(result.dUV, result.dUV);
+            if(stopOnFirstHit)
+            {
+                break;
+            }
+        }
+    }
+}
+
+
+bool lineBvhV2RayBboxTest(vec2 ro,
+                          vec2 invRd,
+                          vec4 data,
+                          inout LineBvhV2Result result,
+                          inout float dist)
+{
+    vec2 bboxMin = data.xy;
+    vec2 bboxMax = data.zw;
+    vec2 xintervals = (vec2(bboxMin.x, bboxMax.x) - ro.xx) * invRd.x;
+    vec2 yintervals = (vec2(bboxMin.y, bboxMax.y) - ro.yy) * invRd.y;
+
+    if(xintervals.x > xintervals.y) { xintervals.xy = xintervals.yx; }
+    if(yintervals.x > yintervals.y) { yintervals.xy = yintervals.yx; }
+
+    vec2 intervals = vec2(max(xintervals.x, yintervals.x), min(xintervals.y, yintervals.y));
+    intervals.x = max(0, intervals.x);
+
+#if !LINE_BVH_V2_FORCE_FULL_TRAVERSAL
+    if((intervals.x <= intervals.y) && ((intervals.x * intervals.x) < result.hitDistSq))
+#endif // LINE_BVH_V2_FORCE_FULL_TRAVERSAL
+    {
+        dist = intervals.x;
+        return true;
+    }
+
+    return false;
+}
+
+
+bool lineBvhV2EvalEntry(vec2 ro,
+                        vec2 invRd,
+                        vec2 metadata,
+                        vec4 bbox,
+                        bool stopOnFirstHit,
+                        inout LineBvhV2Result result,
+                        inout float dist,
+                        inout int idx)
+{
+
+    if(lineBvhV2RayBboxTest(ro, invRd, bbox, result, dist))
+    {
+        if(floatBitsToUint(metadata).x == LINE_BVH_V2_LINE_BUCKET_TYPE)
+        {
+            lineBvhV2EvalLineBucket(ro,
+                                    floatBitsToUint(metadata).y,
+                                    stopOnFirstHit,
+                                    result);
+        }
+        else
+        {
+            idx = floatBitsToInt(metadata).y;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+LineBvhV2Result traceLineBvhV2(vec2 ro, vec2 rd, float maxDist, bool stopOnFirstHit)
+{
+    LineBvhV2Result result;
+    result.hitLineId = 0xffffffffu;
+    result.hitDistSq = maxDist * maxDist;
+    result.dUV = rd * maxDist;
+    result.numNodesVisited = 0;
+    result.numLineIntersections = 0;
+
+    LineBvhV2Stack stack;
+    stack.index = 0;
+
+    vec2 invRd = 1.0 / rd;
+    bool done = false;
+    int head = 0;
+
+    while(!done)
+    {
+        result.numNodesVisited += 1;
+
+        vec4 v0 = v2LinesBvh[head + 0];
+        vec4 v1 = v2LinesBvh[head + 1];
+        vec4 v2 = v2LinesBvh[head + 2];
+
+        vec2 leftMeta = v0.xy;
+        vec4 leftData = v1;
+
+        vec2 addToStackDistances;
+        ivec2 addToStackIds;
+
+        bool leftAddToStack = lineBvhV2EvalEntry(ro,
+                                                 invRd,
+                                                 leftMeta,
+                                                 leftData,
+                                                 stopOnFirstHit,
+                                                 result,
+                                                 addToStackDistances.x,
+                                                 addToStackIds.x);
+
+        vec2 rightMeta = v0.zw;
+        vec4 rightData = v2;
+
+        bool rightAddToStack = lineBvhV2EvalEntry(ro,
+                                                  invRd,
+                                                  rightMeta,
+                                                  rightData,
+                                                  stopOnFirstHit,
+                                                  result,
+                                                  addToStackDistances.y,
+                                                  addToStackIds.y);
+
+        if(stopOnFirstHit && (result.hitLineId != 0xffffffffu))
+        {
+            break;
+        }
+
+        // Prioritise nearest
+        if(leftAddToStack && rightAddToStack)
+        {
+            if(addToStackDistances.x < addToStackDistances.y)
+            {
+                addToStackDistances.xy = addToStackDistances.yx;
+                addToStackIds.xy = addToStackIds.yx;
+            }
+
+            stack.stack[++stack.index] = addToStackIds.x;
+            head = addToStackIds.y;
+        }
+        else if(leftAddToStack)
+        {
+            head = addToStackIds.x;
+
+        }
+        else if(rightAddToStack)
+        {
+            head = addToStackIds.y;
+        }
+        else if(stack.index > 0)
+        {
+            head = stack.stack[stack.index--];
+        }
+        else
+        {
+            done = true;
+        }
+    }
+
+    if(result.hitLineId != 0xffffffffu)
+    {
+        result.hit = true;
+        result.hitLineId -= 189u;
+    }
+    else
+    {
+        result.hit = false;
+    }
+
+    return result;
+}
+
+
+bool findNearestLineBvhV2EvalEntry(vec2 ro,
+                                   vec2 metadata,
+                                   vec4 data,
+                                   inout FindNearestLineBvhV2Result result,
+                                   inout float dist,
+                                   inout int idx)
+{
+    
+    // distance to bbox
+    {
+        vec2 bboxMin = data.xy;
+        vec2 bboxMax = data.zw;
+        vec2 dxdy = max(vec2(0, 0), max(bboxMin - ro, ro - bboxMax));
+        float distSqr = dot(dxdy, dxdy);
+#if !LINE_BVH_V2_FORCE_FULL_TRAVERSAL
+        if(distSqr <= result.hitDistSq)
+#else // !LINE_BVH_V2_FORCE_FULL_TRAVERSAL
+        if(true)
+#endif // LINE_BVH_V2_FORCE_FULL_TRAVERSAL
+        {
+            dist = distSqr;
+            idx = floatBitsToInt(metadata.y);
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    if(floatBitsToUint(metadata).x == LINE_BVH_V2_LINE_BUCKET_TYPE)
+    {
+        uint packedOffsetCount = floatBitsToUint(metadata).y;
+        uint count = packedOffsetCount >> 24u;
+        uint offset = packedOffsetCount & 0x00ffffffu;
+        uint offsetEnd = offset + count;
+
+        result.numLineIntersections += int(count);
+
+        for(; offset < offsetEnd; ++offset)
+        {
+            vec4 line = v2LinesBvh[offset];
+
+            // https://www.geogebra.org/calculator/aajzrdep
+            vec2 A = line.xy - ro;
+            vec2 AB = line.zw;
+            float t = max(0, min(1, dot(A, AB) / dot(AB, AB)));
+            vec2 nearestPoint = A - AB * t;
+
+            float nearestDistSq = dot(nearestPoint, nearestPoint);
+
+            if(nearestDistSq < result.hitDistSq)
+            {
+                result.hitLineId = floatBitsToUint(metadata.y);
+                result.line = line;
+                result.hitDistSq = nearestDistSq;
+            }
+        }
+
+        return false;
+    }
+    
+    // bbox node, add it to the stack
+    return true;
+}
+
+
+FindNearestLineBvhV2Result findNearestLineBvhV2(vec2 ro, float maxDist)
+{
+    FindNearestLineBvhV2Result result;
+    result.hitLineId = 0xffffffffu;
+    result.hitDistSq = maxDist * maxDist;
+    result.numNodesVisited = 0;
+    result.numLineIntersections = 0;
+
+    LineBvhV2Stack stack;
+    stack.index = 0;
+
+    bool done = false;
+    int head = 0;
+
+    while(!done)
+    {
+        result.numNodesVisited += 1;
+
+        vec4 v0 = v2LinesBvh[head + 0];
+        vec4 v1 = v2LinesBvh[head + 1];
+        vec4 v2 = v2LinesBvh[head + 2];
+
+        vec2 leftMeta = v0.xy;
+        vec4 leftData = v1;
+
+        vec2 addToStackDistances;
+        ivec2 addToStackIds;
+
+        bool leftAddToStack = findNearestLineBvhV2EvalEntry(ro,
+                                                            leftMeta,
+                                                            leftData,
+                                                            result,
+                                                            addToStackDistances.x,
+                                                            addToStackIds.x);
+
+        vec2 rightMeta = v0.zw;
+        vec4 rightData = v2;
+
+        bool rightAddToStack = findNearestLineBvhV2EvalEntry(ro,
+                                                             rightMeta,
+                                                             rightData,
+                                                             result,
+                                                             addToStackDistances.y,
+                                                             addToStackIds.y);
+
+        // Prioritise nearest
+        if(leftAddToStack && rightAddToStack)
+        {
+            if(addToStackDistances.x < addToStackDistances.y)
+            {
+                addToStackDistances.xy = addToStackDistances.yx;
+                addToStackIds.xy = addToStackIds.yx;
+            }
+
+            stack.stack[++stack.index] = addToStackIds.x;
+            head = addToStackIds.y;
+        }
+        else if(leftAddToStack)
+        {
+            head = addToStackIds.x;
+
+        }
+        else if(rightAddToStack)
+        {
+            head = addToStackIds.y;
+        }
+        else if(stack.index > 0)
+        {
+            head = stack.stack[stack.index--];
+        }
+        else
+        {
+            done = true;
+        }
+    }
+
+    if(result.hitLineId != 0xffffffffu)
+    {
+        result.hitLineId -= 189u;
+    }
+
+    return result;
+}
+
+
+float findNearestDistanceBvhV2(vec2 ro, float maxDist)
+{
+    return sqrt(findNearestLineBvhV2(ro, maxDist).hitDistSq);
+}
+
+
+#endif // LINE_BVH_V2_TRACING_GLSLI

@@ -1,0 +1,341 @@
+#version 460 core
+#extension GL_EXT_control_flow_attributes : require
+
+
+/*
+    level count : bucket dims
+              1 : 2x2
+              2 : 4x4
+              3 : 8x8
+              4 : 16x16
+*/
+#ifndef NUM_LEVELS
+#define NUM_LEVELS 3
+#endif // NUM_LEVELS
+
+#define BUCKET_SIZE_DIM (1<<NUM_LEVELS)
+
+layout(local_size_x=BUCKET_SIZE_DIM, local_size_y=BUCKET_SIZE_DIM) in;
+
+
+#define BVH_V2_METADATA_BBOX            0
+#define BVH_V2_METADATA_LINE_BUCKET     1
+#define BVH_V2_NODE_FLOAT4_STRIDE       3
+
+readonly layout(std430, binding = 0) buffer inLines_ { vec4 inLines[]; };
+writeonly layout(std430, binding = 1) buffer outBVH_ { vec4 outBVH[]; };
+
+#ifdef VULKAN
+layout(binding=2) uniform numLines_ { uint numLines; };
+#else // VULKAN
+layout(location=0) uniform uint numLines;
+#endif // VULKAN
+
+
+// https://gist.github.com/JarkkoPFC/0e4e599320b0cc7ea92df45fb416d79a
+uint encode16_morton2(uint x, uint y)
+{
+  uint res = x | (uint(y) << 16);
+  res = (res | (res<<4)) & 0x0f0f0f0fu;
+  res = (res | (res<<2)) & 0x33333333u;
+  res = (res | (res<<1)) & 0x55555555u;
+  return uint(res | (res>>15)) & 0xffffu;
+}
+
+
+// When accessing shared memory, we use a linear index
+// based upon the thread id, to prevent bank conflicts.
+//
+// When accessing the BVH memory, we use morton encoding
+// to create better cache coherancy. 
+#define MAKE_LINEAR_ID(tid, brickSize)  ((tid).y * (brickSize) + (tid).x)
+#define MAKE_MORTON_ID(tid)             (encode16_morton2((tid).x, (tid).y))
+
+
+vec4 mergeBounds(vec4 a, vec4 b)
+{
+    return vec4(min(a.xy, b.xy), max(a.zw, b.zw));
+}
+
+float boundsArea(vec4 a)
+{
+    vec2 deriv = a.zw - a.xy;
+    return max(0, deriv.x * deriv.y);
+}
+
+
+struct BVHNodeEntry
+{
+    uint type;
+    uint offset;
+    vec4 bbox;
+    uint count;
+};
+
+BVHNodeEntry makeBottomLevelBVHEntry(uint offset, vec4 bbox, uint count)
+{
+    BVHNodeEntry result;
+    result.type = BVH_V2_METADATA_LINE_BUCKET;
+    result.offset = offset | (count << 24);
+    result.bbox = bbox;
+    result.count = count;
+    return result;
+}
+
+
+BVHNodeEntry writeBVHNode(uint outputOffset,
+                          BVHNodeEntry left,
+                          BVHNodeEntry right,
+                          bool canMerge)
+{
+
+#if !ENABLE_DEBUGGING
+    // NB: we could avoid writing invalid entries
+    // and possibly saving some bandwith
+    outBVH[outputOffset] = uintBitsToFloat(uvec4(
+        left.type, left.offset, right.type, right.offset
+    ));
+    outBVH[outputOffset + 1] = left.count == 0 ? vec4(0) : left.bbox;
+    outBVH[outputOffset + 2] = right.count == 0 ? vec4(0) : right.bbox;
+#endif // !ENABLE_DEBUGGING
+
+    // If we didn't do a proper merge, just return which
+    // ever value was valid, or return an invalid value
+    // if neither were valid. 
+    if(right.count == 0)        { return left; }
+    else if(left.count == 0)    { return right; }
+
+    BVHNodeEntry merged;
+    merged.type = BVH_V2_METADATA_BBOX;
+    merged.offset = outputOffset;
+    merged.count = left.count + right.count;
+    merged.bbox = mergeBounds(left.bbox, right.bbox);
+    return merged;
+}
+
+BVHNodeEntry writeBVHLevel(uint outputOffset,
+                           BVHNodeEntry A, BVHNodeEntry B,
+                           BVHNodeEntry C, BVHNodeEntry D)
+{
+    // Pick either [[A B] | [C D]]
+    //          or [[A C] | [B D]]
+    float ABarea = boundsArea(mergeBounds(A.bbox, B.bbox));
+    float ACarea = boundsArea(mergeBounds(A.bbox, C.bbox));
+    float CDarea = boundsArea(mergeBounds(C.bbox, D.bbox));
+    float BDarea = boundsArea(mergeBounds(B.bbox, D.bbox));
+    if((ABarea + CDarea) > (ACarea + BDarea))
+    {
+        BVHNodeEntry tmp = B;
+        B = C;
+        C = tmp;
+    }
+
+    BVHNodeEntry left = writeBVHNode(outputOffset + BVH_V2_NODE_FLOAT4_STRIDE,
+                                     A, B,
+                                     false);
+    BVHNodeEntry right = writeBVHNode(outputOffset + BVH_V2_NODE_FLOAT4_STRIDE * 2,
+                                     C, D,
+                                     false);
+    return writeBVHNode(outputOffset, left, right, true);
+}
+
+
+shared uint bucketAllocator[BUCKET_SIZE_DIM * BUCKET_SIZE_DIM];                     // 256 bytes
+shared BVHNodeEntry nodeDataSwapA[BUCKET_SIZE_DIM * BUCKET_SIZE_DIM];               // 1792 or 2048 bytes
+shared BVHNodeEntry nodeDataSwapB[(BUCKET_SIZE_DIM / 2) * (BUCKET_SIZE_DIM / 2)];   // 448 or 512 bytes
+
+
+// explain etc
+uint getNodeLevelOffset(uint level)
+{
+    return ((1u << (level + level)) - 1u) * BVH_V2_NODE_FLOAT4_STRIDE;
+}
+
+
+void fetchNodeDataLDS(uvec4 ids,
+                      uint nodeDataSide,
+                      out BVHNodeEntry A,
+                      out BVHNodeEntry B,
+                      out BVHNodeEntry C,
+                      out BVHNodeEntry D)
+{
+    if((nodeDataSide & 1u) == 0u)
+    {
+        A = nodeDataSwapA[ids.x];
+        B = nodeDataSwapA[ids.y];
+        C = nodeDataSwapA[ids.z];
+        D = nodeDataSwapA[ids.w];
+    }
+    else
+    {
+        A = nodeDataSwapB[ids.x];
+        B = nodeDataSwapB[ids.y];
+        C = nodeDataSwapB[ids.z];
+        D = nodeDataSwapB[ids.w];
+    }
+}
+
+
+void buildNodeTree(uvec2 tid,
+                   uint level,
+                   uint nodeDataSide,
+                   bool writeDebugData)
+{
+    uint inputBucketDim = (1u << (level+1u));
+    uint outputBucketDim = (1u << level);
+    
+    if(all(lessThan(tid, uvec2(outputBucketDim))))
+    {
+        uint localBucketId = MAKE_LINEAR_ID(tid, outputBucketDim);
+        uint Aid = MAKE_LINEAR_ID((tid * 2u + uvec2(0, 0)), inputBucketDim);
+        uint Bid = MAKE_LINEAR_ID((tid * 2u + uvec2(1, 0)), inputBucketDim);
+        uint Cid = MAKE_LINEAR_ID((tid * 2u + uvec2(0, 1)), inputBucketDim);
+        uint Did = MAKE_LINEAR_ID((tid * 2u + uvec2(1, 1)), inputBucketDim);
+
+        BVHNodeEntry A;
+        BVHNodeEntry B;
+        BVHNodeEntry C;
+        BVHNodeEntry D;
+        fetchNodeDataLDS(uvec4(Aid, Bid, Cid, Did),
+                         nodeDataSide,
+                         A, B, C, D);
+
+#if ENABLE_DEBUGGING
+        if(writeDebugData)
+        {
+            // debugging
+            vec4 topLevelBbox = mergeBounds(mergeBounds(A.bbox, B.bbox),
+                                            mergeBounds(C.bbox, D.bbox));
+            if((A.count + B.count + C.count + D.count) == 0)
+            {
+                topLevelBbox = vec4(0);
+            }
+            outBVH[localBucketId] = topLevelBbox;
+            return;
+        }
+#endif // ENABLE_DEBUGGING
+
+        uint levelWriteStart = getNodeLevelOffset(level);
+        uint nodeOffset = MAKE_MORTON_ID(tid);
+        BVHNodeEntry bvhEntry = writeBVHLevel(levelWriteStart + 3u * BVH_V2_NODE_FLOAT4_STRIDE * nodeOffset,
+                                              A, B, C, D);
+
+        if(level != 0u)
+        {
+            if((nodeDataSide & 1u) == 0u)
+            {
+                nodeDataSwapB[localBucketId] = bvhEntry;
+            }
+            else
+            {
+                nodeDataSwapA[localBucketId] = bvhEntry;
+            }            
+        }
+    }
+
+    if(level != 1u)
+    {
+        barrier();
+    }
+}
+
+
+void main()
+{
+    uvec2 tid = gl_LocalInvocationID.xy;
+    uint bucketId = MAKE_MORTON_ID(tid);
+
+    // We bucket lines based upon where their center is.
+    vec4 bucketBbox = vec4(tid, tid + 1u) /
+                      vec2(BUCKET_SIZE_DIM - 1, BUCKET_SIZE_DIM - 1).xyxy;
+
+
+    // This is the final bbox of the current cell, which starts
+    // of as being invalid, but as we find relevant lines, we will
+    // expand it to fit them all.
+    vec4 finalBbox = vec4(1.0, 1.0, -1.0, -1.0);
+
+    // Keep track of how many lines we need to home and the first and last
+    // line id (to make it quicker to iterate over).
+    uint bucketCount = 0u;
+    uint firstLine = 0u;
+    uint endLine = 0u;
+
+    for(uint lineId = 0; lineId < numLines; ++lineId)
+    {
+        vec4 line = inLines[lineId];
+        vec2 center = (line.xy + line.zw) * 0.5;
+        if(all(greaterThanEqual(center.xy, bucketBbox.xy))
+           && all(lessThan(center.xy, bucketBbox.zw)))
+        {
+            if(bucketCount == 0)
+            {
+                firstLine = lineId;
+            }
+            endLine = lineId + 1u;
+
+            vec4 lineBbox = vec4(min(line.xy, line.zw), max(line.xy, line.zw));
+            finalBbox = mergeBounds(finalBbox, lineBbox);
+
+            ++bucketCount;
+        }
+    }
+
+    bucketAllocator[bucketId] = bucketCount;
+    barrier();
+
+#if ENABLE_DEBUGGING
+    if(LEVEL_DEBUG == NUM_LEVELS)
+    {
+        if(bucketCount == 0)
+        {
+            finalBbox = vec4(0);
+        }
+        outBVH[bucketId] = finalBbox;
+        return;
+    }
+#endif // ENABLE_DEBUGGING
+
+    // Write lines after the BVH data
+    uint bucketWriteOffset = getNodeLevelOffset(NUM_LEVELS);
+    for(uint id=0; id<bucketId; ++id)
+    {
+        bucketWriteOffset += bucketAllocator[id];
+    }
+    nodeDataSwapA[bucketId] = makeBottomLevelBVHEntry(bucketWriteOffset,
+                                                      finalBbox,
+                                                      bucketCount);
+
+
+    barrier();
+
+    // Write out lines into their respective places
+    for(uint lineId = firstLine; lineId < endLine; ++lineId)
+    {
+        vec4 line = inLines[lineId];
+        vec2 center = (line.xy + line.zw) * 0.5;
+        if(all(greaterThanEqual(center.xy, bucketBbox.xy))
+           && all(lessThan(center.xy, bucketBbox.zw)))
+        {
+            outBVH[bucketWriteOffset++] = vec4(line.xy, line.xy - line.zw);
+        }
+    }
+
+    uint nodeDataSide = 0u;
+
+    [[unroll]]
+    for(int level=(NUM_LEVELS-1); level >= 0; --level, ++nodeDataSide)
+    {
+        bool debugLevel = false;
+
+#if ENABLE_DEBUGGING
+        debugLevel = (LEVEL_DEBUG == level);
+#endif // ENABLE_DEBUGGING
+
+        buildNodeTree(tid, uint(level), nodeDataSide, debugLevel);
+
+#if ENABLE_DEBUGGING
+        if(debugLevel) { break; }
+#endif // ENABLE_DEBUGGING
+    }
+}

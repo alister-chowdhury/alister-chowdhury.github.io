@@ -1,4 +1,6 @@
-#version 460 core
+#version 450
+
+#include "common.glsli"
 
 #ifdef VS_OUTPUT_UV
 layout(location=VS_OUTPUT_UV) out vec2 uv;

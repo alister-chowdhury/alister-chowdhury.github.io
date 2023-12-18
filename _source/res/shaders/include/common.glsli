@@ -1,6 +1,14 @@
 #ifndef COMMON_GLSL_H
 #define COMMON_GLSL_H
 
+#ifdef VULKAN
+#define gl_VertexID gl_VertexIndex
+#define gl_InstanceID gl_InstanceIndex
+#else // VULKAN
+#define gl_VertexIndex gl_VertexID
+#define gl_InstanceIndex gl_InstanceID
+#endif // VULKAN
+
 #define PI          3.141592653589793238462643383279502884197169399
 #define HALFPI      1.5707963267948966192313216916397514420985847
 #define TWOPI       6.283185307179586476925286766559005768394338799

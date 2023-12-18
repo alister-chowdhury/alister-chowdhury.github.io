@@ -47,7 +47,6 @@ def validate_has_hlsl_executables():
         )
 
 
-
 def _spirv_to_webgl(spv_path):
     """Decompile spirv to WebGL GLSL.
 

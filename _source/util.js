@@ -68,9 +68,9 @@ class AsyncBarrier
 
 
 
-export function loadCommonShaderSource(name)
+export function loadCommonShaderSource(name, type="webgl")
 {
-    return fetch("/res/shaders/compiled/" + name).then(src => src.text());
+    return fetch("/res/shaders/compiled_" + type + "/" + name).then(src => src.text());
 }
 
 export function createShader(GL, source, shaderType)

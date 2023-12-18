@@ -86,6 +86,12 @@ def install_file(source_file, dest_file, settings):
             dest_file.write_text(data, "utf8")
             copied = True
 
+        elif ext in (".wgsl",):
+            from .minify.minify_wgsl import minify_wgsl
+            data = minify_wgsl(source_file.read_text("utf8"))
+            dest_file.write_text(data, "utf8")
+            copied = True
+
     if copied:
         return _fhash(dest_file.read_bytes()) != existing_hash
 

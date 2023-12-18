@@ -22,7 +22,7 @@ _SRC_DIR = os.path.abspath(
 )
 
 _COMPILED_DIR = os.path.abspath(
-    os.path.join(__file__, "..", "compiled")
+    os.path.join(__file__, "..", "compiled_webgl")
 )
 
 
@@ -76,6 +76,7 @@ _SHADER_MAPPING = {
     },
     "draw_col.frag" : {
         "filepath": "draw_col.frag",
+        "backend": "naga",
     },
 }
 
