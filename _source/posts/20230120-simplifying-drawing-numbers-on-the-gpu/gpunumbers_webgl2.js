@@ -1,12 +1,15 @@
 import {
     AsyncBarrier,
-    loadCommonShaderSource,
+    loadCommonShaderSource
+} from '../../util.js';
+
+import {
     createShader,
     createGraphicsProgram,
     getUniformLocation,
     createDummyVAO,
     deleteShaders
-} from '../../util.js';
+} from '../../webgl_util.js';
 
 
 function loadShaderSource(name)

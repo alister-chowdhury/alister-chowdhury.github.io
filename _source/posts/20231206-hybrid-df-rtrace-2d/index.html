@@ -76,24 +76,40 @@
             margin-right: auto;
         }
 
+        .imRef0 > div
+        {
+            width: min(100%, 512px);
+        }
         .imRef0 > div > img
         {
             width: min(100%, 512px);
             aspect-ratio: 1 / 1;
         }
 
+        .imRef1 > div
+        {
+            width: min(100%, 568px);
+        }
         .imRef1 > div > img
         {
             width: min(100%, 568px);
             aspect-ratio: 568 / 353;
         }
 
+        .imRef2 > div
+        {
+            width: min(100%, 96px);
+        }
         .imRef2 > div > img
         {
             width: min(100%, 96px);
             aspect-ratio: 96 / 382;
         }
 
+        .imRef1 > div
+        {
+            width: min(100%, 256px);
+        }
         .imRef1 > div > img
         {
             width: min(100%, 256px);
@@ -467,7 +483,9 @@ while(!done)
             document.getElementById("drawCanvasControls").style.display = "none";
             var notSupported = document.getElementById("notSupportedBrowser");
             notSupported.style.display = "block";
-            notSupported.innerHTML = "WebGL2 not supported :(";
+            notSupported.innerHTML = `
+Sorry, this demo won't work on your browser.<br>
+Reason: <strong>WebGL2 not supported :(</strong><br>`;
             return;
         }
     });

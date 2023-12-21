@@ -1212,7 +1212,9 @@ amount of implicit dependencies the GPU will need to resolve when blending (a co
             document.getElementById("drawCanvasControls").style.display = "none";
             var notSupported = document.getElementById("notSupportedBrowser");
             notSupported.style.display = "block";
-            notSupported.innerHTML = "WebGL2 not supported :(";
+            notSupported.innerHTML = `
+Sorry, this demo won't work on your browser.<br>
+Reason: <strong>WebGL2 not supported :(</strong><br>`;
             return;
         }
     });

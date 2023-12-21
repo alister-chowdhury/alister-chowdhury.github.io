@@ -1,0 +1,794 @@
+
+ <head>
+    <title>Raytracing In 2D, Using A GPU Generated BVH</title>
+    <meta name="description" content="A method of 2D raytracing that is independant of the CPU, making use of WebGPU along the way.">
+    <meta name="keywords" content="raytracing, webgpu, shadows, blocking, visibility, 2D, rendering, graphics">
+
+    <script>
+        window.resourcesReady = false;
+        window.afterLoaded = [];
+        function addAfterLoaded(f)
+        {
+            if(!window.resourcesReady)
+            {
+                window.afterLoaded.push(f);
+            }
+            else
+            {
+                f();
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { RTV2 } from './rtrace_bvh_v2.js';
+        window.bindRTV2Context = RTV2.bindRTV2Context;
+        window.resourcesReady = true;
+        window.afterLoaded.forEach(f => {f()});
+    </script>
+
+    <style>
+        canvas
+        {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .imRef1 > div
+        {
+            width: min(100%, 256px);
+        }
+        .imRef1 > div > img
+        {
+            width: min(100%, 256px);
+            aspect-ratio: 1 / 1;
+        }
+
+        .sectionHeader
+        {
+            font-size: 1.1em;
+            font-weight: bold;
+            text-align: center;
+            padding-top: 1em;
+        }
+    </style>
+
+ </head>
+ <body>
+
+
+<main>
+<markdown>
+
+# Raytracing In 2D, Using A GPU Generated BVH
+
+## Background
+
+Another month, another vaguely raytracing related post.
+
+If you've read some of the other stuff I've written about 2D raytracing (<a href="/posts/20230620-raytracing-in-2d/" target="_blank">Raytracing In 2D</a>, <a href="/posts/20231206-hybrid-df-rtrace-2d/" target="_blank">Hybrid Distance Field / Raytracing In 2D</a> etc), you may have noticed all of those require the acceleration structure to be generated on the CPU.
+
+
+While that's all very well and good for most use cases, it would be handy to be able to generate a BVH on the GPU itself (procedural or animating maps come to mind).
+
+
+## Building A BVH On The GPU
+
+Originally, I attempted to do a similar thing to <a href="/posts/20230620-raytracing-in-2d/" target="_blank">Raytracing In 2D</a>, but on the GPU.
+
+Needless to say, the amount of passes required mixed with needing to perform a lot of `nth_element` seems rather impractical.
+
+Rather than starting at root node and working down, I attempt to flip this and start with buckets and work up towards the root node
+
+Basically, dice a grid by some power of 2 and bin lines by their center, building up a BVH by combining them.
+
+e.g:
+
+<div class="imTable imRef1">
+  <div><img alt="bvh-ref" src="res/bvh-ref.png"><br>Input</div>
+  <div><img alt="bvh-s0" src="res/bvh-s0.png"><br>[4x4]</div>
+  <div><img alt="bvh-s1" src="res/bvh-s1.png"><br>[2x4] / [4x2]</div>
+  <div><img alt="bvh-s2" src="res/bvh-s2.png"><br>[2x2]</div>
+  <div><img alt="bvh-s3" src="res/bvh-s3.png"><br>[1x2] / [2x1]</div>
+</div>
+
+
+With the node layout being:
+
+```c
+struct BvhNodeV2
+{
+    uint    leftType   : 1;     // 0 = node, 1 = line bucket
+    uint    leftCount  : 31;    // always 0 for node
+    uint    leftOffset;
+
+    uint    rightType   : 1;    // 0 = node, 1 = line bucket
+    uint    rightCount  : 31;   // always 0 for node
+    uint    rightOffset;
+
+    float4  leftBBox;
+    float4  rightBBox;
+};
+```
+
+Happily fitting within three float4s.
+
+<br>
+
+### Memory
+
+
+We can also determine the amount of memory required up front.
+
+Lets say we have grid size of 8x8 and had a node per cell:
+
+```
+    8x8 + 4x8 + 4x4 + 2x4 + 2x2 + 1x2 + 1x1
+=   64 +  32 +  16 +   8 +   4 +  2  + 1
+=   127
+=   2 * gridSize * gridSize - 1
+```
+
+Except our bottom level nodes always come in pairs of two, so the actual amount of nodes is half, leaving us instead with:
+
+```
+    4x8 + 4x4 + 2x4 + 2x2 + 1x2 + 1x1
+=   32 +  16 +   8 +   4 +  2  + 1
+=   63
+=   gridSize * gridSize - 1
+```
+
+We can proove this via the <a href="https://en.m.wikipedia.org/wiki/Geometric_series#Sum" href="_blank">Geometric Series</a>:
+
+<latex>\sum _{k=0}^{n-1}X^{k}=\frac{1-X^n}{1-X}</latex>
+
+<br>
+
+You may have noticed the power of two sequence we have going on:
+
+
+<latex>
+\text{Where n is } \log_{2}{\langle\text{gridSize}^2\rangle}\\
+\\
+\begin{align*}
+\sum _{k=0}^{n-1}2^{k} &= \frac{1-2^n}{1-2} \\
+                       &= \frac{2^n - 1}{2 - 1} \\
+                       &= 2^n - 1\\
+2^{log_{2}{G^2}} - 1   &= G^2 - 1
+\end{align*}
+</latex>
+
+<br>
+
+<br>
+
+Alternatively, for every 4 cells (2x2), there will be 3 nodes:
+<latex>
+\text{Where n is } \log_{4}{\langle\text{gridSize}^2\rangle}\\
+\\
+\begin{align*}
+3 \sum _{k=0}^{n-1}4^{k} &= 3 \frac{1-4^n}{1-4} \\
+                         &= 3 \frac{4^n - 1}{4 - 1} \\
+                         &= 3 \frac{4^n - 1}{3} \\
+                         &= 4^n - 1\\
+4^{log_{4}{G^2}} - 1     &= G^2 - 1
+\end{align*}
+</latex>
+
+<br>
+
+
+Pednantic math aside, when you take into account the number of lines:
+
+```
+const uint bvhFloat4Size = 3;
+uint numFloat4s = (gridSize * gridSize - 1) * bvhFloat4Size
+                + numLines
+                ;
+```
+
+
+
+
+### Tiny Bucket Problem
+
+One problem we may encounter is that we end up with a lot of tiny buckets, which
+cause needless overhead when traversing.
+
+Ideally we would "merge" line buckets when they are smaller than some threshold (say 16).
+
+Iterating buckets by their <a href="https://en.wikipedia.org/wiki/Z-order_curve" target="_blank">Morton Encoding</a> order, means we can easily
+merge 4 nodes together, but additionally memory is spatially stored close by, increasing the likelihood of hitting
+a cache.
+
+<div class="imTable imRef1">
+  <div><img alt="bvh-memory-addr" src="res/bvh-memory-addr.png"></div>
+</div>
+
+
+### Putting It Together
+
+We can generate the BVH in a single pass using a compute shader and shared memory 
+(now possible to do in a browser with WebGPU).
+
+Here is a example of how that may look:
+
+<details>
+<summary>Example BVH Gen Shader</summary>
+
+```c
+#version 460 core
+#extension GL_EXT_control_flow_attributes : require
+
+
+/*
+    level count : grid dims
+              1 : 2x2
+              2 : 4x4
+              3 : 8x8
+              4 : 16x16
+*/
+#ifndef NUM_LEVELS
+#define NUM_LEVELS 3
+#endif // NUM_LEVELS
+
+#define GRID_SIZE_DIM (1<<NUM_LEVELS)
+
+#ifndef ALLOW_MERGING
+#define ALLOW_MERGING 1
+#endif // ALLOW_MERGING
+
+#define BVH_V2_METADATA_NODE            0
+#define BVH_V2_METADATA_LINE_BUCKET     1
+#define BVH_V2_NODE_FLOAT4_STRIDE       3
+
+layout(local_size_x=GRID_SIZE_DIM, local_size_y=GRID_SIZE_DIM) in;
+
+readonly  layout(std430, binding = 0) buffer inLines_   { vec4 inLines[]; };
+writeonly layout(std430, binding = 1) buffer outBVH_    { vec4 outBVH[]; };
+          layout(binding=2)           uniform numLines_ { uint numLines; };
+
+
+// https://gist.github.com/JarkkoPFC/0e4e599320b0cc7ea92df45fb416d79a
+uint encode16_morton2(uint x, uint y)
+{
+  uint res = x | (uint(y) << 16);
+  res = (res | (res<<4)) & 0x0f0f0f0fu;
+  res = (res | (res<<2)) & 0x33333333u;
+  res = (res | (res<<1)) & 0x55555555u;
+  return uint(res | (res>>15)) & 0xffffu;
+}
+
+
+// When accessing shared memory, we use a linear index
+// based upon the thread id, to prevent bank conflicts.
+//
+// When accessing the BVH memory, we use morton encoding
+// to create better cache coherancy and to allow us to
+// merge small line buckets togehter.
+#define MAKE_LINEAR_ID(tid, brickSize)  ((tid).y * (brickSize) + (tid).x)
+#define MAKE_MORTON_ID(tid)             (encode16_morton2((tid).x, (tid).y))
+
+
+vec4 mergeBounds(vec4 a, vec4 b)
+{
+    return vec4(min(a.xy, b.xy), max(a.zw, b.zw));
+}
+
+float boundsArea(vec4 a)
+{
+    vec2 deriv = a.zw - a.xy;
+    return max(0, deriv.x * deriv.y);
+}
+
+
+struct BVHNodeEntry
+{
+    uint type;
+    uint offset;
+    vec4 bbox;
+    uint count;
+};
+
+BVHNodeEntry makeBottomLevelBVHEntry(uint offset, vec4 bbox, uint count)
+{
+    BVHNodeEntry result;
+    result.type = BVH_V2_METADATA_LINE_BUCKET | (count << 1);
+    result.offset = offset;
+    result.bbox = bbox;
+    result.count = count;
+    return result;
+}
+
+
+BVHNodeEntry writeBVHNode(uint outputOffset,
+                          BVHNodeEntry left,
+                          BVHNodeEntry right)
+{
+    outBVH[outputOffset] = uintBitsToFloat(uvec4(
+        left.type, left.offset, right.type, right.offset
+    ));
+    outBVH[outputOffset + 1] = left.count == 0 ? vec4(0) : left.bbox;
+    outBVH[outputOffset + 2] = right.count == 0 ? vec4(0) : right.bbox;
+
+    // If we didn't do a proper merge, just return which
+    // ever value was valid, or return an invalid value
+    // if neither were valid. 
+    if(right.count == 0)        { return left; }
+    else if(left.count == 0)    { return right; }
+
+    BVHNodeEntry merged;
+    merged.type = BVH_V2_METADATA_NODE;
+    merged.offset = outputOffset;
+    merged.count = left.count + right.count;
+    merged.bbox = mergeBounds(left.bbox, right.bbox);
+    return merged;
+}
+
+
+BVHNodeEntry writeBVHLevel(uint outputOffset,
+                           BVHNodeEntry A, BVHNodeEntry B,
+                           BVHNodeEntry C, BVHNodeEntry D)
+{
+
+    bool done = false;
+    BVHNodeEntry left;
+    BVHNodeEntry right;
+
+#if ALLOW_MERGING
+    const uint maxLinesToMerge = 16u;
+
+    uint mergedCount = A.count + B.count + C.count + D.count;
+    bool hasSmallCount = mergedCount <= maxLinesToMerge;
+    bool allBuckets = all(equal(uvec4(A.type, B.type, C.type, D.type) & 1u,
+                                uvec4(BVH_V2_METADATA_LINE_BUCKET)));
+
+    if(hasSmallCount && allBuckets)
+    {
+        done = true;
+        uint offset = A.offset;
+        vec4 mergedBbox = mergeBounds(mergeBounds(A.bbox, B.bbox),
+                                      mergeBounds(C.bbox, D.bbox));
+        left = makeBottomLevelBVHEntry(offset, mergedBbox, mergedCount);
+        right = makeBottomLevelBVHEntry(0, vec4(1.0, 1.0, -1.0, -1.0), 0);
+    }
+
+#endif // ALLOW_MERGING
+
+    if(!done)
+    {
+        // Pick either [[A B] | [C D]]
+        //          or [[A C] | [B D]]
+        float ABarea = boundsArea(mergeBounds(A.bbox, B.bbox));
+        float ACarea = boundsArea(mergeBounds(A.bbox, C.bbox));
+        float CDarea = boundsArea(mergeBounds(C.bbox, D.bbox));
+        float BDarea = boundsArea(mergeBounds(B.bbox, D.bbox));
+        if((ABarea + CDarea) > (ACarea + BDarea))
+        {
+            BVHNodeEntry tmp = B;
+            B = C;
+            C = tmp;
+        }
+
+        left = writeBVHNode(outputOffset + BVH_V2_NODE_FLOAT4_STRIDE,
+                            A, B);
+        right = writeBVHNode(outputOffset + BVH_V2_NODE_FLOAT4_STRIDE * 2,
+                             C, D);
+    }
+    
+    return writeBVHNode(outputOffset, left, right);
+}
+
+
+shared uint bucketAllocator[GRID_SIZE_DIM * GRID_SIZE_DIM];                     // 256 bytes
+shared BVHNodeEntry nodeDataSwapA[GRID_SIZE_DIM * GRID_SIZE_DIM];               // 1792 or 2048 bytes
+shared BVHNodeEntry nodeDataSwapB[(GRID_SIZE_DIM / 2) * (GRID_SIZE_DIM / 2)];   // 448 or 512 bytes
+
+
+uint getNodeLevelOffset(uint level)
+{
+    // ((2^level)^2 - 1) nodes
+    return ((1u << (level + level)) - 1u)
+            * BVH_V2_NODE_FLOAT4_STRIDE;
+}
+
+
+void fetchNodeDataLDS(uvec4 ids,
+                      uint nodeDataSide,
+                      out BVHNodeEntry A,
+                      out BVHNodeEntry B,
+                      out BVHNodeEntry C,
+                      out BVHNodeEntry D)
+{
+    if((nodeDataSide & 1u) == 0u)
+    {
+        A = nodeDataSwapA[ids.x];
+        B = nodeDataSwapA[ids.y];
+        C = nodeDataSwapA[ids.z];
+        D = nodeDataSwapA[ids.w];
+    }
+    else
+    {
+        A = nodeDataSwapB[ids.x];
+        B = nodeDataSwapB[ids.y];
+        C = nodeDataSwapB[ids.z];
+        D = nodeDataSwapB[ids.w];
+    }
+}
+
+
+void buildNodeTree(uvec2 tid,
+                   uint level,
+                   uint nodeDataSide)
+{
+    uint inputBucketDim = (1u << (level+1u));
+    uint outputBucketDim = (1u << level);
+    
+    if(all(lessThan(tid, uvec2(outputBucketDim))))
+    {
+        uint localBucketId = MAKE_LINEAR_ID(tid, outputBucketDim);
+        uint Aid = MAKE_LINEAR_ID((tid * 2u + uvec2(0, 0)), inputBucketDim);
+        uint Bid = MAKE_LINEAR_ID((tid * 2u + uvec2(1, 0)), inputBucketDim);
+        uint Cid = MAKE_LINEAR_ID((tid * 2u + uvec2(0, 1)), inputBucketDim);
+        uint Did = MAKE_LINEAR_ID((tid * 2u + uvec2(1, 1)), inputBucketDim);
+
+        BVHNodeEntry A;
+        BVHNodeEntry B;
+        BVHNodeEntry C;
+        BVHNodeEntry D;
+        fetchNodeDataLDS(uvec4(Aid, Bid, Cid, Did),
+                         nodeDataSide,
+                         A, B, C, D);
+
+        uint levelWriteStart = getNodeLevelOffset(level);
+        uint nodeOffset = MAKE_MORTON_ID(tid);
+        BVHNodeEntry bvhEntry = writeBVHLevel(levelWriteStart + 3u * BVH_V2_NODE_FLOAT4_STRIDE * nodeOffset,
+                                              A, B, C, D);
+
+        if(level != 0u)
+        {
+            if((nodeDataSide & 1u) == 0u)
+            {
+                nodeDataSwapB[localBucketId] = bvhEntry;
+            }
+            else
+            {
+                nodeDataSwapA[localBucketId] = bvhEntry;
+            }            
+        }
+    }
+
+    if(level != 0u)
+    {
+        barrier();
+    }
+}
+
+
+void main()
+{
+    uvec2 tid = gl_LocalInvocationID.xy;
+    uint bucketId = MAKE_MORTON_ID(tid);
+
+    // We bucket lines based upon where their center is.
+    vec4 bucketBbox = vec4(tid, tid + 1u) /
+                      vec2(GRID_SIZE_DIM, GRID_SIZE_DIM).xyxy;
+
+
+    // This is the final bbox of the current cell, which starts
+    // of as being invalid, but as we find relevant lines, we will
+    // expand it to fit them all.
+    vec4 finalBbox = vec4(1.0, 1.0, -1.0, -1.0);
+
+    // Keep track of how many lines we need to home and the first and last
+    // line id (to make it quicker to iterate over).
+    uint bucketCount = 0u;
+    uint firstLine = 0u;
+    uint endLine = 0u;
+
+    for(uint lineId = 0; lineId < numLines; ++lineId)
+    {
+        vec4 line = inLines[lineId];
+        vec2 center = (line.xy + line.zw) * 0.5;
+        if(all(greaterThanEqual(center.xy, bucketBbox.xy))
+           && all(lessThan(center.xy, bucketBbox.zw)))
+        {
+            if(bucketCount == 0)
+            {
+                firstLine = lineId;
+            }
+            endLine = lineId + 1u;
+
+            vec4 lineBbox = vec4(min(line.xy, line.zw), max(line.xy, line.zw));
+            finalBbox = mergeBounds(finalBbox, lineBbox);
+
+            ++bucketCount;
+        }
+    }
+
+    bucketAllocator[bucketId] = bucketCount;
+    barrier();
+
+    // Write lines after the BVH data
+    uint bucketWriteOffset = getNodeLevelOffset(NUM_LEVELS);
+    for(uint id=0; id<bucketId; ++id)
+    {
+        bucketWriteOffset += bucketAllocator[id];
+    }
+
+    uint ldsBucketId = MAKE_LINEAR_ID(tid, (1u << NUM_LEVELS));
+    nodeDataSwapA[ldsBucketId] = makeBottomLevelBVHEntry(bucketWriteOffset,
+                                                         finalBbox,
+                                                         bucketCount);
+
+
+    barrier();
+
+    // Write out lines into their respective places
+    for(uint lineId = firstLine; lineId < endLine; ++lineId)
+    {
+        vec4 line = inLines[lineId];
+        vec2 center = (line.xy + line.zw) * 0.5;
+        if(all(greaterThanEqual(center.xy, bucketBbox.xy))
+           && all(lessThan(center.xy, bucketBbox.zw)))
+        {
+            outBVH[bucketWriteOffset++] = vec4(line.xy, line.xy - line.zw);
+        }
+    }
+
+    uint nodeDataSide = 0u;
+
+    [[unroll]]
+    for(int level=(NUM_LEVELS-1); level >= 0; --level, ++nodeDataSide)
+    {
+        buildNodeTree(tid, uint(level), nodeDataSide);
+    }
+}
+```
+
+</details>
+<br>
+<br>
+The ray traversal is largely the same as previous stuff I've done (a stack based method),
+as such I'm not going to get into it here.
+
+## Demo
+
+As always, here's a demo, this one allows you to edit the lines, which is all handled
+on the GPU side (picking a vertex and updating the lines buffer).
+
+First time using <a href="https://www.w3.org/TR/webgpu/" target="_blank">WebGPU</a>, the API is sort of like
+a Vulkan-lite, or a primitive RHI abstraction (which I guess is what it kind of is) and is quite nice
+compared to WebGL (although still has teething issues).
+
+<div>
+<div id="drawCanvasControls">
+
+<div class="sectionHeader">Global Controls</div>
+<div class="twoxnctrls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhLevelsDivLabel">BVH Levels</div>
+<!--    --><div><input aria-labelledby="bvhLevelsDivLabel" id="bvhLevels" disabled type="range" min="1" max="4" value="3" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Scene</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType"><label for="sceneType-simple">Simple</label>
+<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
+<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType" checked="checked"><label for="sceneType-complex">Complex</label>
+<!--        --><input disabled type="radio" id="sceneType-veryComplex" name="sceneType"><label for="sceneType-veryComplex">Very Complex</label>
+<!--    --></div>
+<!----></div>
+</div>
+
+
+<div class="sectionHeader">Editing Controls</div>
+<div class="twoxnctrls">
+<!----><div>
+<!--    --><div id="editLinesLabel">Edit Lines</div>
+<!--    --><div><input aria-labelledby="editLinesLabel" id="editLinesCtrl" disabled type="checkbox"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="snappingLabel">Snapping</div>
+<!--    --><div><input aria-labelledby="snappingLabel" id="snappingCtrl" disabled type="checkbox" checked=""><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div></div>
+<!--    --><div><input aria-label="reset" id="resetLinesCtrl" value="Reset" disabled type="button"><br/></div>
+<!----></div>
+</div>
+
+<!---------->
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<!---------->
+
+<div class="sectionHeader">Visualisation Controls</div>
+<div class="twoxnctrls">
+<!----><div>
+<!--    --><div>Vis Type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-pointlight" name="visModeTypeCtrl"><label for="visModeTypeCtrl-pointlight">Pointlight</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-visibility" checked="checked" name="visModeTypeCtrl"><label for="visModeTypeCtrl-visibility">Visibility</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numNodeVisits" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numNodeVisits">Num Node Visits</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIntersections" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIntersections">Num Intersections</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-composite" name="visModeTypeCtrl"><label for="visModeTypeCtrl-composite">Composite</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-bvh" name="visModeTypeCtrl"><label for="visModeTypeCtrl-bvh">BVH</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhStartLevelDivLabel">BVH Start</div>
+<!--    --><div><input aria-labelledby="bvhStartLevelDivLabel" id="bvhStartLevel" disabled type="range" min="0" max="7" value="0" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhEndLevelDivLabel">BVH End</div>
+<!--    --><div><input aria-labelledby="bvhEndLevelDivLabel" id="bvhEndLevel" disabled type="range" min="0" max="7" value="5" step="1"><br/></div>
+<!----></div>
+</div>
+
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+
+Here are all the relevant source code files:
+* BVH Gen (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/shaders/v2_tracing_generate_bvh.comp">v2_tracing_generate_bvh.comp</a>
+* Ray Traversal (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/shaders/include/v2_tracing.glsli">v2_tracing.glsli</a>
+* Visualisers Ray (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231228-raytracing-2d-gpu-bvh/shaders/v2_tracing_test.frag">v2_tracing_test.frag</a>
+* Visualisers BVH (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231228-raytracing-2d-gpu-bvh/shaders/draw_tree.vert">draw_tree.vert</a> and <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231228-raytracing-2d-gpu-bvh/shaders/draw_tree.frag">draw_tree.frag</a>
+* JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231228-raytracing-2d-gpu-bvh/rtrace_bvh_v2.js">rtrace_bvh_v2.js</a>
+
+
+</markdown>
+</main>
+
+
+<script>
+
+    {
+        let canvasSize = Math.round(
+            Math.min(
+                (window.innerHeight || document.documentElement.clientHeight),
+                (window.innerWidth || document.documentElement.clientWidth)
+            ) * 0.6
+        );
+        
+        const drawCanvas = document.getElementById("drawCanvas");
+        drawCanvas.style.width = canvasSize + "px";
+        drawCanvas.style.height = canvasSize + "px";
+    }
+
+    addAfterLoaded(()=>{
+        const drawCanvas = document.getElementById("drawCanvas");
+        const drawCtx = window.bindRTV2Context(drawCanvas);
+        drawCtx.onready.then(()=>
+        {
+
+            // Hookup resolution
+            {
+                const resolutionCtrl = document.getElementById("resolutionCtrl");
+                resolutionCtrl.disabled = false;
+                const updateRes = (writeBack)=>
+                {
+                    const value = Math.min(resolutionCtrl.max, Math.max(resolutionCtrl.min, Math.round(resolutionCtrl.value)));
+                    if(writeBack && (resolutionCtrl.value != value))
+                    {
+                        resolutionCtrl.value = value;
+                    }
+                    drawCanvas.style.width = value + "px";
+                    drawCanvas.style.height = drawCanvas.style.width;
+                    drawCtx.redraw();
+                };
+                resolutionCtrl.onchange = ()=>{updateRes(true) };
+                resolutionCtrl.oninput = ()=>{updateRes(false); };
+            }
+
+            // Hookup bvh level
+            {
+                const bvhLevels = document.getElementById("bvhLevels");
+                bvhLevels.disabled = false;
+                const updateBVHLevel = ()=>
+                {
+                    drawCtx.setBVHLevel(bvhLevels.value * 1);
+                };
+                bvhLevels.onchange = updateBVHLevel;
+                bvhLevels.oninput = updateBVHLevel;
+            }
+
+            // Hookup scene
+            {
+                const types = ["simple", "moderate", "complex", "veryComplex"];
+                const makeSetScene = (x)=>{
+                    return ()=>{
+                        drawCtx.setCurrentLines(x);
+                    };
+                };
+                for(let i=0; i<types.length; ++i)
+                {
+                    const element = document.getElementById(`sceneType-${types[i]}`);
+                    element.disabled = false;
+                    element.onchange = makeSetScene(i);
+                };
+            }
+
+            // Hookup editing
+            {
+                const editLinesCtrl = document.getElementById("editLinesCtrl");
+                editLinesCtrl.disabled = false;
+                editLinesCtrl.onchange = ()=>{ drawCtx.setEditing(editLinesCtrl.checked);};
+
+                const snappingCtrl = document.getElementById("snappingCtrl");
+                snappingCtrl.disabled = false;
+                snappingCtrl.onchange = ()=>{ drawCtx.setSnapWhileEditing(snappingCtrl.checked);};
+            
+                const resetLinesCtrl = document.getElementById("resetLinesCtrl");
+                resetLinesCtrl.disabled = false;
+                resetLinesCtrl.onclick = ()=>
+                {
+                    drawCtx.resetLines();
+                };
+            }
+
+            // Hookup vis modes
+            {
+                const types = ["pointlight", "visibility","numNodeVisits","numIntersections","composite"];
+                const makeSetVisMode = (x)=>{
+                    return ()=>{
+                        drawCtx.setDrawTree(false);
+                        drawCtx.setCurrentTracingVisType(x);
+                    };
+                };
+                for(let i=0; i<types.length; ++i)
+                {
+                    const element = document.getElementById(`visModeTypeCtrl-${types[i]}`);
+                    element.disabled = false;
+                    element.onchange = makeSetVisMode(i);
+                };
+
+                // BVH vis
+                {
+                    const element = document.getElementById("visModeTypeCtrl-bvh");
+                    element.disabled = false;
+                    element.onchange = ()=>{drawCtx.setDrawTree(true);};
+                }
+
+                const bvhStartLevel = document.getElementById("bvhStartLevel");
+                bvhStartLevel.disabled = false;
+                const updateStartLevel = ()=>
+                {
+                    drawCtx.setDrawTreeLevelStart(bvhStartLevel.value*1);
+                };
+                bvhStartLevel.onchange = updateStartLevel;
+                bvhStartLevel.oninput = updateStartLevel;
+
+                const bvhEndLevel = document.getElementById("bvhEndLevel");
+                bvhEndLevel.disabled = false;
+                const updateEndLevel = ()=>
+                {
+                    drawCtx.setDrawTreeLevel(bvhEndLevel.value*1);
+                };
+                bvhEndLevel.onchange = updateEndLevel;
+                bvhEndLevel.oninput = updateEndLevel;
+            }
+
+        });
+        drawCtx.onerror.then((err)=>
+        {
+            drawCanvas.style.display = "none";
+            document.getElementById("drawCanvasControls").style.display = "none";
+            var notSupported = document.getElementById("notSupportedBrowser");
+            notSupported.style.display = "block";
+            notSupported.innerHTML = `
+Sorry, this demo won't work on your browser.<br>
+Reason: <strong>${err}</strong><br>`;
+            return;
+        });
+    });
+
+</script>
+
+ </body>

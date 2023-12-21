@@ -2,8 +2,7 @@
 #define LINE_BVH_V2_TRACING_GLSLI
 
 
-// Should be like log2(num_lines) + 1 for maximum occupancy
-// assuming a mostly perfect binary tree.
+// Should be like log2(num_buckets) + 1 for maximum occupancy
 #ifndef LINE_BVH_V2_STACK_SIZE
 #define LINE_BVH_V2_STACK_SIZE 16
 #endif // LINE_BVH_V2_STACK_SIZE
@@ -16,7 +15,7 @@
 readonly  layout(std430, binding = LINE_BVH_V2_BINDING) buffer v2LinesBvh_ { vec4 v2LinesBvh[]; };
 
 
-#define LINE_BVH_V2_BBOX_TYPE           0
+#define LINE_BVH_V2_NODE_TYPE           0
 #define LINE_BVH_V2_LINE_BUCKET_TYPE    1
 
 
@@ -51,14 +50,12 @@ struct FindNearestLineBvhV2Result
 
 
 void lineBvhV2EvalLineBucket(vec2 ro,
-                             uint packedOffsetCount,
+                             uint offset,
+                             uint count,
                              bool stopOnFirstHit,
                              inout LineBvhV2Result result)
 {
-    uint count = packedOffsetCount >> 24u;
-    uint offset = packedOffsetCount & 0x00ffffffu;
     uint offsetEnd = offset + count;
-
     if(!stopOnFirstHit)
     {
         result.numLineIntersections += int(count);
@@ -140,19 +137,20 @@ bool lineBvhV2EvalEntry(vec2 ro,
                         inout float dist,
                         inout int idx)
 {
-
     if(lineBvhV2RayBboxTest(ro, invRd, bbox, result, dist))
     {
-        if(floatBitsToUint(metadata).x == LINE_BVH_V2_LINE_BUCKET_TYPE)
+        uvec2 metadataBits = floatBitsToUint(metadata);
+        if(metadataBits.x != LINE_BVH_V2_NODE_TYPE)
         {
             lineBvhV2EvalLineBucket(ro,
-                                    floatBitsToUint(metadata).y,
+                                    metadataBits.y,
+                                    metadataBits.x >> 1,
                                     stopOnFirstHit,
                                     result);
         }
         else
         {
-            idx = floatBitsToInt(metadata).y;
+            idx = floatBitsToInt(metadata.y);
             return true;
         }
     }
@@ -248,15 +246,7 @@ LineBvhV2Result traceLineBvhV2(vec2 ro, vec2 rd, float maxDist, bool stopOnFirst
         }
     }
 
-    if(result.hitLineId != 0xffffffffu)
-    {
-        result.hit = true;
-        result.hitLineId -= 189u;
-    }
-    else
-    {
-        result.hit = false;
-    }
+    result.hit = (result.hitLineId != 0xffffffffu);
 
     return result;
 }
@@ -269,7 +259,8 @@ bool findNearestLineBvhV2EvalEntry(vec2 ro,
                                    inout float dist,
                                    inout int idx)
 {
-    
+    uvec2 metadataBits = floatBitsToUint(metadata);
+
     // distance to bbox
     {
         vec2 bboxMin = data.xy;
@@ -291,11 +282,10 @@ bool findNearestLineBvhV2EvalEntry(vec2 ro,
         }
     }
 
-    if(floatBitsToUint(metadata).x == LINE_BVH_V2_LINE_BUCKET_TYPE)
+    if(metadataBits.x != LINE_BVH_V2_NODE_TYPE)
     {
-        uint packedOffsetCount = floatBitsToUint(metadata).y;
-        uint count = packedOffsetCount >> 24u;
-        uint offset = packedOffsetCount & 0x00ffffffu;
+        uint count = metadataBits.x >> 1;
+        uint offset = metadataBits.y;
         uint offsetEnd = offset + count;
 
         result.numLineIntersections += int(count);
@@ -314,7 +304,7 @@ bool findNearestLineBvhV2EvalEntry(vec2 ro,
 
             if(nearestDistSq < result.hitDistSq)
             {
-                result.hitLineId = floatBitsToUint(metadata.y);
+                result.hitLineId = metadataBits.y;
                 result.line = line;
                 result.hitDistSq = nearestDistSq;
             }
@@ -402,11 +392,6 @@ FindNearestLineBvhV2Result findNearestLineBvhV2(vec2 ro, float maxDist)
         {
             done = true;
         }
-    }
-
-    if(result.hitLineId != 0xffffffffu)
-    {
-        result.hitLineId -= 189u;
     }
 
     return result;

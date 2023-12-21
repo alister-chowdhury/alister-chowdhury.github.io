@@ -6,11 +6,11 @@
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20221230-bluenoise-generator/</loc>
-  <lastmod>2023-08-26</lastmod>
+  <lastmod>2023-12-28</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20230120-simplifying-drawing-numbers-on-the-gpu/</loc>
-  <lastmod>2023-06-27</lastmod>
+  <lastmod>2023-12-28</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20230131-various-rendering-related-visualisations/</loc>
@@ -18,15 +18,15 @@
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/</loc>
-  <lastmod>2023-10-29</lastmod>
+  <lastmod>2023-12-28</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20230628-project-and-stencil/</loc>
-  <lastmod>2023-10-29</lastmod>
+  <lastmod>2023-12-28</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20230710-2d-circular-shadow-mapping/</loc>
-  <lastmod>2023-10-29</lastmod>
+  <lastmod>2023-12-28</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20231030-preserving-small-values/</loc>
@@ -34,10 +34,14 @@
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/20231206-hybrid-df-rtrace-2d/</loc>
-  <lastmod>2023-12-09</lastmod>
+  <lastmod>2023-12-28</lastmod>
+ </url>
+ <url>
+  <loc>https://alister-chowdhury.github.io/posts/20231228-raytracing-2d-gpu-bvh/</loc>
+  <lastmod>2023-12-28</lastmod>
  </url>
  <url>
   <loc>https://alister-chowdhury.github.io/posts/</loc>
-  <lastmod>2023-12-07</lastmod>
+  <lastmod>2023-12-28</lastmod>
  </url>
 </urlset>

@@ -14,27 +14,27 @@ fn main_1() {
     var _35_: f32;
 
     let _e2 = gl_VertexIndex;
-    if (_e2 == 0u) {
+    if (i32(_e2) == 0) {
         local = -4.0;
     } else {
         local = 1.0;
     }
-    let _e8 = local;
-    _33_ = _e8;
-    let _e10 = gl_VertexIndex;
-    if (_e10 == 2u) {
+    let _e10 = local;
+    _33_ = _e10;
+    let _e12 = gl_VertexIndex;
+    if (i32(_e12) == 2) {
         local_1 = 4.0;
     } else {
         local_1 = -1.0;
     }
-    let _e16 = local_1;
-    _35_ = _e16;
-    let _e18 = _33_;
-    let _e19 = _35_;
-    _4_ = ((vec2<f32>(_e18, _e19) * 0.5) + vec2(0.5));
-    let _e27 = _33_;
-    let _e28 = _35_;
-    gl_Position = vec4<f32>(_e27, _e28, 0.0, 1.0);
+    let _e20 = local_1;
+    _35_ = _e20;
+    let _e22 = _33_;
+    let _e23 = _35_;
+    _4_ = ((vec2<f32>(_e22, _e23) * 0.5) + vec2(0.5));
+    let _e31 = _33_;
+    let _e32 = _35_;
+    gl_Position = vec4<f32>(_e31, _e32, 0.0, 1.0);
     return;
 }
 
@@ -42,7 +42,7 @@ fn main_1() {
 fn main(@builtin(vertex_index) param: u32) -> VertexOutput {
     gl_VertexIndex = param;
     main_1();
-    let _e3 = _4_;
-    let _e5 = gl_Position;
-    return VertexOutput(_e3, _e5);
+    let _e5 = _4_;
+    let _e7 = gl_Position;
+    return VertexOutput(_e5, _e7);
 }

@@ -185,6 +185,15 @@ input[type="button"]:disabled
     height: 100%;
 }
 
+#notSupportedBrowser
+{
+    display: none;
+    font-size: 1.2em;
+    text-align: center;
+    border: #c37373 1px solid;
+    padding: 1em;
+    background: #3C251A;
+}
 
 #header
 {

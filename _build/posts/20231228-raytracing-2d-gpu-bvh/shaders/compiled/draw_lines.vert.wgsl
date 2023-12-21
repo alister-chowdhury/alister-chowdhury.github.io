@@ -1,0 +1,2 @@
+struct c{d:array<vec4f>,}struct e{d:vec3f,}struct f{@location(0)h:vec3f,@builtin(position)i:vec4f,}@group(0)@binding(0)var<storage>j:c;@group(0)@binding(1)var<uniform>k:e;var<private>h:vec3f;var<private>l:u32;var<private>m:vec4f;fn n(){var o:u32;var p:vec2f;let q=l;o=u32((i32(q)/2));let s=l;if((i32(s)% 2)==0){{let t=o;let u=j.d[t];p=u.xy;}}else{{let v=o;let A=j.d[v];p=A.zw;}}let B=k;h=B.d;let C=p;let D=((C*2.)-vec2(1.));m=vec4f(D.x,D.y,0.,1.);return;}@vertex 
+fn main(@builtin(vertex_index)E:u32)->f{l=E;n();let F=h;let G=m;return f(F,G);}

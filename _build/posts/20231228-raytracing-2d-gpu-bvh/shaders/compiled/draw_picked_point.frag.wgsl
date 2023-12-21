@@ -1,0 +1,2 @@
+var<private>c:vec2f;var<private>d:vec4f;fn function(){let e=c;let f=length(e);let h=step(f,1.);let i=(h*smoothstep(.1,.75,f));d=(vec4f(i,i,i,1.)*h);return;}@fragment 
+fn main(@location(0)j:vec2f)->@location(0)vec4f{c=j;function();let k=d;return k;}

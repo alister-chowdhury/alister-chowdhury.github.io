@@ -1,0 +1,68 @@
+#version 460 core
+#extension GL_EXT_control_flow_attributes : require
+
+#define THREAD_SIZE 64
+
+layout(local_size_x=THREAD_SIZE) in;
+
+readonly    layout(std430, binding = 0) buffer  inLines_    { vec4 inLines[]; };
+writeonly   layout(std430, binding = 1) buffer  outPicked_  { uvec2 outPicked; };
+            layout(binding=2)           uniform numLines_   { uint numLines; };
+            layout(binding=3)           uniform targetUV_   { vec2 targetUV; };     // wasteful, I know
+
+shared uvec3 pickedData[THREAD_SIZE];
+
+void main()
+{
+    uint tid = gl_LocalInvocationID.x;
+
+    float pointDistSqr = PICK_MAX_DIST * PICK_MAX_DIST;
+    uint lineId = 0xffffffffu;
+    uint side = 0;
+
+    for(uint i=tid; i<numLines; i+=THREAD_SIZE)
+    {
+        vec4 line = inLines[i];
+        vec4 dline = line - targetUV.xyxy;
+
+        vec2 distSqrs = vec2(dot(dline.xy, dline.xy),
+                             dot(dline.zw, dline.zw));
+
+        if(distSqrs.x < pointDistSqr)
+        {
+            lineId = i;
+            side = 0;
+            pointDistSqr = distSqrs.x;
+        }
+        if(distSqrs.y < pointDistSqr)
+        {
+            lineId = i;
+            side = 1;
+            pointDistSqr = distSqrs.y;
+        }
+    }
+
+    pickedData[tid] = uvec3(lineId, side, floatBitsToUint(pointDistSqr));
+    barrier();
+
+    [[unroll]]
+    for(int i=(THREAD_SIZE/2); i > 0; i/=2)
+    {
+        if(tid < i)
+        {
+            uvec3 cmp = pickedData[tid + i];
+            float cmpDistSq = uintBitsToFloat(cmp.z);
+            if(cmpDistSq < pointDistSqr)
+            {
+                pointDistSqr = cmpDistSq;
+                pickedData[tid] = cmp;
+            }
+        }
+        barrier();
+    }
+
+    if(tid == 0)
+    {
+        outPicked = pickedData[0].xy;
+    }
+}

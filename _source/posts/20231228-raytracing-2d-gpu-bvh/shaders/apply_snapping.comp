@@ -1,0 +1,69 @@
+#version 460 core
+#extension GL_EXT_control_flow_attributes : require
+
+#define THREAD_SIZE 64
+
+layout(local_size_x=THREAD_SIZE) in;
+
+readonly    layout(std430, binding = 0) buffer  inLines_    { vec4 inLines[]; };
+            layout(binding = 1)         uniform picked_     { uvec2 picked; };
+            layout(binding = 2)         uniform numLines_   { uint numLines; };
+            layout(std430, binding = 3) buffer  targetUV_   { vec2 targetUV; };
+
+
+shared vec3 snappedData[THREAD_SIZE];
+
+
+vec3 calcNearestPoint(vec2 originalUV, vec4 line)
+{
+    // https://www.geogebra.org/calculator/aajzrdep
+    vec2 A = line.xy - originalUV;
+    vec2 AB = line.xy - line.zw;
+    float t = max(0, min(1, dot(A, AB) / dot(AB, AB)));
+    vec2 localNearest = A - AB * t;
+    float nearestDistSq = dot(localNearest, localNearest);
+    vec2 globalNearest = line.xy - AB * t;
+    return vec3(globalNearest, nearestDistSq);
+}
+
+
+void main()
+{
+    uint tid = gl_LocalInvocationID.x;
+
+    vec2 originalUV = targetUV;
+    vec3 closestData = vec3(originalUV, PICK_MAX_DIST * PICK_MAX_DIST);
+
+    for(uint i=tid; i<numLines; i+=THREAD_SIZE)
+    {
+        if(i == picked.x) { continue; }
+        vec3 projected = calcNearestPoint(originalUV, inLines[i]);
+        if(projected.z < closestData.z)
+        {
+            closestData = projected;
+        }
+    }
+
+    snappedData[tid] = closestData;
+    barrier();
+
+    [[unroll]]
+    for(int i=(THREAD_SIZE/2); i > 0; i/=2)
+    {
+        if(tid < i)
+        {
+            vec3 cmp = snappedData[tid + i];
+            if(cmp.z < closestData.z)
+            {
+                closestData.z = cmp.z;
+                snappedData[tid] = cmp;
+            }
+        }
+        barrier();
+    }
+
+    if(tid == 0)
+    {
+        targetUV = snappedData[0].xy;
+    }
+}

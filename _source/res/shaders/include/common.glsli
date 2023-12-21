@@ -134,6 +134,14 @@ uint simpleHash32(uvec3 Seed)
 }
 
 
+uint simpleHash32_u2v0(uvec2 seed)
+{
+    uint hx = (seed.x ^ 0xcac9442u);
+    uint hy = (seed.y ^ 0x526ed7c6u);
+    uint hz = (hx * hy) ^ 0xc4ab2ac2u;
+    return hz * 0x526f94e3u;
+}
+
 uint wang_hash(uint seed)
 {
     seed = (seed ^ 61) ^ (seed >> 16);
