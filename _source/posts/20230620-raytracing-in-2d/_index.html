@@ -139,7 +139,7 @@ struct BvhNodeV1
     float4  leftData;
     float4  rightData;
 };
-``` 
+```
 
 Where:
 * `type` is 0 if it's a **node** or 1 if it's a **line**.
@@ -391,7 +391,9 @@ Slighly off tangent, but I ended up putting together a subset of the <a target="
             document.getElementById("drawCanvasControls").style.display = "none";
             var notSupported = document.getElementById("notSupportedBrowser");
             notSupported.style.display = "block";
-            notSupported.innerHTML = "WebGL2 not supported :(";
+            notSupported.innerHTML = `
+Sorry, this demo won't work on your browser.<br>
+Reason: <strong>WebGL2 not supported :(</strong><br>`;
             return;
         }
     });

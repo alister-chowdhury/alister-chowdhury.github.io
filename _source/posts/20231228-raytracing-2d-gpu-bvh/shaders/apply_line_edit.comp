@@ -1,0 +1,23 @@
+#version 460 core
+
+
+layout(local_size_x=1) in;
+
+layout(std430, binding = 0) buffer  inOutLines_ { vec4 inOutLines[]; };
+layout(binding=1)           uniform picked_     { uvec2 picked; };
+layout(binding=2)           uniform targetUV_   { vec2 targetUV; };
+
+void main()
+{
+    if(picked.x != 0xffffffffu)
+    {
+        if(picked.y == 0u)
+        {
+            inOutLines[picked.x].xy = targetUV;
+        }
+        else
+        {
+            inOutLines[picked.x].zw = targetUV;
+        }
+    }
+}

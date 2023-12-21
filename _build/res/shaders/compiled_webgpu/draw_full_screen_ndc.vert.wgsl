@@ -1,0 +1,2 @@
+struct c{@location(0)d:vec2f,@builtin(position)e:vec4f,}var<private>d:vec2f;var<private>f:u32;var<private>h:vec4f;fn i(){var j:f32;var k:f32;let l=f;if(i32(l)==0){j=-4.;}else{j=1.;}let m=j;let n=f;if(i32(n)==2){k=4.;}else{k=-1.;}let o=k;d=vec2f(m,o);let p=d;h=vec4f(p.x,p.y,0.,1.);return;}@vertex 
+fn main(@builtin(vertex_index)q:u32)->c{f=q;i();let s=d;let t=h;return c(s,t);}

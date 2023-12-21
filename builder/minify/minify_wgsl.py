@@ -184,9 +184,18 @@ def minify_wgsl(source):
     minified = re.sub("\n+", "\n", minified)
     minified = re.sub(r" +", " ", minified)
 
+    # NB removing `-`, naga seems to have parse issues:
+    # https://github.com/gfx-rs/wgpu/issues/4941
     minified = re.sub(
-        r"\s*([\[\]+\-\*^|&<>{};:\?\=,\(\)\!\~/])\s*",
+        r"\s*([\[\]+\*\^|&<>{};:\?\=,\(\)\!\~/])\s*",
         lambda x: x.group(1),
+        minified
+    )
+
+    # Explicit subtract for names
+    minified = re.sub(
+        r"\s*-\s*([A-Za-z_])",
+        lambda x: "-{0}".format(x.group(1)),
         minified
     )
 

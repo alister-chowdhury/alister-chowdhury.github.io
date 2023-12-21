@@ -4,9 +4,6 @@
     <meta name="description" content="WEGBL2 Bluenoise generator, using a void and cluster variant.">
     <meta name="keywords" content="bluenoise, void and cluster, rendering, dithering, low discrepancy sequence">
     <style>
-      #notSupportedBrowser {
-        display: none;
-      }
 
       #viewportWrapper {
         width: 50%;
@@ -296,14 +293,15 @@
                const ctx = getViewportCtx();
                if(!ctx.webBrowserSupported)
                {
-                   document.getElementById("supportedBrowser").style.display = "none";
 
-                   var notSupported = document.getElementById("notSupportedBrowser");
-                   notSupported.style.display = "block";
-                   notSupported.innerHTML = "Unfortunately your browser is not supported:<br>"
-                                           + ctx.noSupportReason
-                                           + "<br>Sorry about that :(";
-                   return;
+                  document.getElementById("supportedBrowser").style.display = "none";
+                  document.getElementById("drawCanvasControls").style.display = "none";
+                  var notSupported = document.getElementById("notSupportedBrowser");
+                  notSupported.style.display = "block";
+                  notSupported.innerHTML = `
+Sorry, this demo won't work on your browser.<br>
+Reason: <strong>${ctx.noSupportReason}</strong><br>`;
+                  return;
                }
 
                initNewRenderingContext();

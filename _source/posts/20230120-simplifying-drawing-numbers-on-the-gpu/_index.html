@@ -5,12 +5,6 @@
     <meta name="keywords" content="encoding numbers, GPU drawing, rendering, UI">
 
     <style>
-
-      #notSupportedBrowser
-      {
-        display: none;
-      }
-
       .dataTable
       {
         width: fit-content;
@@ -373,10 +367,15 @@ Also for funsies here is a shadertoy port: <a target="_blank" href="https://www.
         }
         else
         {
-          demo0Canvas.style.display = "none";
-          var notSupported = document.getElementById("notSupportedBrowser");
-          notSupported.style.display = "block";
-          notSupported.innerHTML = "WebGL2 not supported :(";
+
+            demo0Canvas.style.display = "none";
+            document.getElementById("drawCanvasControls").style.display = "none";
+            var notSupported = document.getElementById("notSupportedBrowser");
+            notSupported.style.display = "block";
+            notSupported.innerHTML = `
+Sorry, this demo won't work on your browser.<br>
+Reason: <strong>WebGL2 not supported :(</strong><br>`;
+            return;
         }
         
         const updateDemo0 = num => {

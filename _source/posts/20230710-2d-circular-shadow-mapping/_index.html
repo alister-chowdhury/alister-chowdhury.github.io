@@ -1290,7 +1290,9 @@ Anyway, this post has gone on for long enough, here is a mini demo (drag to move
             document.getElementById("drawCanvasControls").style.display = "none";
             var notSupported = document.getElementById("notSupportedBrowser");
             notSupported.style.display = "block";
-            notSupported.innerHTML = "WebGL2 not supported :(";
+            notSupported.innerHTML = `
+Sorry, this demo won't work on your browser.<br>
+Reason: <strong>WebGL2 not supported :(</strong><br>`;
             return;
         }
     });

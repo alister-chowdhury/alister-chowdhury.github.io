@@ -1,11 +1,15 @@
 import {
     AsyncBarrier,
-    loadCommonShaderSource,
+    loadCommonShaderSource
+} from '../../util.js';
+
+import {
     createShader,
     createGraphicsProgram,
     getUniformLocation,
-    deleteShaders,
-} from '../../util.js';
+    deleteShaders
+} from '../../webgl_util.js';
+
 
 export const DfrtV1 = (()=>{
     
@@ -15,12 +19,12 @@ export const DfrtV1 = (()=>{
     }
 
     const _GLOBAL_SHADERS_DATA = new AsyncBarrier()
-        .enqueue(loadCommonShaderSource("draw_full_screen_uvs.vert"), "DRAW_FULL_SCREEN_UVS_VERT")
+        .enqueue(loadCommonShaderSource("draw_full_screen_uvs.vert"), "DRAW_FULL_SCREEN_UVS_VERT_SRC")
         .enqueue(loadCommonShaderSource("const_col.frag"), "CONST_COL_FRAG_SRC")
         ;
     
     const _RESOURCES = new AsyncBarrier()
-        .enqueue(_GLOBAL_SHADERS_DATA.selfBarrier(), null, ["DRAW_FULL_SCREEN_UVS_VERT", "CONST_COL_FRAG_SRC"])
+        .enqueue(_GLOBAL_SHADERS_DATA.selfBarrier(), null, ["DRAW_FULL_SCREEN_UVS_VERT_SRC", "CONST_COL_FRAG_SRC"])
         .enqueue(loadCommonShaderSource("draw_col.frag"), "V1_DRAW_BVH_FRAG_SRC")
         .enqueue(loadShaderSource("dfrt_v1_tracing_test_composite.frag"), "V1_TRACING_TEST_COMPOSITE_FRAG_SRC")
         .enqueue(loadShaderSource("dfrt_v1_tracing_test_num_intersections.frag"), "V1_TRACING_TEST_NUM_INTERSECTIONS_FRAG_SRC")
@@ -143,7 +147,7 @@ export const DfrtV1 = (()=>{
             this.resourceLoaded = _RESOURCES.then(()=>
             {
                 // Compile shaders
-                const drawFullScreenUvsVert = createShader(GL, _RESOURCES.DRAW_FULL_SCREEN_UVS_VERT, GL.VERTEX_SHADER);
+                const drawFullScreenUvsVert = createShader(GL, _RESOURCES.DRAW_FULL_SCREEN_UVS_VERT_SRC, GL.VERTEX_SHADER);
                 const v1TracingTestCompositeFrag = createShader(GL, _RESOURCES.V1_TRACING_TEST_COMPOSITE_FRAG_SRC, GL.FRAGMENT_SHADER);
                 const v1TracingTestNumIntersectionsFrag = createShader(GL, _RESOURCES.V1_TRACING_TEST_NUM_INTERSECTIONS_FRAG_SRC, GL.FRAGMENT_SHADER);
                 const v1TracingTestNumIterationsFrag = createShader(GL, _RESOURCES.V1_TRACING_TEST_NUM_ITERATIONS_FRAG_SRC, GL.FRAGMENT_SHADER);

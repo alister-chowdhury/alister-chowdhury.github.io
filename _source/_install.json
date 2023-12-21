@@ -9,6 +9,8 @@
     "css.css": {"minify": true},
     "index.html": {"minify": true},
     "util.js": {"minify": true},
+    "webgl_util.js": {"minify": true},
+    "webgpu_util.js": {"minify": true},
     "robots.txt": {},
     "favicon.ico": {}
 }

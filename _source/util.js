@@ -61,127 +61,15 @@ class AsyncBarrier
         {
             await s.p;
         }
-        const c = f();
+        const c = f(s);
         return c;
     }
 };
-
-
 
 export function loadCommonShaderSource(name, type="webgl")
 {
     return fetch("/res/shaders/compiled_" + type + "/" + name).then(src => src.text());
 }
-
-export function createShader(GL, source, shaderType)
-{
-    if(!GL)
-    {
-        return null;
-    }
-
-    const shaderId = GL.createShader(shaderType);
-    GL.shaderSource(shaderId, source, 0);
-    GL.compileShader(shaderId);
-    if(!GL.getShaderParameter(shaderId, GL.COMPILE_STATUS))
-    {
-        // Should probbaly bubble this up a bit better
-        const errorLog = GL.getShaderInfoLog(shaderId);
-        var msg = `Failed to compile shader (type: ${shaderType}):\n${errorLog}.`;
-        console.log(msg);
-        debugger;
-        alert(msg);
-        throw new Error(msg);
-    }
-    return shaderId;
-}
-
-
-export function createGraphicsProgram(GL, vertexShader, fragmentShader=null)
-{
-    if(!GL)
-    {
-        return null;
-    }
-
-    const program = GL.createProgram();
-    GL.attachShader(program, vertexShader);
-
-    // WebGL2 cannot support proper vertex only shaders for whatever weird design
-    // reasons, so we're basically going to create a dummy one.
-    //
-    // "The program must contain objects to form both a vertex and fragment shader."
-    if(fragmentShader == null)
-    {
-        if(GL.dummyFragmentShader == undefined)
-        {
-            GL.dummyFragmentShader = createShader(
-                GL,
-                "#version 300 es\nvoid main(){}",
-                GL.FRAGMENT_SHADER
-            );
-        }
-        fragmentShader = GL.dummyFragmentShader;
-    }
-
-    GL.attachShader(program, fragmentShader);
-    GL.linkProgram(program);
-
-    if(!GL.getProgramParameter(program, GL.LINK_STATUS))
-    {
-        // Should probbaly bubble this up a bit better
-        const errorLog = GL.getProgramInfoLog(program);
-        var msg = `Failed to link graphics program:\n${errorLog}.`;
-        console.log(msg);
-        debugger;
-        alert(msg);
-        throw new Error(msg);
-    }
-
-    GL.detachShader(program, vertexShader);
-    GL.detachShader(program, fragmentShader);
-
-    return program
-}
-
-export function getUniformLocation(GL, program, name)
-{
-    if(!GL)
-    {
-        return null;
-    }
-
-    return GL.getUniformLocation(program, name);
-}
-
-
-export function createDummyVAO(GL)
-{
-    if(!GL)
-    {
-        return null;
-    }
-
-    return GL.createVertexArray();
-}
-
-
-export function deleteShaders(GL, ...shaders)
-{
-    if(!GL)
-    {
-        return;
-    }
-
-    for(const shader of shaders)
-    {
-        if(shader)
-        {
-            GL.deleteShader(shader);
-        }
-    }
-}
-
 
 export function isElementVisible(element)
 {
@@ -246,5 +134,97 @@ export const bitcast = (()=>
 
 })();
 
+
+export const resolveChildren = (desc)=>
+{
+    // Recursively find all objects and if it's a thenable
+    // add it to the promise queue.
+    const waitFor = [];
+    const writeBack = [];
+    let collectObjects = null;
+
+    collectObjects = (x)=>
+    {
+        for (const [key, value] of Object.entries(x))
+        {
+            if(typeof value === "object")
+            {
+                if(value.then !== undefined)
+                {
+                    waitFor.push(value);
+                    writeBack.push([x, key]);
+                }
+                else
+                {
+                    collectObjects(value);
+                }
+            }
+        }
+    };
+    
+    collectObjects(desc);
+
+    return Promise.all(waitFor).then((values) =>
+    {
+        for(let i=0; i<writeBack.length; ++i)
+        {
+            const ref = writeBack[i];
+            ref[0][ref[1]] = values[i];
+        }
+        return desc;
+    });
+};
+
+
+export const createCanvasDragHandler = (canvas, startDragging, drag, stopDragging)=>
+{
+    const calcDragUV = (event, touch)=>
+    {
+        event.preventDefault();
+        const bbox = canvas.getBoundingClientRect();
+        const ref = touch ?
+                    [event.touches[0].clientX, event.touches[0].clientY]
+                    : [event.clientX, event.clientY]
+                    ;
+        return [(ref[0] - bbox.x) / bbox.width,
+                 1.0 - (ref[1] - bbox.y) / bbox.height];
+    };
+
+    const initDrag = event=>{
+
+       if(event.type == "mousedown")
+       {
+            const onMove = (event)=>{
+                drag(calcDragUV(event, false));
+            };
+            const onEnd = (event)=>{
+                event.preventDefault();
+                canvas.removeEventListener("mousemove", onMove, false);
+                canvas.removeEventListener("mouseup", onEnd, false);
+                stopDragging();
+            };
+            canvas.addEventListener("mousemove", onMove, false);
+            canvas.addEventListener("mouseup", onEnd, false);
+            startDragging(calcDragUV(event, false));
+       }
+       else
+       {
+            const onMove = (event)=>{
+                drag(calcDragUV(event, true));
+            };
+            const onEnd = (event)=>{
+                event.preventDefault();
+                canvas.removeEventListener("touchmove", onMove, false);
+                canvas.removeEventListener("touchend", onEnd, false);
+            };
+            canvas.addEventListener("touchmove", onMove, false);
+            canvas.addEventListener("touchend", onEnd, false);
+            onMove(event);
+       }
+    };
+    
+    canvas.addEventListener("mousedown", initDrag, false);
+    canvas.addEventListener("touchstart", initDrag, false);
+};
 
 export { AsyncBarrier };

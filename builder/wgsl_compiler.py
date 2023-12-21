@@ -58,9 +58,30 @@ def validate_has_glsl_executables():
     Raises:
         RuntimeError: Executables not found.
     """
-    if not any(executable for executable in (_GLSLC_EXEC, _SPIRV_OPT_EXEC)):
+    if not any(executable for executable in (
+            _GLSLC_EXEC,
+            _SPIRV_OPT_EXEC,
+            _SPIRV_CROSS_EXEC
+        )):
         raise RuntimeError(
-            "glslc and spirv-opt are needed to compile shaders "
+            "glslc, spirv-opt and spirv-cross are needed to compile shaders "
+            "(install the VulkanSDK)."
+        )
+
+
+def validate_has_hlsl_executables():
+    """Validate the local machine has the relevant executables needed.
+
+    Raises:
+        RuntimeError: Executables not found.
+    """
+    if not any(executable for executable in (
+            _DXC_EXEC,
+            _SPIRV_OPT_EXEC,
+            _SPIRV_CROSS_EXEC
+        )):
+        raise RuntimeError(
+            "dxc, spirv-opt and spirv-cross are needed to compile shaders "
             "(install the VulkanSDK)."
         )
 
@@ -105,7 +126,10 @@ def _compile_to_spirv(out_spv_path, filepath, macros=None, includes=None):
     """
     glslc_command = [
         _GLSLC_EXEC,
-        "--target-env=vulkan1.1",
+
+        # Breaks naga: https://github.com/gfx-rs/wgpu/issues/4916
+        # "--target-env=vulkan1.1",
+
         "-O",
         filepath,
         "-o",
@@ -178,12 +202,16 @@ def _spv_glsl_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path):
     try:
         tmp_glsl.close()
         with open(tmp_glsl.name, "w") as out_fp:
-            out_fp.write(_spirv_to_glsl(spv_path))
+            glsl = _spirv_to_glsl(spv_path)
+            # Yet another naga bug: https://github.com/gfx-rs/wgpu/issues/4520
+            # glslc and friends assume gl_VertexIndex to be int
+            # but naga insists that it is uint.
+            glsl = glsl.replace("gl_VertexIndex", "int(gl_VertexIndex)")
+            out_fp.write(glsl)
         naga_cmd = [
             _NAGA_EXEC,
             tmp_glsl.name,
             out_wgsl_path,
-            "--compact"
         ]
         _check_call(naga_cmd)
     finally:
@@ -204,7 +232,6 @@ def _spirv_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path):
             _NAGA_EXEC,
             spv_path,
             out_wgsl_path,
-            "--compact"
         ]
         _check_call(naga_cmd)
     except Exception as naga_err:
@@ -213,7 +240,7 @@ def _spirv_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path):
         # clip distances being set, I have no idea
         # nor do I care.
         # But decompiling back to glsl will sometimes work.
-
+        # https://github.com/gfx-rs/wgpu/issues/4915
         if _SPIRV_CROSS_EXEC:
             _spv_glsl_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path)
         else:

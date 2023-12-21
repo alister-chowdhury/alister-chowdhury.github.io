@@ -1,0 +1,2 @@
+var<private>c:vec4f;var<private>d:vec3f;var<private>e:vec2f;fn function(){let f=d;let h=e;c=(vec4f(f.x,f.y,f.z,1.)*step(length(h),1.));return;}@fragment 
+fn main(@location(1)@interpolate(flat)i:vec3f,@location(0)j:vec2f)->@location(0)vec4f{d=i;e=j;function();let k=c;return k;}

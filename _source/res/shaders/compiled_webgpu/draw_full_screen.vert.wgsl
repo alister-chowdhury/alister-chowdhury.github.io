@@ -10,20 +10,20 @@ fn main_1() {
     var local_1: f32;
 
     let _e2 = gl_VertexIndex;
-    if (_e2 == 0u) {
+    if (i32(_e2) == 0) {
         local = -4.0;
     } else {
         local = 1.0;
     }
-    let _e8 = local;
-    let _e9 = gl_VertexIndex;
-    if (_e9 == 2u) {
+    let _e10 = local;
+    let _e11 = gl_VertexIndex;
+    if (i32(_e11) == 2) {
         local_1 = 4.0;
     } else {
         local_1 = -1.0;
     }
-    let _e15 = local_1;
-    gl_Position = vec4<f32>(_e8, _e15, 0.0, 1.0);
+    let _e19 = local_1;
+    gl_Position = vec4<f32>(_e10, _e19, 0.0, 1.0);
     return;
 }
 

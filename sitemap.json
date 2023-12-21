@@ -6,14 +6,14 @@
    "hash": "1d9f5ff8fcbc7eed16ac164c827db54e"
   },
   {
-   "lastmod": "2023-08-26",
+   "lastmod": "2023-12-28",
    "loc": "posts/20221230-bluenoise-generator/index.html",
-   "hash": "1222b707d7a19e6d60142c786cea998b"
+   "hash": "4a4c89374a4a2b9f29391d1cbadef8a9"
   },
   {
-   "lastmod": "2023-06-27",
+   "lastmod": "2023-12-28",
    "loc": "posts/20230120-simplifying-drawing-numbers-on-the-gpu/index.html",
-   "hash": "a32e74515f076ff5bde072db762a7455"
+   "hash": "812ac911482e696cb53effa0f3d7f306"
   },
   {
    "lastmod": "2023-06-27",
@@ -21,19 +21,19 @@
    "hash": "5ec3940f25acb0c79c073d542f1cbfa1"
   },
   {
-   "lastmod": "2023-10-29",
+   "lastmod": "2023-12-28",
    "loc": "posts/20230620-raytracing-in-2d/index.html",
-   "hash": "ea311000857c98a04cf6141493103d58"
+   "hash": "ec3a52d9a404184109074d6e395a3866"
   },
   {
-   "lastmod": "2023-10-29",
+   "lastmod": "2023-12-28",
    "loc": "posts/20230628-project-and-stencil/index.html",
-   "hash": "f76d2ec88a345181d36e6f54fc7b8a72"
+   "hash": "88ec82e6fdf8c49d704422923abebeb5"
   },
   {
-   "lastmod": "2023-10-29",
+   "lastmod": "2023-12-28",
    "loc": "posts/20230710-2d-circular-shadow-mapping/index.html",
-   "hash": "90230db59821aec3218d56e9deaf4dd5"
+   "hash": "e2414f37a8daf4b444af7aee2e63c759"
   },
   {
    "lastmod": "2023-11-11",
@@ -41,14 +41,19 @@
    "hash": "c38a634e1dd17fa84b19c237cdc831a0"
   },
   {
-   "lastmod": "2023-12-09",
+   "lastmod": "2023-12-28",
    "loc": "posts/20231206-hybrid-df-rtrace-2d/index.html",
-   "hash": "39557f5b3e840ea1ae1902917d19105b"
+   "hash": "c09c75e12b44cacc4c64cbdd6a4c05b2"
   },
   {
-   "lastmod": "2023-12-07",
+   "lastmod": "2023-12-28",
+   "loc": "posts/20231228-raytracing-2d-gpu-bvh/index.html",
+   "hash": "3fd4b896a11d23b0cd7e9480985fde73"
+  },
+  {
+   "lastmod": "2023-12-28",
    "loc": "posts/index.html",
-   "hash": "a10872dd57dbc745c997c264b38e0000"
+   "hash": "fbc030d2b8f73b429903db395daa3193"
   }
  ]
 }
