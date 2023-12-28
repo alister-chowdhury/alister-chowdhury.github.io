@@ -1,0 +1,2 @@
+var<private>c:vec2f;var<private>d:f32;var<private>e:vec4f;var<private>f:vec3f;var<private>h:vec3f;fn function(){let i=c;let j=d;let k=((i*j)*j);let l=f;let m=h;let n=select(m,l,vec3((((i32(k.x)&1)^(i32(k.y)&1))==0)));e=vec4f(n.x,n.y,n.z,.9);return;}@fragment 
+fn main(@location(3)o:vec2f,@location(2)@interpolate(flat)p:f32,@location(0)@interpolate(flat)q:vec3f,@location(1)@interpolate(flat)s:vec3f)->@location(0)vec4f{c=o;d=p;f=q;h=s;function();let j=e;return j;}
