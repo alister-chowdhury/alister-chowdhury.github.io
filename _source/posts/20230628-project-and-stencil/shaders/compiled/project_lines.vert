@@ -3,87 +3,87 @@ uniform highp sampler2D lines;
 uniform highp vec2 playerPosition;
 void main()
 {
-    uint _228 = uint(gl_VertexID);
-    vec4 _236 = texelFetch(lines, ivec2(int(_228 / 9u), 0), 0);
-    uint _489;
-    switch (_228 % 9u)
+    uint _233 = uint(gl_VertexID);
+    vec4 _241 = texelFetch(lines, ivec2(int(_233 / 9u), 0), 0);
+    uint _498;
+    switch (_233 % 9u)
     {
         case 0u:
         case 8u:
         {
-            _489 = 0u;
+            _498 = 0u;
             break;
         }
         case 1u:
         {
-            _489 = 1u;
+            _498 = 1u;
             break;
         }
         case 2u:
         case 3u:
         case 6u:
         {
-            _489 = 2u;
+            _498 = 2u;
             break;
         }
         case 4u:
         {
-            _489 = 3u;
+            _498 = 3u;
             break;
         }
         default:
         {
-            _489 = 4u;
+            _498 = 4u;
             break;
         }
     }
-    vec2 _249 = _236.xy;
-    vec2 _252 = _236.zw;
-    vec2 _494;
+    vec2 _254 = _241.xy;
+    vec2 _257 = _241.zw;
+    vec2 _503;
     do
     {
-        if (_489 == 0u)
+        if (_498 == 0u)
         {
-            _494 = _249;
+            _503 = _254;
             break;
         }
-        if (_489 == 1u)
+        if (_498 == 1u)
         {
-            _494 = _252;
+            _503 = _257;
             break;
         }
-        vec2 _326 = _252 - playerPosition;
-        float _328 = _326.x;
-        float _338 = _326.y;
-        vec2 _353 = _252 + (_326 * max(0.0, max((((_328 >= 0.0) ? 1.0 : (-1.0)) - _236.z) / _328, (((_338 >= 0.0) ? 1.0 : (-1.0)) - _236.w) / _338)));
-        if (_489 == 2u)
+        vec2 _331 = _257 - playerPosition;
+        float _333 = _331.x;
+        float _343 = _331.y;
+        vec2 _360 = _257 + (_331 * min(max(0.0, max((((_333 >= 0.0) ? 1.0 : (-1.0)) - _241.z) / _333, (((_343 >= 0.0) ? 1.0 : (-1.0)) - _241.w) / _343)), 1.0000000409184787596297531937522e+35));
+        if (_498 == 2u)
         {
-            _494 = _353;
+            _503 = _360;
             break;
         }
-        vec2 _361 = _249 - playerPosition;
-        float _363 = _361.x;
-        float _373 = _361.y;
-        vec2 _388 = _249 + (_361 * max(0.0, max((((_363 >= 0.0) ? 1.0 : (-1.0)) - _236.x) / _363, (((_373 >= 0.0) ? 1.0 : (-1.0)) - _236.y) / _373)));
-        if (_489 == 4u)
+        vec2 _368 = _254 - playerPosition;
+        float _370 = _368.x;
+        float _380 = _368.y;
+        vec2 _397 = _254 + (_368 * min(max(0.0, max((((_370 >= 0.0) ? 1.0 : (-1.0)) - _241.x) / _370, (((_380 >= 0.0) ? 1.0 : (-1.0)) - _241.y) / _380)), 1.0000000409184787596297531937522e+35));
+        if (_498 == 4u)
         {
-            _494 = _388;
+            _503 = _397;
             break;
         }
-        vec2 _402 = (_361 * length(_326)) + (_326 * length(_361));
-        vec2 _407 = vec2(_388.x, _353.y);
-        vec2 _412 = vec2(_353.x, _388.y);
-        bvec2 _495 = bvec2(dot(_402, _407 - playerPosition) <= 0.0);
-        vec2 _496 = vec2(_495.x ? vec2(0.0).x : _407.x, _495.y ? vec2(0.0).y : _407.y);
-        bvec2 _497 = bvec2(dot(_402, _412 - playerPosition) <= 0.0);
-        vec2 _498 = vec2(_497.x ? vec2(0.0).x : _412.x, _497.y ? vec2(0.0).y : _412.y);
-        bvec2 _438 = bvec2(abs(_496.x) > abs(_498.x));
-        vec2 _439 = vec2(_438.x ? _496.x : _498.x, _438.y ? _496.y : _498.y);
-        bvec2 _449 = bvec2(abs(_496.y) > abs(_498.y));
-        vec2 _450 = vec2(_449.x ? _496.x : _498.x, _449.y ? _496.y : _498.y);
-        bvec2 _460 = bvec2(abs(_439.x) > abs(_450.y));
-        _494 = vec2(_460.x ? _439.x : _450.x, _460.y ? _439.y : _450.y);
+        vec2 _411 = (_368 * length(_331)) + (_331 * length(_368));
+        vec2 _416 = vec2(_397.x, _360.y);
+        vec2 _421 = vec2(_360.x, _397.y);
+        bvec2 _504 = bvec2(dot(_411, _416 - playerPosition) <= 0.0);
+        vec2 _505 = vec2(_504.x ? vec2(0.0).x : _416.x, _504.y ? vec2(0.0).y : _416.y);
+        bvec2 _506 = bvec2(dot(_411, _421 - playerPosition) <= 0.0);
+        vec2 _507 = vec2(_506.x ? vec2(0.0).x : _421.x, _506.y ? vec2(0.0).y : _421.y);
+        bvec2 _447 = bvec2(abs(_505.x) > abs(_507.x));
+        vec2 _448 = vec2(_447.x ? _505.x : _507.x, _447.y ? _505.y : _507.y);
+        bvec2 _458 = bvec2(abs(_505.y) > abs(_507.y));
+        vec2 _459 = vec2(_458.x ? _505.x : _507.x, _458.y ? _505.y : _507.y);
+        bvec2 _469 = bvec2(abs(_448.x) > abs(_459.y));
+        _503 = vec2(_469.x ? _448.x : _459.x, _469.y ? _448.y : _459.y);
         break;
     } while(false);
-    gl_Position = vec4(_494, 0.0, 1.0);
+    gl_Position = vec4(_503, 0.0, 1.0);
 }

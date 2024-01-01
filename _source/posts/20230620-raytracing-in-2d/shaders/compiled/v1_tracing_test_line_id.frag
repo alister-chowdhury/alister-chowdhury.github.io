@@ -1,14 +1,12 @@
 #version 300 es
 precision highp float;
 precision highp int;
+vec2 _1422;
+ivec2 _1424;
 uniform highp sampler2D v1LinesBvh;
 uniform highp vec2 targetUV;
 in highp vec2 uv;
 layout(location = 0) out highp vec4 col;
-vec2 _1422;
-ivec2 _1424;
-vec2 _1676;
-ivec2 _1677;
 void main()
 {
     highp vec2 _531 = uv - targetUV;
@@ -58,17 +56,17 @@ void main()
                 highp float _793 = _649.w;
                 highp float _796 = _782.y;
                 highp float _798 = _649.z;
-                highp float _800 = (_791 * _793) - (_796 * _798);
+                highp float _800 = _791 * _793 + (-(_796 * _798));
                 highp float _802 = _789.x;
                 highp float _807 = _789.y;
                 uint _825 = floatBitsToUint(_800) & 2147483648u;
-                highp float _830 = uintBitsToFloat(floatBitsToUint((_802 * _796) - (_807 * _791)) ^ _825);
-                highp float _835 = uintBitsToFloat(floatBitsToUint((_802 * _793) - (_807 * _798)) ^ _825);
-                bool _839 = min(_830, _835) > 0.0;
+                highp float _830 = uintBitsToFloat(floatBitsToUint(_802 * _796 + (-(_807 * _791))) ^ _825);
+                highp float _835 = uintBitsToFloat(floatBitsToUint(_802 * _793 + (-(_807 * _798))) ^ _825);
+                bool _839 = min(_830, _835) >= 0.0;
                 bool _848;
                 if (_839)
                 {
-                    _848 = max(_830, _835) < abs(_800);
+                    _848 = max(_830, _835) <= abs(_800);
                 }
                 else
                 {
@@ -147,10 +145,6 @@ void main()
             _1432 = false;
             break;
         } while(false);
-        highp vec2 _1359 = _1676;
-        _1359.x = _1466;
-        ivec2 _1361 = _1677;
-        _1361.x = _1478;
         bool _1497;
         highp float _1531;
         int _1543;
@@ -164,17 +158,17 @@ void main()
                 highp float _1003 = _655.w;
                 highp float _1006 = _992.y;
                 highp float _1008 = _655.z;
-                highp float _1010 = (_1001 * _1003) - (_1006 * _1008);
+                highp float _1010 = _1001 * _1003 + (-(_1006 * _1008));
                 highp float _1012 = _999.x;
                 highp float _1017 = _999.y;
                 uint _1035 = floatBitsToUint(_1010) & 2147483648u;
-                highp float _1040 = uintBitsToFloat(floatBitsToUint((_1012 * _1006) - (_1017 * _1001)) ^ _1035);
-                highp float _1045 = uintBitsToFloat(floatBitsToUint((_1012 * _1003) - (_1017 * _1008)) ^ _1035);
-                bool _1049 = min(_1040, _1045) > 0.0;
+                highp float _1040 = uintBitsToFloat(floatBitsToUint(_1012 * _1006 + (-(_1017 * _1001))) ^ _1035);
+                highp float _1045 = uintBitsToFloat(floatBitsToUint(_1012 * _1003 + (-(_1017 * _1008))) ^ _1035);
+                bool _1049 = min(_1040, _1045) >= 0.0;
                 bool _1058;
                 if (_1049)
                 {
-                    _1058 = max(_1040, _1045) < abs(_1010);
+                    _1058 = max(_1040, _1045) <= abs(_1010);
                 }
                 else
                 {
@@ -253,23 +247,21 @@ void main()
             _1497 = false;
             break;
         } while(false);
-        highp vec2 _1401 = _1359;
-        _1401.y = _1531;
-        ivec2 _1403 = _1361;
-        _1403.y = _1543;
+        highp vec2 _1685 = vec2(_1466, _1531);
+        ivec2 _1686 = ivec2(_1478, _1543);
         if (_1432 && _1497)
         {
             ivec2 _1572;
             highp vec2 _1658;
             if (_1466 < _1531)
             {
-                _1658 = _1401.yx;
-                _1572 = _1403.yx;
+                _1658 = _1685.yx;
+                _1572 = _1686.yx;
             }
             else
             {
-                _1658 = _1401;
-                _1572 = _1403;
+                _1658 = _1685;
+                _1572 = _1686;
             }
             int _718 = _1562 + 1;
             _1267[_718] = _1572.x;
@@ -325,14 +317,14 @@ void main()
                 _1602 = _1603;
             }
             _1666 = _1667;
-            _1662 = _1403;
-            _1657 = _1401;
+            _1662 = _1686;
+            _1657 = _1685;
             _1610 = _1611;
             _1587 = _1602;
         }
     }
     uint _1191 = ((_1420 ^ 61u) ^ (_1420 >> uint(16))) * 9u;
     uint _1197 = (_1191 ^ (_1191 >> uint(4))) * 668265261u;
-    highp float _1209 = float((_1197 ^ (_1197 >> uint(15))) & 65535u) * 9.15541313588619232177734375e-05;
-    col = vec4(clamp(vec3(abs(_1209 - 3.0) - 1.0, 2.0 - abs(_1209 - 2.0), 2.0 - abs(_1209 - 4.0)), vec3(0.0), vec3(1.0)) * (1.0 - float(_1420 == 4294967295u)), 1.0);
+    highp float _1180 = float((_1197 ^ (_1197 >> uint(15))) & 65535u);
+    col = vec4(clamp(vec3(abs(_1180 * 9.15541313588619232177734375e-05 + (-3.0)) - 1.0, 2.0 - abs(_1180 * 9.15541313588619232177734375e-05 + (-2.0)), 2.0 - abs(_1180 * 9.15541313588619232177734375e-05 + (-4.0))), vec3(0.0), vec3(1.0)) * (1.0 - float(_1420 == 4294967295u)), 1.0);
 }

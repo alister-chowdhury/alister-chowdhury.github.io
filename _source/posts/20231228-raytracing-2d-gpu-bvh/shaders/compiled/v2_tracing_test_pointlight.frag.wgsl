@@ -189,10 +189,10 @@ fn function() {
                                     let _e139 = (bitcast<u32>(_e129) & 2147483648u);
                                     let _e142 = bitcast<f32>((bitcast<u32>(fma(_e122.x, _e120.y, -((_e122.y * _e120.x)))) ^ _e139));
                                     let _e145 = bitcast<f32>((bitcast<u32>(fma(_e122.x, _e119.w, -((_e122.y * _e119.z)))) ^ _e139));
-                                    let _e147 = (min(_e142, _e145) > 0.0);
+                                    let _e147 = (min(_e142, _e145) >= 0.0);
                                     phi_193_ = _e147;
                                     if _e147 {
-                                        phi_193_ = (max(_e142, _e145) < abs(_e129));
+                                        phi_193_ = (max(_e142, _e145) <= abs(_e129));
                                     }
                                     let _e152 = phi_193_;
                                     if _e152 {
@@ -308,10 +308,10 @@ fn function() {
                                     let _e266 = (bitcast<u32>(_e256) & 2147483648u);
                                     let _e269 = bitcast<f32>((bitcast<u32>(fma(_e249.x, _e247.y, -((_e249.y * _e247.x)))) ^ _e266));
                                     let _e272 = bitcast<f32>((bitcast<u32>(fma(_e249.x, _e246.w, -((_e249.y * _e246.z)))) ^ _e266));
-                                    let _e274 = (min(_e269, _e272) > 0.0);
+                                    let _e274 = (min(_e269, _e272) >= 0.0);
                                     phi_314_ = _e274;
                                     if _e274 {
-                                        phi_314_ = (max(_e269, _e272) < abs(_e256));
+                                        phi_314_ = (max(_e269, _e272) <= abs(_e256));
                                     }
                                     let _e279 = phi_314_;
                                     if _e279 {

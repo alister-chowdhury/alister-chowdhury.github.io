@@ -70,6 +70,7 @@ vec2 getShadowCoord(vec2 P,
         ((PB.x >= 0. ? 1. : -1.) - B.x) / PB.x,
         ((PB.y >= 0. ? 1. : -1.) - B.y) / PB.y
     ));
+    BInterval = min(BInterval, 1e+35);
 
     vec2 projectedB = B + BInterval * PB;
     if(shadowVertexId == 2u) return projectedB;
@@ -79,6 +80,7 @@ vec2 getShadowCoord(vec2 P,
             ((PA.x >= 0. ? 1. : -1.) - A.x) / PA.x,
             ((PA.y >= 0. ? 1. : -1.) - A.y) / PA.y
         ));
+    AInterval = min(AInterval, 1e+35);
 
     vec2 projectedA = A + AInterval * PA;
     if(shadowVertexId == 4u) return projectedA;

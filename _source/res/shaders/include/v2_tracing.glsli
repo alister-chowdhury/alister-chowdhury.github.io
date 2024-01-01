@@ -83,7 +83,7 @@ void lineBvhV2EvalLineBucket(vec2 ro,
             ++result.numLineIntersections;
         }
 
-        if((min(u, v) > 0.0) && (max(u, v) < abs(d)))
+        if((min(u, v) >= 0.0) && (max(u, v) <= abs(d)))
         {
             result.hitLineId = offset;
             result.hitLineInterval = -u / abs(d);

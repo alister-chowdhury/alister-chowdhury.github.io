@@ -1,14 +1,12 @@
 #version 300 es
 precision highp float;
 precision highp int;
+vec2 _1281;
+ivec2 _1283;
 uniform highp sampler2D v1LinesBvh;
 uniform highp vec2 targetUV;
 in highp vec2 uv;
 layout(location = 0) out highp vec4 col;
-vec2 _1281;
-ivec2 _1283;
-vec2 _1535;
-ivec2 _1536;
 void main()
 {
     highp vec2 _450 = uv - targetUV;
@@ -66,17 +64,17 @@ void main()
                 highp float _705 = _561.w;
                 highp float _708 = _694.y;
                 highp float _710 = _561.z;
-                highp float _712 = (_703 * _705) - (_708 * _710);
+                highp float _712 = _703 * _705 + (-(_708 * _710));
                 highp float _714 = _701.x;
                 highp float _719 = _701.y;
                 uint _737 = floatBitsToUint(_712) & 2147483648u;
-                highp float _742 = uintBitsToFloat(floatBitsToUint((_714 * _708) - (_719 * _703)) ^ _737);
-                highp float _747 = uintBitsToFloat(floatBitsToUint((_714 * _705) - (_719 * _710)) ^ _737);
-                bool _751 = min(_742, _747) > 0.0;
+                highp float _742 = uintBitsToFloat(floatBitsToUint(_714 * _708 + (-(_719 * _703))) ^ _737);
+                highp float _747 = uintBitsToFloat(floatBitsToUint(_714 * _705 + (-(_719 * _710))) ^ _737);
+                bool _751 = min(_742, _747) >= 0.0;
                 bool _760;
                 if (_751)
                 {
-                    _760 = max(_742, _747) < abs(_712);
+                    _760 = max(_742, _747) <= abs(_712);
                 }
                 else
                 {
@@ -158,10 +156,6 @@ void main()
             _1291 = false;
             break;
         } while(false);
-        highp vec2 _1218 = _1535;
-        _1218.x = _1325;
-        ivec2 _1220 = _1536;
-        _1220.x = _1337;
         bool _1356;
         highp float _1390;
         int _1402;
@@ -175,17 +169,17 @@ void main()
                 highp float _915 = _567.w;
                 highp float _918 = _904.y;
                 highp float _920 = _567.z;
-                highp float _922 = (_913 * _915) - (_918 * _920);
+                highp float _922 = _913 * _915 + (-(_918 * _920));
                 highp float _924 = _911.x;
                 highp float _929 = _911.y;
                 uint _947 = floatBitsToUint(_922) & 2147483648u;
-                highp float _952 = uintBitsToFloat(floatBitsToUint((_924 * _918) - (_929 * _913)) ^ _947);
-                highp float _957 = uintBitsToFloat(floatBitsToUint((_924 * _915) - (_929 * _920)) ^ _947);
-                bool _961 = min(_952, _957) > 0.0;
+                highp float _952 = uintBitsToFloat(floatBitsToUint(_924 * _918 + (-(_929 * _913))) ^ _947);
+                highp float _957 = uintBitsToFloat(floatBitsToUint(_924 * _915 + (-(_929 * _920))) ^ _947);
+                bool _961 = min(_952, _957) >= 0.0;
                 bool _970;
                 if (_961)
                 {
-                    _970 = max(_952, _957) < abs(_922);
+                    _970 = max(_952, _957) <= abs(_922);
                 }
                 else
                 {
@@ -267,23 +261,21 @@ void main()
             _1356 = false;
             break;
         } while(false);
-        highp vec2 _1260 = _1218;
-        _1260.y = _1390;
-        ivec2 _1262 = _1220;
-        _1262.y = _1402;
+        highp vec2 _1541 = vec2(_1325, _1390);
+        ivec2 _1542 = ivec2(_1337, _1402);
         if (_1291 && _1356)
         {
             ivec2 _1431;
             highp vec2 _1517;
             if (_1325 < _1390)
             {
-                _1517 = _1260.yx;
-                _1431 = _1262.yx;
+                _1517 = _1541.yx;
+                _1431 = _1542.yx;
             }
             else
             {
-                _1517 = _1260;
-                _1431 = _1262;
+                _1517 = _1541;
+                _1431 = _1542;
             }
             int _630 = _1421 + 1;
             _1123[_630] = _1431.x;
@@ -339,8 +331,8 @@ void main()
                 _1461 = _1462;
             }
             _1525 = _1526;
-            _1521 = _1262;
-            _1516 = _1260;
+            _1521 = _1542;
+            _1516 = _1541;
             _1469 = _1470;
             _1446 = _1461;
         }

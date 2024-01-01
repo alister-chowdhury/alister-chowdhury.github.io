@@ -85,7 +85,7 @@ bool lineBvhV1EvalEntry(vec2 ro,
         u = uintBitsToFloat(floatBitsToUint(u) ^ dSign); // u *= sign(d);
         v = uintBitsToFloat(floatBitsToUint(v) ^ dSign); // v *= sign(d);
 
-        if((min(u, v) > 0.0) && (max(u, v) < abs(d)))
+        if((min(u, v) >= 0.0) && (max(u, v) <= abs(d)))
         {
             result.hitLineId = floatBitsToUint(metadata.y);
             result.hitLineInterval = -u / abs(d);
