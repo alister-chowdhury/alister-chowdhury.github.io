@@ -147,18 +147,21 @@ Put bluntly, they aren't precise.</p>
 <div class="imTable imRef0">
   <div><img alt="ref_0_512" src="res/ref_0_512.png"><br>A suspiciously good looking visibility trace</div>
 </div>
+
 <br>
 <br>
 You might look at this and go, what's the problem, it looks fine?<br>
 Well this 512x512 image needed a 512x512 distance field texture to look correct.
 <br>
 <br>
+
 <p>What happens if we decrease the resolution and zoom in.</p>
 <div class="imTable imRef1">
   <div><img alt="ref_1_512" src="res/ref_1_512.png"><br>512x512<br>Reasonable</div>
   <div><img alt="ref_1_256" src="res/ref_1_256.png"><br>256x256<br>Less good...</div>
   <div><img alt="ref_1_128" src="res/ref_1_128.png"><br>128x128<br>Unforgivable</div>
 </div>
+
 <br>
 <br>
 The other problem, even at higher resolutions are thin tunnels:
@@ -169,15 +172,16 @@ The other problem, even at higher resolutions are thin tunnels:
 </div>
 <br>
 <br>
+
 <p>If you only need a very coarse visibility test for something like an AI, maybe this is fine.<br>
 Likewise if you're only concerned with what's on the screen (for instance ambient shadows), you can generate a screen-sized DF from a BVH very quickly per frame.<br></p>
 <h2>Creating A Hybrid</h2>
 <p>Ideally, we would be able to evaluate a distance field, up until we're near some geometry, then do proper line-ray intersections.<br>
-The immediate reaction to this idea is &quot;I'm not storing a list of lines per pixel&quot;, an understandable response.<br></p>
+The immediate reaction to this idea is &quot;I'm not storing a list of lines per pixel&quot;, an understandable response.<br>
 <br>
 But when you consider there is only a certain amount of unique sets of lines, this starts to sound more do-able.<br>
 <br>
-The pixel format I've chosen has the following layout:
+The pixel format I've chosen has the following layout:</p>
 <pre><code class="language-c">struct Pixel
 {
     u8  distance;   // df component
@@ -186,13 +190,14 @@ The pixel format I've chosen has the following layout:
 };
 </code></pre>
 <p>Even better, if we ignore the distance to lines that we'd be intersecting, we effectively get to bypass the tunnel issue.<br>
-For my implementation, I capture every line that is within 2 pixels distance.<br></p>
+For my implementation, I capture every line that is within 2 pixels distance.<br>
 <br>
-And here is a visualisation of the df and numlines components:
+And here is a visualisation of the df and numlines components:</p>
 <div class="imTable imRef3">
   <div><img alt="ref_3_1" src="res/ref_3_1.png"><br>df</div>
   <div><img alt="ref_3_0" src="res/ref_3_0.png"><br>numlines</div>
 </div>
+
 <br>
 The order of operations are:
 <ol>
@@ -200,6 +205,7 @@ The order of operations are:
 <li>Write the set to a buffer.</li>
 <li>Insert the buffer offset back into the image.</li>
 </ol>
+
 <p>Or in psuedocode (python):</p>
 <pre><code class="language-python">lines_to_id = {}
 df_texture_data = [None] * (res * res)
@@ -246,9 +252,11 @@ return df_texture, line_buffer
 </code></pre>
 <p>Which all things considered, is relatively simple.<br></p>
 <br>
+
 <p>When using a resolution of 128x128, that ~10ms raytracing time now takes around ~4ms, putting it on par with pure distance field tracing.<br></p>
 <p>The obvious limitation here is that you wouldn't really want to generate this per frame, since it is a bit expensive.<br></p>
 <br>
+
 <p>The traversal can be summed up to:</p>
 <pre><code class="language-c">// Cache to prevent evaluating the same ranges
 uint currentCacheKey = 0u;
@@ -322,6 +330,7 @@ while(!done)
 <br>
 <div style="font-weight:bold;font-size:1.3em;text-align:center">As always, here is a live demo</div>
 <br>
+
 <div>
 <canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
 <div class="twoxnctrls" id="drawCanvasControls">
@@ -361,6 +370,7 @@ while(!done)
 </div>
 <div id="notSupportedBrowser"></div>
 </div>
+
 <p>Here are all the relevant source code files:</p>
 <ul>
 <li>DFRT generation (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/df_rtrace_hybrid_v1/dfrt_generate_v1.cpp">dfrt_generate_v1.cpp</a></li>

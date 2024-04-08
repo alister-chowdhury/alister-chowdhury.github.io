@@ -103,7 +103,7 @@ export const DfrtV1 = (()=>{
                     lines: lines,
                     numInputLines: linesData.length/4,
                     params: [textureRes, 0, 0, 0],
-                }
+                };
 
                 self.redraw();
             };

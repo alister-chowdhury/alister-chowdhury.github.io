@@ -1,6 +1,7 @@
 import {
     AsyncBarrier,
-    loadCommonShaderSource
+    loadCommonShaderSource,
+    addDPIResizeWatcher
 } from '../../util.js';
 
 import {
@@ -678,6 +679,8 @@ class BluenoiseGeneratorCanvasContext
             return;
         }
 
+        addDPIResizeWatcher(canvas);
+
         this.settings = {
             width: 64,
             height: 64,
@@ -694,13 +697,13 @@ class BluenoiseGeneratorCanvasContext
 
     handleCanvasResize()
     {
-        const dirty = this.canvas.width  !== this.canvas.clientWidth
-                    || this.canvas.height !== this.canvas.clientHeight;
+        const dirty = this.canvas.width  !== this.canvas.dpiWidth
+                    || this.canvas.height !== this.canvas.dpiHeight;
 
         if(dirty)
         {
-            this.canvas.width  = this.canvas.clientWidth;
-            this.canvas.height = this.canvas.clientHeight;
+            this.canvas.width = this.canvas.dpiWidth;
+            this.canvas.height = this.canvas.dpiHeight;
             this.restoreViewportState();
         }
 

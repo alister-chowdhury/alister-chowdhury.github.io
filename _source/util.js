@@ -227,4 +227,34 @@ export const createCanvasDragHandler = (canvas, startDragging, drag, stopDraggin
     canvas.addEventListener("touchstart", initDrag, false);
 };
 
+
+export const addDPIResizeWatcher = (canvas)=>
+{
+    canvas.dpiWidth = canvas.width;
+    canvas.dpiHeight = canvas.height;
+
+    // https://www.khronos.org/webgl/wiki/HandlingHighDPI
+    new ResizeObserver((entries)=>
+        {
+            const entry = entries[0];
+            let width;
+            let height;
+            if (entry.devicePixelContentBoxSize)
+            {
+                width = entry.devicePixelContentBoxSize[0].inlineSize;
+                height = entry.devicePixelContentBoxSize[0].blockSize;
+            } else if (entry.contentBoxSize)
+            {
+                // fallback for Safari that will not always be correct
+                width = Math.round(entry.contentBoxSize[0].inlineSize * devicePixelRatio);
+                height = Math.round(entry.contentBoxSize[0].blockSize * devicePixelRatio);
+            }
+
+            const canvas = entry.target;
+            canvas.dpiWidth = width;
+            canvas.dpiHeight = height;
+
+        }).observe(canvas);
+};
+
 export { AsyncBarrier };

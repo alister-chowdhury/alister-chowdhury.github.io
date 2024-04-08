@@ -197,12 +197,14 @@ vec4 v2 = texelFetch(bvh, offset + 2);      // right data
   <div><img alt="lines1" src="res/lines1.png"><br>First Level</div>
   <div><img alt="lines2" src="res/lines2.png"><br>Second Level</div>
 </div>
+
 <p>The BVH generation code was written in C++ (link to source at the bottom) and even when targeting WASM, should be rather quick, you can run a little benchmark here (<code>n log(n)</code> time):</p>
 <div id="benchmarkGenBtnContainer">
 <input type="button" id="benchmarkGenBtn" disabled value="Run">
 <canvas id="benchmarkGenCanvas" style="display:none"></canvas>
 <div id="benchmarkGenInfo" style="display:none"></div>
 </div>
+
 <p>So much so, an interesting idea would be to offline calculate a BVH for static elements and per frame generate
 another BVH for dynamic elements and simply merge their root nodes together (perhaps for another time).</p>
 <h2>Shader Traversal</h2>
@@ -220,7 +222,7 @@ as a (very) simplified pseudo-code (python) outline:</p>
 
         left, right = split_left_right(node_data)
         to_add = []
-
+        
         for side in (left, right):
             if side.is_line():
                 hit_dist = ray_intersection_dist(ro, rd, side.data)
@@ -229,7 +231,7 @@ as a (very) simplified pseudo-code (python) outline:</p>
 
             else:
                 hit_dist = ray_intersction_bbox_dist(ro, rd, side.data):
-
+                
                 # Only push the node for evaluation if it may result in
                 # a closer intersection
                 if hit_dist &lt; closest_hit:
@@ -286,6 +288,7 @@ a full 1920x1080 pass, so not something you'd want to use directly for lighting.
 </div>
 <div id="notSupportedBrowser"></div>
 </div>
+
 <p>Worth noting, that it's incredibly simple to generate a distance field from a BVH (<code>findNearestDistanceBvhV1</code>), switching to a SDF model can reduce
 a full frame evaluation down from 9ms to 3ms at the cost.</p>
 <p>Here are all the relevant source code files:</p>

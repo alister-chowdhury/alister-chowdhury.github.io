@@ -3,7 +3,8 @@ import {
     loadCommonShaderSource,
     resolveChildren,
     createCanvasDragHandler,
-    loadF32Lines
+    loadF32Lines,
+    addDPIResizeWatcher
 } from '../../util.js';
 
 import {
@@ -620,7 +621,7 @@ export const RTV2 = (()=>
                 self.hasErrors = true;
                 self.redraw = ()=>{};
                 signalError(s);
-            }
+            };
 
             const ctx = canvas.getContext("webgpu");
             if(!ctx)
@@ -628,6 +629,8 @@ export const RTV2 = (()=>
                 err("Unable to create WebGPU context.");
                 return;
             }
+
+            addDPIResizeWatcher(canvas);
 
             GPUState.onerror.then(()=>{err(GPUState.err)});
             _RESOURCES.then(()=> // includes WebGPUState.onready
@@ -743,11 +746,11 @@ export const RTV2 = (()=>
 
                 const handleResize = ()=>
                 {
-                    if(   canvas.width  !== canvas.clientWidth
-                       || canvas.height !== canvas.clientHeight)
+                    if(   canvas.width  !== canvas.dpiWidth
+                       || canvas.height !== canvas.dpiHeight)
                     {
-                        canvas.width  = canvas.clientWidth;
-                        canvas.height = canvas.clientHeight;
+                        canvas.width  = canvas.dpiWidth;
+                        canvas.height = canvas.dpiHeight;
                         restoreViewportState();
                     }
                 };

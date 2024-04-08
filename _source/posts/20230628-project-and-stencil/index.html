@@ -124,6 +124,7 @@ infinity, if the player is right up next to the line.</p>
 <p>Additionally there is no reason to compute these polygons on the CPU and upload vertex buffers, this can all be done with a vertex shader and a texture that holds all the lines.</p>
 <details>
 <summary>Projection Vertex Shader</summary>
+
 <pre><code class="language-glsl">// Dispatch with GL_TRIANGLES with `9 * numLines` vertices.
 
 uint vertexIdToShadowVertexId(uint idx)
@@ -237,11 +238,13 @@ void main()
 }
 </code></pre>
 </details>
+
 <p>Here is a geogebra demo illustrating this in action: <a target="_blank" href="https://www.geogebra.org/calculator/gjz8fexq">2D Line To Shadow Triangles</a>.</p>
 <div id="project_vis" class="imTable">
   <div><img alt="project_vis1" src="res/project_vis1.png"><br>Projected Triangles</div>
   <div><img alt="project_vis2" src="res/project_vis2.png"><br>Resulting Mask</div>
 </div>
+
 <p>If you're only concerned with a single player, just using the depth buffer and running this before you render any other elements should be enough to mask anything that needs to be hidden.</p>
 <p>e.g:</p>
 <pre><code class="language-c">// Disable depth testing / keep depth writing
@@ -275,9 +278,12 @@ glDepthFunc(GL_LESS);
   <div><img alt="pas_s_4" src="res/pas_s_4.png"><br>Player #5 Shadow</div>
   <div><img alt="pas_s_5" src="res/pas_s_5.png"><br>Player #6 Shadow</div>
 </div>
+
 <br>
+
 <details>
 <summary>Example GL code</summary>
+
 <pre><code class="language-c">
 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -323,9 +329,11 @@ glStencilFunc(GL_NOTEQUAL, sharedVision ? numPlayers : 1, 0xFF);
 glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 </code></pre>
 </details>
+
 <p>The obvious limitations here is you pretty much have to sacrifice your stencil buffer, however we can move the final iteration to the depth buffer, freeing the stencil for other passes (assuming you're writing <code>gl_Position.z = 0</code>).</p>
 <details>
 <summary>Updated GL code</summary>
+
 <pre><code class="language-c">
 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -381,6 +389,7 @@ glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 </code></pre>
 </details>
+
 <h3>One Bit Per Player Variant</h3>
 <p>If you aren't really using the stencil buffer for anything else, have players that don't move every frame and have a maximum of 8 players you can quite easily store each players projected occlusion in a separate bit.</p>
 <p>e.g:</p>
@@ -393,6 +402,7 @@ player3Mask =&gt; (1 &lt;&lt; 3);
 <p>Additionally this enables you lazily clear and evaluate visibility on a per player basis, rather than having to recompute every player each time one them has moved.</p>
 <details>
 <summary>Example GL code</summary>
+
 <pre><code class="language-c">
 // Only enable stencil evaluation
 glEnable(GL_STENCIL_TEST);
@@ -432,6 +442,7 @@ int specificVisibleMask = (1 &lt;&lt; playerIdFirst) | (1 &lt;&lt; playerIdSecon
 glStencilFunc(GL_NOTEQUAL, specificVisibleMask, specificVisibleMask);
 </code></pre>
 </details>
+
 <p>And here is a little demo of it in action (you can move around the players):</p>
 <div>
 <canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
@@ -467,6 +478,7 @@ glStencilFunc(GL_NOTEQUAL, specificVisibleMask, specificVisibleMask);
 </div>
 <div id="notSupportedBrowser"></div>
 </div>
+
 <ul>
 <li>JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230628-project-and-stencil/pas.js">pas.js</a></li>
 <li>Project shader used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230628-project-and-stencil/shaders/project_lines.vert">project_lines.vert</a></li>

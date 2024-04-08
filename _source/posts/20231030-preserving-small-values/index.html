@@ -238,6 +238,7 @@ As it turns out <a href="https://en.wikipedia.org/wiki/Hacker%27s_Delight" targe
 <p>(<a href="https://musl.libc.org/" target="_blank">MUSLs</a> <code>cbrt</code> implementation uses the same technique, but never got any of the appreciation it deserves).</p>
 <p>We aren't going to be doing any Newton or Halley iterations, they aren't really relevant to us and if we want to use fractional powers, make everything messy.</p>
 <br>
+
 <p>We first derive the exponent via <code>uint(127 - 127 / power) &lt;&lt; 23</code>, leaving us to solve the 23bit mantissa.</p>
 <p>This can be done by probing the maximum ulp error for different mantissa values and keeping whichever one has the least error.</p>
 <p>It might sound like this requires an enormous amount of computing, but it doesn't.</p>
@@ -248,6 +249,7 @@ For reasons I cannot explain, every power has a value it clearly converges towar
 <p>The actual way I do this is through a series of passes.</p>
 <details>
 <summary>Explanation of passes</summary>
+
 <pre><code>Each pass will pick up where the last pass left off,
 solving (nsearchbits-1) each time, except for the last
 pass, which will solve nsearchbits.
@@ -288,6 +290,7 @@ we we're comparing the least significant bits, at which
 point our magic number as been solved!
 </code></pre>
 </details>
+
 <p>Here's a visualisation of the different passes used to solve the cuberoot, solving 4 bits at a time, it's a set
 of normalised offsets with the max ulp error appearing on y (lower is better).</p>
 <div class="imTable passTable">
@@ -300,10 +303,13 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
     <div><img src="res/f-pass-7.png" alt="f-pass-7"><div></div><div>Pass 7<br>0x2a50a290 - 0x2a50a2ae</div></div>
     <div><img src="res/f-pass-8.png" alt="f-pass-8"><div></div><div>Pass 8<br>0x2a50a29a - 0x2a50a29d</div></div>
 </div>
+
 <br>
+
 <p>Here is an example of us having solved a cuberoot:</p>
 <div class="imTable flexcode">
 <div>
+
 <pre><code class="language-c">float encode(float x)
 {
     // 4 x full rate
@@ -315,6 +321,7 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 </code></pre>
 </div>
 <div>
+
 <pre><code class="language-c">float decode(float x)
 {
     // 4 x full rate
@@ -326,9 +333,11 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 </code></pre>
 </div>
 </div>
+
 <p>We can actually reduce the amount of instructions to 3, if we're willing to evaluate the magic number as a float (for a very very very small amount of precision error):</p>
 <div class="imTable flexcode">
 <div>
+
 <pre><code class="language-c">float encode(float x)
 {
     // 3 x full rate
@@ -340,6 +349,7 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 </code></pre>
 </div>
 <div>
+
 <pre><code class="language-c">float decode(float x)
 {
     // 3 x full rate
@@ -351,6 +361,7 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 </code></pre>
 </div>
 </div>
+
 <p>The precision error can be seen as the passes begin to break down at later stages:</p>
 <div class="imTable passTable">
     <div><img src="res/t-pass-5.png" alt="t-pass-5"><div></div><div>Pass 5<br>0x2a50a000 - 0x2a50a780</div></div>
@@ -358,7 +369,9 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
     <div><img src="res/t-pass-7.png" alt="t-pass-7"><div></div><div>Pass 7<br>0x2a50a270 - 0x2a50a28e</div></div>
     <div><img src="res/t-pass-8.png" alt="t-pass-8"><div></div><div>Pass 8<br>0x2a50a27e - 0x2a50a281</div></div>
 </div>
+
 <hr>
+
 <h3>Live demo</h3>
 <div class="rootContainer">
 <!----><div id="approxRootContainerHead">
@@ -403,7 +416,9 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 <!--  --></div>
 <!----></div>
 </div>
+
 <hr>
+
 <p>Here are all the relevant source code files:</p>
 <ul>
 <li>Approx root (JS): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/approx_roots.js">approx_roots.js</a> and <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/approx_roots_worker.js">approx_roots_worker.js</a></li>
@@ -452,6 +467,7 @@ done at the cost of two extra instructions.</p>
 <p>What's sort of neat, is really we can introduce the concept of <em>partial</em> exponent bits.
 If we take <code>2.5</code> as the number of exponent bits, simply lerp between <code>1 &lt;&lt; (23 + 2) - 1</code> and <code>1 &lt;&lt; (23 + 3) - 1</code>.</p>
 <hr>
+
 <h3>Live demo</h3>
 <div class="rootContainer">
 <!----><div class="twoxnctrls">
@@ -476,7 +492,9 @@ If we take <code>2.5</code> as the number of exponent bits, simply lerp between 
 <!--  --><div><pre class="nomargin"><code class="language-c" id="smFloatDecodeSource"></code></pre></div>
 <!----></div>
 </div>
+
 <hr>
+
 <p>Here are all the relevant source code files:</p>
 <ul>
 <li>Norm small float (JS): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/norm_small_float.js">norm_small_float.js</a></li>
@@ -515,9 +533,12 @@ float3 unpack(uint packed)
 </code></pre>
 <h3>Optimization For Encoding / Decoding using Denormals</h3>
 <br>
+
 <div style="color:#fc0;font-weight:bold">&#9888; Denormal support (atleast with WebGL) is spotty at best &#9888;</div>
+
 <p>Massive thanks to the lovely people at shadertoy for doing a little survey: <a href="https://www.shadertoy.com/view/dlcyD7" target="_blank">Does Your GPU Support Denormals?</a></p>
 <br>
+
 <h4>Encoding</h4>
 <p>Assuming the target architecture handles denormals correctly,
 we can reduce the number of instructions from 2 to 1:</p>

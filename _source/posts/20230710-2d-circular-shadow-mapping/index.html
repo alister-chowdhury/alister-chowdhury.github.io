@@ -131,6 +131,7 @@ float u = atan2(circlePosition.y, circlePosition.x) / TWOPI;
 <!--    --><div><input aria-labelledby="circleToLineDemoLerpLabel" id="circleToLineDemoLerp" type="range" min="0" max="1" value="0" step="0.0001"><br/></div>
 <!----></div>
 </div>
+
 <p>Storing information in this way has the added bonus, that we can store the shadow information of multiple lights in a single 2D texture, where each light is it's own row.
 So if we have 100 lights and we choose to have a resolution of 512, we allocate a single <code>512x100</code> texture, this simplifies binding and opens the door for evaluating all pointlights in a single pass.</p>
 <p><strong>If you have truly static lights, baking them all down either onto the background image or as a seperate overlay is always going to be faster at runtime.</strong></p>
@@ -140,6 +141,7 @@ As such, we are going to want to use approximations.</p>
 <p>This is a pretty decent one I've found, courtesy of <a target="_blank" href="https://math.stackexchange.com/a/1105038">njuffa on math.stackexchange.com</a>.</p>
 <details>
 <summary>fastAtan2</summary>
+
 <pre><code class="language-glsl">// https://math.stackexchange.com/a/1105038
 float fastAtan2(float y, float x)
 {
@@ -153,9 +155,11 @@ float fastAtan2(float y, float x)
 }
 </code></pre>
 </details>
+
 <p>But we can do a bit better since we also need to do an extra division by 2pi</p>
 <details>
 <summary>fastAtan2_div2pi</summary>
+
 <pre><code class="language-glsl">// Similar to fastAtan2, except the result is pre divided by 2pi, for the
 // purpose of sampling 1d circular maps (circular shadows etc).
 // https://www.geogebra.org/calculator/dms6kp8w
@@ -174,9 +178,11 @@ float fastAtan2_div2pi(float y, float x)
 
 </code></pre>
 </details>
+
 <p>And if we wanted to be extra accurate (we don't):</p>
 <details>
 <summary>fastAtan2_div2pi_accurate</summary>
+
 <pre><code class="language-glsl">// One extra mad over fastAtan2_div2pi, although that is typically accurate enough.
 //
 // max error ~ 3.6957397769599165e-05
@@ -192,9 +198,11 @@ float fastAtan2_div2pi_accurate(float y, float x)
 }
 </code></pre>
 </details>
+
 <p>I wrote the following python script using <code>scipy.optimize.curve_fit</code> to derive the coefficients (not particularly well written, but this is very much something you run once and never touch again, but probably nice to have a reference):</p>
 <details>
 <summary>atan01.py</summary>
+
 <pre><code class="language-python">from numpy import *
 from scipy.optimize import curve_fit
 
@@ -223,7 +231,7 @@ if __name__ == &quot;__main__&quot;:
     keep = (Px &gt; 0) &amp; (Py &gt; 0) &amp; (Px &gt; Py)
     Px = Px[keep]
     Py = Py[keep]
-
+    
     # Fitting ratio of segment
     fit_x = Py / Px
     fit_y = arctan2(Py, Px) / (2 * pi)
@@ -253,9 +261,11 @@ if __name__ == &quot;__main__&quot;:
         print(f)
 </code></pre>
 </details>
+
 <p>Before and after AMD assembly for reference:</p>
 <div class="amdAsmCmp">
 <div>
+
 <pre><code>v_max_f32     v1, abs(v2), abs(v0)
 v_rcp_f32     v1, v1
 v_min_f32     v3, abs(v2), abs(v0)
@@ -287,6 +297,7 @@ v_mul_f32     v0, 0.15915494, v0
 </code></pre>
 </div>
 <div>
+
 <pre><code>v_min_f32     v1, abs(v2), abs(v0)
 v_max_f32     v3, abs(v2), abs(v0)
 v_rcp_f32     v3, v3
@@ -307,6 +318,7 @@ v_xor_b32     v0, v0, v1
 </code></pre>
 </div>
 </div>
+
 <h2>Generating A Shadowmap</h2>
 <p>If you've got a BVH of the scene (<a href="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/">Raytracing In 2D</a>), you can very quickly generate your maps.</p>
 <pre><code class="language-glsl">// Assuming you're just doing a fullscreen pass with the vertex shader
@@ -337,6 +349,7 @@ The basic idea is to draw each line over each pointlights row, then manually ove
 (We also need to draw each line twice, since it's liable to wrap around).</p>
 <details>
 <summary>vertex shader</summary>
+
 <pre><code class="language-glsl">layout(location = 0) uniform float invTextureHeight;
 
 flat layout(location = 0) out vec4 lineData;
@@ -408,9 +421,12 @@ void main()
 }
 </code></pre>
 </details>
+
 <br>
+
 <details>
 <summary>fragment shader</summary>
+
 <pre><code class="language-glsl">flat layout(location = 0) in vec4 lineData;
 layout(location = 1) in float direction;
 
@@ -432,12 +448,14 @@ void main()
 }
 </code></pre>
 </details>
+
 <p>Overall, using the BVH version is probably a better option.</p>
 <p>Now we can start attempting to shadow things.
 Normally for shadow maps you'd use something like PCF when sampling, which we can get the hardware to do directly
 when using a depth texture (it's not hard to do manually if you're rendering to some other format).</p>
 <details>
 <summary>texture parameters</summary>
+
 <pre><code class="language-c">glTextureParameteri(tex, GL_TEXTURE_WRAP_S, GL_REPEAT);
 glTextureParameteri(tex, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
@@ -457,10 +475,12 @@ else
 }
 </code></pre>
 </details>
+
 <p>For the sake of keeping this simple, I'll assume we're using a depth texture and here are the parameters to enable PCF.</p>
 <p>Here is one way, you might go about applying the lights in a single fullscreen pass:</p>
 <details>
 <summary>lighting pass</summary>
+
 <pre><code class="language-glsl">layout(location = 0) uniform uint pointLightCount;
 layout(binding = 0) uniform sampler2DShadow pointLightShadowMap;
 
@@ -477,7 +497,7 @@ void main()
 
     for(uint pointLightID=0; pointLightID &lt; pointLightCount; ++pointLightID)
     {
-
+        
         const vec2 pointLightPos = getLightPosition(pointLightID);
         const vec2 localUv = (2.0 * uv - 1.0) - pointLightPos.xy;   // assuming lights are in NDC space
 
@@ -492,11 +512,15 @@ void main()
 }
 </code></pre>
 </details>
+
 <br>
+
 <div class="imTable imComp">
   <div><img alt="example1" src="res/example1.png"><br>Single light source</div>
 </div>
+
 <br>
+
 <p>This may all look fine at first, but all is not how it seems...<br>
 If we move our light source and zoom in a bit, the true horror of acne reveals itself.</p>
 <div class="imTable imComp">
@@ -504,7 +528,9 @@ If we move our light source and zoom in a bit, the true horror of acne reveals i
   <div><img alt="acne1" src="res/acne1.png"><br>Zoomed in #1</div>
   <div><img alt="acne2" src="res/acne2.png"><br>Zoomed in #2</div>
 </div>
+
 <br>
+
 <p>This does make sense, since each sample more-or-less maps to a radius of visibility and any direction in between doesn't really correspond to either in a linear way.</p>
 <p>You can of course just up the resolution, but this isn't a very satisfying solution.</p>
 <p>You might attempt to create lines between depth samples and then do line-line intersection tests, or even just render a line directly and this
@@ -535,7 +561,7 @@ void main()
     {
         N = normalize(vec2(hit.line.w, -hit.line.z));
         w = dot(N, hit.line.xy - ro);
-
+        
         // Ensure a consistent clockwise orientation plus
         // keep the distance coef positive.
         N.x = multiplySign(N.x, w);
@@ -570,7 +596,7 @@ float getPCFPlaneVisibility(sampler2D lightPlaneMap,
 {
     float sampleXBase = (planeMapUV.x + 1.0) * lightPlaneMapSize.x - 0.5;
     int sampleY = int(planeMapUV.y * lightPlaneMapSize.y);
-
+    
     int sampleX0 = int(sampleXBase);
     int sampleX1 = sampleX0 + 1;
     sampleX0 &amp;= (lightPlaneMapSize.x - 1);
@@ -597,6 +623,7 @@ float getPCFPlaneVisibility(sampler2D lightPlaneMap,
 <p>The simplest option is to generate BBOXs:</p>
 <details>
 <summary>gen_bbox.frag</summary>
+
 <pre><code class="language-glsl">vec2 projectRay(vec3 planeAndDistance, float theta)
 {
     vec2 rd = vec2(cos(theta), sin(theta));
@@ -651,10 +678,13 @@ void main()
 }
 </code></pre>
 </details>
+
 <br>
+
 <p>This works reasonably well, but we can prevent overdrawing by fitting a better quad:</p>
 <details>
 <summary>gen_obbox.frag</summary>
+
 <pre><code class="language-glsl">vec2 projectRay(vec3 planeAndDistance, float theta)
 {
     vec2 rd = vec2(cos(theta), sin(theta));
@@ -760,7 +790,7 @@ void main()
         float thetaLeft = (float(x) - bias) * invTextureSizeTwoPi;
         vec2 projectionLeft = projectRay(planeAndDistance, thetaLeft);
         float leftDist = dot(projectionLeft, Ln) - Lw;
-
+        
         float thetaRight = (float(x) + bias) * invTextureSizeTwoPi;
         vec2 projectionRight = projectRay(planeAndDistance, thetaRight);
         float rightDist = dot(projectionRight, Ln) - Lw;
@@ -808,9 +838,12 @@ void main()
 }
 </code></pre>
 </details>
+
 <br>
+
 <p>The above stores four points, but in order to make it easier to fetch, packs them as <code>float16</code>.</p>
 <br>
+
 <p>Despite the <code>bbox</code> code iterating every pixel in a row (and the <code>obbox</code> iterating them three times), this is actually
 remarkably not the most obscenely expensive operation to run, of course ideally you'd run the whole operation maybe once
 and update individual lights as data changes.</p>
@@ -884,6 +917,7 @@ amount of implicit dependencies the GPU will need to resolve when blending (a co
 </div>
 <div id="notSupportedBrowser"></div>
 </div>
+
 <ul>
 <li>JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230710-2d-circular-shadow-mapping/circular_mapping.js">circular_mapping.js</a></li>
 <li>Shader used for demo:</li>
