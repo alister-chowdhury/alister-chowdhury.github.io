@@ -26,7 +26,7 @@ vec4 v2 = texelFetch(bvh, offset + 2);      // right data
 
         left, right = split_left_right(node_data)
         to_add = []
-
+        
         for side in (left, right):
             if side.is_line():
                 hit_dist = ray_intersection_dist(ro, rd, side.data)
@@ -35,7 +35,7 @@ vec4 v2 = texelFetch(bvh, offset + 2);      // right data
 
             else:
                 hit_dist = ray_intersction_bbox_dist(ro, rd, side.data):
-
+                
                 # Only push the node for evaluation if it may result in
                 # a closer intersection
                 if hit_dist &lt; closest_hit:

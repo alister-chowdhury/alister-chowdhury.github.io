@@ -69,7 +69,7 @@ if __name__ == &quot;__main__&quot;:
     keep = (Px &gt; 0) &amp; (Py &gt; 0) &amp; (Px &gt; Py)
     Px = Px[keep]
     Py = Py[keep]
-
+    
     # Fitting ratio of segment
     fit_x = Py / Px
     fit_y = arctan2(Py, Px) / (2 * pi)
@@ -284,7 +284,7 @@ void main()
 
     for(uint pointLightID=0; pointLightID &lt; pointLightCount; ++pointLightID)
     {
-
+        
         const vec2 pointLightPos = getLightPosition(pointLightID);
         const vec2 localUv = (2.0 * uv - 1.0) - pointLightPos.xy;   // assuming lights are in NDC space
 
@@ -314,7 +314,7 @@ void main()
     {
         N = normalize(vec2(hit.line.w, -hit.line.z));
         w = dot(N, hit.line.xy - ro);
-
+        
         // Ensure a consistent clockwise orientation plus
         // keep the distance coef positive.
         N.x = multiplySign(N.x, w);
@@ -341,7 +341,7 @@ float getPCFPlaneVisibility(sampler2D lightPlaneMap,
 {
     float sampleXBase = (planeMapUV.x + 1.0) * lightPlaneMapSize.x - 0.5;
     int sampleY = int(planeMapUV.y * lightPlaneMapSize.y);
-
+    
     int sampleX0 = int(sampleXBase);
     int sampleX1 = sampleX0 + 1;
     sampleX0 &amp;= (lightPlaneMapSize.x - 1);
@@ -516,7 +516,7 @@ void main()
         float thetaLeft = (float(x) - bias) * invTextureSizeTwoPi;
         vec2 projectionLeft = projectRay(planeAndDistance, thetaLeft);
         float leftDist = dot(projectionLeft, Ln) - Lw;
-
+        
         float thetaRight = (float(x) + bias) * invTextureSizeTwoPi;
         vec2 projectionRight = projectRay(planeAndDistance, thetaRight);
         float rightDist = dot(projectionRight, Ln) - Lw;
