@@ -1,0 +1,141 @@
+#version 460 core
+
+#include "bn2common.glsli"
+
+
+// Currently, we only allow up to 64, mainly to keep
+// the thread size equal 64, to make it easier to support
+// different hardware.
+//
+// This limit could be increased at the cost of the code being
+// more complex, but thus far, I haven't got a reason to do this.
+#if TILE_SIZE > 64
+#error "TILE_SIZE is too big"
+#endif // TILE_SIZE > 64
+
+
+#define DISPATCH_Y_SIZE     (64 / TILE_SIZE)
+#define ROWS_PER_THREAD     (TILE_SIZE / DISPATCH_Y_SIZE)
+layout(local_size_x=TILE_SIZE, local_size_y=DISPATCH_Y_SIZE) in;
+
+
+layout(binding = 0) uniform TileUpdateDataPacked_
+{
+    TileUpdateDataPacked tileUpdateDataPacked;
+};
+
+readonly  IMAGESTORAGE_R32f(1, energy);
+          IMAGESTORAGE_R32f(2, inOutBNValue);
+writeonly IMAGESTORAGE_RGBA32f(3, outTilePicks);
+
+
+uint simpleHash32(uvec3 Seed)
+{
+    uint hx = (0xb543c3a6u ^ Seed.x);
+    uint hy = (0x526f94e2u ^ Seed.y);
+    uint hxy = hx * hy;
+    uint hz0 = 0x53c5ca59u ^ (hxy >> 5u);
+    uint hz1 = (0x74743c1bu ^ Seed.z);
+    uint h = hz0 * hz1;
+    return h;
+}
+
+
+shared float energyBufferLDS[TILE_SIZE * TILE_SIZE];
+#define LDS_OFFSET(v) ((v).y * TILE_SIZE + (v).x)
+
+
+float getCurrentEnergy(bn_coord_t coord)
+{
+    if(IMAGE_LOAD_R(inOutBNValue, coord) == 0.0)
+    {
+        return IMAGE_LOAD_R(energy, coord);
+    }
+
+    // Ignore pixels that have already been filled in by
+    // saying their current energy is obscenely high, thus
+    // preventing them from even being picked.
+    return 1e+35;
+}
+
+
+void populateEnergyBufferLDS(bn_coord_t targetTileCoord, ivec2 tid)
+{
+    for(int rowOffset=0;
+        rowOffset < ROWS_PER_THREAD;
+        ++rowOffset, tid.y+=DISPATCH_Y_SIZE)
+    {
+        bn_coord_t targetPixel = getTileInnerCoord(targetTileCoord, tid);
+        energyBufferLDS[LDS_OFFSET(tid)] = getCurrentEnergy(targetPixel);
+    }
+}
+
+
+void main()
+{
+
+    TileUpdateData tileData = unpackTileUpdateData(tileUpdateDataPacked);
+    ivec2 tileIdOffset = tileData.tileIdOffset;
+    float writeValue = tileData.writeValue;
+    uint randomSeed = tileData.randomSeed;
+
+    ivec2 tid = ivec2(gl_LocalInvocationID.xy);
+    ivec2 tileId = ivec2(gl_WorkGroupID.xy) * 2 + tileIdOffset;
+    bn_coord_t targetTileCoord = getFullResTileBase(tileId, tileData);
+    populateEnergyBufferLDS(targetTileCoord, tid);
+
+    ivec2 start = tileId * TILE_SIZE;
+    uint yh = simpleHash32(uvec3(uvec2(start) + 1u, randomSeed)) >> 3;
+    uint xh = simpleHash32(uvec3(uvec2(start) + uvec2(13u, 11u), yh)) >> 5;
+    barrier();
+
+    // Reduce vertically, attempting to avoid a bank conflict
+    if(tid.y == 0)
+    {
+        int x = tid.x;
+        int voidY = int(yh & (TILE_SIZE - 1));
+        float voidValue = energyBufferLDS[LDS_OFFSET(ivec2(x, voidY))];
+        
+        for(uint yit=1u; yit < uint(TILE_SIZE); ++yit)
+        {
+            int y = int((yh ^ yit) & (TILE_SIZE - 1));
+            float currentVoid = energyBufferLDS[LDS_OFFSET(ivec2(x, y))];   
+            if(currentVoid < voidValue)
+            {
+                voidValue = currentVoid;
+                voidY = y;
+            }
+        }
+
+        // Write back into memory only accessed by this thread
+        energyBufferLDS[LDS_OFFSET(ivec2(x, 0))] = voidValue;
+        energyBufferLDS[LDS_OFFSET(ivec2(x, 1))] = intBitsToFloat(voidY);
+    }
+    barrier();
+
+
+    // Reduce horizonatally and output the result
+    if(tid.x == 0 && tid.y == 0)
+    {
+        int voidX = int(xh & (TILE_SIZE - 1));
+        float voidValue = energyBufferLDS[LDS_OFFSET(ivec2(voidX, 0))];
+        ivec2 voidCoord = ivec2(voidX, floatBitsToInt(energyBufferLDS[LDS_OFFSET(ivec2(voidX, 1))]));
+
+        for(uint xit=1u; xit < uint(TILE_SIZE); ++xit)
+        {
+            int x = int((xh ^ xit) & (TILE_SIZE - 1));
+            float currentVoidValue = energyBufferLDS[LDS_OFFSET(ivec2(x, 0))];
+            if(currentVoidValue < voidValue)
+            {
+                voidValue = currentVoidValue;
+                voidCoord = ivec2(x, floatBitsToInt(energyBufferLDS[LDS_OFFSET(ivec2(x, 1))]));
+            }
+        }
+
+        bn_coord_t pickCoord = getPickCoord(tileId, tileData);
+        bn_coord_t writeCoord = getTileInnerCoord(targetTileCoord, voidCoord);
+
+        IMAGE_STORE_RGBA(outTilePicks, pickCoord, vec4(voidCoord, writeValue, 0));
+        IMAGE_STORE_R(inOutBNValue, writeCoord, writeValue);
+    }
+}

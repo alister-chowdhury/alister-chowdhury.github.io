@@ -1,0 +1,149 @@
+#ifndef BLUENOISE2_COMMON_GLSLI
+#define BLUENOISE2_COMMON_GLSLI
+
+#ifndef TILE_SIZE
+#define TILE_SIZE 8
+#endif // TILE_SIZE
+
+
+// The dispatch sizes are based around hitting 64 threads,
+// there is no reason this couldn't be lowered, but there
+// is no obvious benefit to doing this, since quality
+// would be awful.
+#if TILE_SIZE < 8
+#error "TILE_SIZE must be greater than 8"
+#endif // TILE_SIZE
+
+#if (TILE_SIZE & (TILE_SIZE - 1)) != 0
+#error "TILE_SIZE must be a power of 2"
+#endif // TILE_SIZE
+
+#ifndef USE_IMAGE_BUFFERS
+#define USE_IMAGE_BUFFERS 1
+#endif // USE_IMAGE_BUFFERS
+
+
+struct TileUpdateDataPacked
+{
+    vec4 params0;   // .xy = asint(tileIdOffset)
+                    // .zw = asint(numTiles)
+
+    vec4 params1;   // .x = expMultiplier
+                    // .y = writeValue
+                    // .z = asuint(randomSeed)
+                    // .w = unused
+};
+
+
+struct TileUpdateData
+{
+    ivec2 tileIdOffset;
+    ivec2 numTiles;
+    float expMultiplier;
+    float writeValue;
+    uint  randomSeed;
+};
+
+
+TileUpdateData unpackTileUpdateData(TileUpdateDataPacked packed)
+{
+    TileUpdateData result;
+
+    result.tileIdOffset     = floatBitsToInt(packed.params0.xy);
+    result.numTiles         = floatBitsToInt(packed.params0.zw);
+    result.expMultiplier    = packed.params1.x;
+    result.writeValue       = packed.params1.y;
+    result.randomSeed       = floatBitsToUint(packed.params1.z);
+
+    return result;
+}
+
+
+#if USE_IMAGE_BUFFERS
+
+// Image buffers for backing data
+
+#define bn_coord_t  ivec2
+
+bn_coord_t getFullResTileBase(ivec2 tileId,
+                              TileUpdateData tileData)
+{
+    return tileId * TILE_SIZE;
+}
+
+
+bn_coord_t getTileInnerCoord(bn_coord_t baseCoord,
+                             ivec2 offset)
+{
+    return baseCoord + offset;
+}
+
+bn_coord_t getPickCoord(ivec2 tileId,
+                        TileUpdateData tileData)
+{
+    return tileId;
+}
+
+#define IMAGESTORAGE_R32f(bindingId, name)     layout(binding=bindingId, r32f) uniform image2D name
+#define IMAGESTORAGE_RGBA32f(bindingId, name)  layout(binding=bindingId, rgba32f) uniform image2D name
+
+#define IMAGE_LOAD_R(buf, coord)            imageLoad(buf, coord).x
+#define IMAGE_STORE_R(buf, coord, value)    imageStore(buf, coord, vec4(value))
+#define IMAGE_ADD_R(buf, coord, value)      imageStore(buf, coord, vec4(value + imageLoad(buf, coord).x))
+
+#define IMAGE_LOAD_RGBA(buf, coord)         imageLoad(buf, coord)
+#define IMAGE_STORE_RGBA(buf, coord, value) imageStore(buf, coord, value)
+
+#else // USE_IMAGE_BUFFERS
+
+
+// Storage buffers for backing data
+
+#define bn_coord_t  int
+
+bn_coord_t getFullResTileBase(ivec2 tileId,
+                              TileUpdateData tileData)
+{
+    return (tileId.y * tileData.numTiles.x + tileId.x) * (TILE_SIZE * TILE_SIZE);
+}
+
+
+bn_coord_t getTileInnerCoord(bn_coord_t baseCoord,
+                             ivec2 innerCoord)
+{
+    return baseCoord + innerCoord.y * TILE_SIZE + innerCoord.x;
+}
+
+
+bn_coord_t getPickCoord(ivec2 tileId,
+                        TileUpdateData tileData)
+{
+    return tileId.y * tileData.numTiles.x + tileId.x;
+}
+
+
+#define IMAGESTORAGE_R32f(bindingId, name)     layout(std430, binding=bindingId) buffer name ## _ { float name[]; };
+#define IMAGESTORAGE_RGBA32f(bindingId, name)  layout(std430, binding=bindingId) buffer name ## _ { vec4 name[]; };
+
+
+#define IMAGE_LOAD_R(buf, coord)            buf[coord]
+#define IMAGE_STORE_R(buf, coord, value)    buf[coord] = value
+#define IMAGE_ADD_R(buf, coord, value)      buf[coord] += value
+
+#define IMAGE_LOAD_RGBA(buf, coord)         buf[coord]
+#define IMAGE_STORE_RGBA(buf, coord, value) buf[coord] = value
+
+
+#endif // USE_IMAGE_BUFFERS
+
+
+bn_coord_t getFullResCoord(ivec2 tileId,
+                           ivec2 innerCoord,
+                           TileUpdateData tileData)
+{
+    return getTileInnerCoord(getFullResTileBase(tileId, tileData),
+                             innerCoord);
+}
+
+
+#endif // BLUENOISE2_COMMON2_GLSLI

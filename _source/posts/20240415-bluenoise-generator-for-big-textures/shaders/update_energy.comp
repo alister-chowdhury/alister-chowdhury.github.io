@@ -1,0 +1,61 @@
+#version 460 core
+
+#include "bn2common.glsli"
+
+
+// Dispatch size should be:
+// .x = numTilesX * TILE_SIZE / 16
+// .y = numTilesY * TILE_SIZE / 16 
+layout(local_size_x=8, local_size_y=8) in;
+
+
+layout(binding = 0) uniform TileUpdateDataPacked_
+{
+    TileUpdateDataPacked tileUpdateDataPacked;
+};
+
+         IMAGESTORAGE_R32f(1, inOutEnergy);
+readonly IMAGESTORAGE_RGBA32f(2, tilePicks);
+
+
+void main()
+{
+
+    TileUpdateData tileData = unpackTileUpdateData(tileUpdateDataPacked);
+    ivec2 tileIdOffset = tileData.tileIdOffset;
+    ivec2 numTiles = tileData.numTiles;
+    float expMultiplier = tileData.expMultiplier;
+
+    ivec2 tileId = ivec2(gl_WorkGroupID.xy) / (TILE_SIZE / 8)
+                 * 2
+                 + tileIdOffset
+                 ;
+    ivec2 innerCoord = (ivec2(gl_WorkGroupID.xy) % (TILE_SIZE / 8)) * 8
+                     + ivec2(gl_LocalInvocationID.xy)
+                     ;
+    vec2 innerCoordF = vec2(innerCoord);
+    
+    bn_coord_t targetPixel = getFullResCoord(tileId, innerCoord, tileData);
+
+    float totalEnergy = 0.0;
+
+    for(int dy=-1; dy<=1; ++dy)
+    for(int dx=-1; dx<=1; ++dx)
+    {
+        ivec2 offset = tileId + ivec2(dx, dy);
+        if(offset.x < 0) { offset.x += numTiles.x; }
+        if(offset.y < 0) { offset.y += numTiles.y; }
+        if(offset.x >= numTiles.x) { offset.x -= numTiles.x; }
+        if(offset.y >= numTiles.y) { offset.y -= numTiles.y; }
+    
+        bn_coord_t pickCoord = getPickCoord(offset, tileData);
+        vec4 tileData = IMAGE_LOAD_RGBA(tilePicks, pickCoord);
+
+        vec2 rel = vec2(dx, dy) * float(TILE_SIZE) + tileData.xy - innerCoordF;
+        float energy = exp2(-dot(rel, rel) * expMultiplier) * tileData.z;
+        totalEnergy += energy;
+    }
+
+    // imageStore(inOutEnergy, targetPixel, vec4(totalEnergy + imageLoad(inOutEnergy, targetPixel).x));
+    IMAGE_ADD_R(inOutEnergy, targetPixel, totalEnergy);
+}

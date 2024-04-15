@@ -1,0 +1,327 @@
+
+ <head>
+    <title>Bluenoise Generator For Bigger Textures</title>
+    <meta name="description" content="WEBGPU Bluenoise generator for bigger textures, using a tiled void and cluster variant.">
+    <meta name="keywords" content="bluenoise, void and cluster, rendering, dithering, low discrepancy sequence">
+
+
+    <style>
+        .tileVis
+        {
+            width: 150px;
+            height: 150px;
+        }
+
+        table, tr, td, th
+        {
+            border: #7373c3 1px solid;
+        }
+
+        table
+        { 
+            border-collapse: collapse;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        th
+        {
+            padding-left: 1em;
+            padding-right: 1em;
+        }
+
+        .bndft > div > div
+        {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        .s256
+        {
+            width: 256px;
+            height: 256px;
+        }
+        .m512
+        {
+            width: min(100%, 512px);
+        }
+        .m512 > img
+        {
+            width: min(100%, 512px);
+            aspect-ratio: 1 / 1;
+        }
+
+    </style>
+
+    <script>
+        window.resourcesReady = false;
+        window.afterLoaded = [];
+        function addAfterLoaded(f)
+        {
+            if(!window.resourcesReady)
+            {
+                window.afterLoaded.push(f);
+            }
+            else
+            {
+                f();
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { VAC2 } from './void_and_cluster2_webgpu.js';
+        window.bindVAC2Context = VAC2.bindRTV2Context;
+        window.WebGPUState = VAC2.WebGPUState;
+        window.resourcesReady = true;
+        window.afterLoaded.forEach(f => {f()});
+        window._RESOURCES = VAC2._RESOURCES;
+
+    </script>
+
+ </head>
+ <body>
+
+
+<main>
+<markdown>
+
+# Bluenoise Generator For Bigger Textures
+
+## Background
+
+A while back I wrote a <a href="/posts/20221230-bluenoise-generator/" target="_blank">Bluenoise Generator</a> using WEBGL2, which works reasonably well and was only ever intended to be used for small-ish textures, say 64x64.
+
+That said, trying to generate bigger textures (say 1024x1024) and you'd be waiting for minutes.
+
+Practically this is fine, you don't typically attempt to generate bluenoise at runtime, normally offsetting the texture read by some multiple of the golden ratio each frame.
+Even if you did, something like 64x64 is probably a reasonable enough size, assuming it tiles.
+
+Theoretically, this isn't very satisfying.
+
+
+## Why Is It Slow?
+
+The reason the previous generator is slow, is simply because there are as many iterations as there are pixels on the final image.
+
+With each iteration having to:
+* Process the entire image, to find the smallest value.
+* Update the energy value of the surrounding pixels.
+
+Even though what happens in an iteration makes use of GPU parallelization, the iterations themselves do not.
+
+Meaning the amount of actual dispatched commands becomes:
+
+```
+    numDispatchesPerPass = (
+          1 // find void
+        + numReductionPasses // ceil((log2(max(width, height)) / log2(8))
+        + 1 // update energy + pixel value
+    )
+
+    numDispatchesTotal = width * height * numDispatchesPerPass
+```
+
+As a result, if you want to fill a 1024x1024 image, you would need to dispatch 6291456 (1024 * 1024 * 6) commands.
+
+No wonder it takes so long.
+
+
+## How Can We Speed It Up?
+
+If you've read the previous write up I did, you'll have noticed that quite a lot of it revolves around "how much updating can I get away with not doing".
+
+In case you haven't, if we have a &sigma; around the 1.9 mark, then realistically we should only have to worry about the surrounding 8x8 to get a reasonably artefact free result.
+
+Additionally, it's pretty likely the final texture format you'd end up using is either going to be BC4, R8 or R16/R16f (if you're feeling fancy), making full precision is somewhat redundant.
+
+You probably see where this is heading, we're going to dice up the texture into tiles and update each tile per iteration.
+
+
+## Tiling
+
+We can't simply evaluate every tile in parallel, we need process them in such a way that they can take their neighbouring tiles into account.
+
+Easily done with a 4x4 pattern, (also the reason why the number of tiles have be multiple of 2, could be made to work with odd numbers, but honestly I couldn't be bothered).
+
+
+<div class="imTable">
+  <div><canvas class="tileVis" id="tileV00"></canvas><br>[0, 0]</div>
+  <div><canvas class="tileVis" id="tileV11"></canvas><br>[1, 1]</div>
+  <div><canvas class="tileVis" id="tileV10"></canvas><br>[1, 0]</div>
+  <div><canvas class="tileVis" id="tileV01"></canvas><br>[0, 1]</div>
+</div>
+
+
+As such the number of iterations is the number of pixels within a tile, two shaders execute per iteration (pick and update), meaning the total number of dispatchs is `2 * 4 * tileSize * tileSize`, which is constant regardless of final resolution.
+
+
+| Tile Size | Dispatch Count | Unique Values |
+| :-------: | :------------: | :-----------: |
+| 8         | 512            | 64            |
+| 16        | 2048           | 256           |
+| 32        | 8192           | 1024          |
+
+
+<br>
+<br>
+
+A quick look at the generated bluenoise and corresponding DFT, things generally look fine (&sigma;=1.9).
+
+<div class="imTable bndft">
+  <div><div><div><img class="fixupDPI s256" alt="bn_8_256x256_0_v" src="res/bn_8_256x256_0_v.png"></div><div><img class="fixupDPI s256" alt="bn_8_256x256_0_d" src="res/bn_8_256x256_0_d.png"></div></div>tile size: 8</div>
+  <div><div><div><img class="fixupDPI s256" alt="bn_16_256x256_0_v" src="res/bn_16_256x256_0_v.png"></div><div><img class="fixupDPI s256" alt="bn_16_256x256_0_d" src="res/bn_16_256x256_0_d.png"></div></div>tile size: 16</div>
+  <div><div><div><img class="fixupDPI s256" alt="bn_32_256x256_0_v" src="res/bn_32_256x256_0_v.png"></div><div><img class="fixupDPI s256" alt="bn_32_256x256_0_d" src="res/bn_32_256x256_0_d.png"></div></div>tile size: 32</div>
+</div>
+
+
+<br>
+<br>
+
+
+However it is worth mentioning, there are patterns that present themselves when you look a little deeper.
+This is the result of averaging 128 512x512 blue noise textures (again with &sigma;=1.9), at different tile sizes:
+
+<div class="imTable">
+  <div class="m512"><img alt="tilesize_8_average_dft" src="res/tilesize_8_average_dft.png"><br>tile size: 8</div>
+  <div class="m512"><img alt="tilesize_16_average_dft" src="res/tilesize_16_average_dft.png"><br>tile size: 16</div>
+  <div class="m512"><img alt="tilesize_32_average_dft" src="res/tilesize_32_average_dft.png"><br>tile size: 32</div>
+</div>
+
+<br>
+
+I'm not sure if this actually matters, but seemed worth putting out there as an observation.
+
+
+</markdown>
+</main>
+
+
+<script>
+
+    // Fixup DPI dependant images
+    document.querySelectorAll(".fixupDPI").forEach(
+        element=>
+        {
+            const correctWidth = element.clientWidth;
+            const correctHeight = element.clientHeight;
+
+            // https://www.khronos.org/webgl/wiki/HandlingHighDPI
+            let observer = null;
+            observer = new ResizeObserver((entries)=>
+            {
+                const entry = entries[0];
+                let width;
+                let height;
+                if (entry.devicePixelContentBoxSize)
+                {
+                    width = entry.devicePixelContentBoxSize[0].inlineSize;
+                    height = entry.devicePixelContentBoxSize[0].blockSize;
+                } else if (entry.contentBoxSize)
+                {
+                    // fallback for Safari that will not always be correct
+                    width = Math.round(entry.contentBoxSize[0].inlineSize * devicePixelRatio);
+                    height = Math.round(entry.contentBoxSize[0].blockSize * devicePixelRatio);
+                }
+                element.width = correctWidth;
+                element.height = correctHeight;
+                element.style.width = `${correctWidth*correctWidth/width}px`;
+                element.style.height = `${correctHeight*correctHeight/height}px`;
+                observer.disconnect();
+            });
+            observer.observe(element);
+        });
+
+    // Hook up tile vis
+    [0, 1].forEach(x=>
+    {
+        [0, 1].forEach(y=>
+        {
+            const numTiles = 4;
+            const dim = 150;
+            const tileSize = dim / numTiles;
+
+            const canvas = document.getElementById("tileV"+x+""+y);
+            canvas.width = dim;
+            canvas.height = dim;
+            const ctx = canvas.getContext("2d");
+
+            // Background
+            ctx.clearRect(0, 0, dim, dim);
+            ctx.rect(0, 0, dim, dim);
+            ctx.fillStyle = "#400778";
+            ctx.fill();
+            ctx.stroke();
+
+            // Fill colours
+            ctx.fillStyle = "#dfffff";
+            for(let tileX=x; tileX < numTiles; tileX += 2)
+            for(let tileY=y; tileY < numTiles; tileY += 2)
+            {
+                ctx.beginPath();
+                ctx.rect(tileX * tileSize, tileY * tileSize, tileSize, tileSize);
+                ctx.fill();
+            }
+
+            // Grid
+            ctx.beginPath();
+            ctx.strokeStyle = "#1d1d1d";
+            for(let tid=1; tid < numTiles ; ++tid)
+            {
+                ctx.moveTo(tid * tileSize, 0);
+                ctx.lineTo(tid * tileSize, dim);
+                ctx.moveTo(0, tid * tileSize);
+                ctx.lineTo(dim, tid * tileSize);
+            }
+            ctx.stroke();
+
+            // Arrows
+            ctx.beginPath();
+            ctx.strokeStyle = "#d500ff";
+            const drawArrow = (x0, y0, x1, y1)=>
+            {
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(x1, y1);
+
+                const theta = Math.atan2(y1-y0, x1-x0);
+                const thetaOffset = Math.PI / 5;
+                const offsetSize = 4;
+                const x2 = x1 - offsetSize * Math.cos(theta - thetaOffset);
+                const y2 = y1 - offsetSize * Math.sin(theta - thetaOffset);
+                ctx.lineTo(x2, y2);
+                
+                const x3 = x1 - offsetSize * Math.cos(theta + thetaOffset);
+                const y3 = y1 - offsetSize * Math.sin(theta + thetaOffset);
+                ctx.lineTo(x3, y3);
+                ctx.lineTo(x1, y1);
+
+            };
+
+            for(let tileX=x; tileX < numTiles; tileX += 2)
+            for(let tileY=y; tileY < numTiles; tileY += 2)
+            {
+                const startX = (tileX + 0.5) * tileSize;
+                const startY = (tileY + 0.5) * tileSize;
+                
+                for(let dx=-1; dx<=1; ++dx)
+                for(let dy=-1; dy<=1; ++dy)
+                {
+                    if(dx == 0 && dy == 0) { continue; }
+                    const norm = 1.0 / Math.sqrt(dx*dx + dy*dy);
+                    const arrowBaseX = startX + norm * dx * tileSize * 0.85;
+                    const arrowBaseY = startY + norm * dy * tileSize * 0.85;
+                    const arrowTipX = startX + norm * dx * tileSize * 0.25;
+                    const arrowTipY = startY + norm * dy * tileSize * 0.25;
+
+                    drawArrow(arrowBaseX, arrowBaseY, arrowTipX, arrowTipY)
+                }
+            }
+            
+            ctx.stroke();
+        })
+    });
+
+</script>
+
+ </body>
