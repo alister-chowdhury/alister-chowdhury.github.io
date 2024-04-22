@@ -1,4 +1,5 @@
 #version 460 core
+#extension GL_EXT_control_flow_attributes : require
 
 #include "bn2common.glsli"
 
@@ -61,6 +62,11 @@ float getCurrentEnergy(bn_coord_t coord)
 
 void populateEnergyBufferLDS(bn_coord_t targetTileCoord, ivec2 tid)
 {
+
+#if ROWS_PER_THREAD == 1
+    [[unroll]]
+#endif // ROWS_PER_THREAD == 1
+
     for(int rowOffset=0;
         rowOffset < ROWS_PER_THREAD;
         ++rowOffset, tid.y+=DISPATCH_Y_SIZE)

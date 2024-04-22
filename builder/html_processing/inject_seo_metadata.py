@@ -72,7 +72,7 @@ def inject_seo_metadata(source, source_file):
     full_url = "{0}/{1}".format(_WEBSITE_ROOT, url)
 
     head_to_inject = """
-    <link rel="canonical" href="{url}"/>
+    <link rel="canonical" href="{url}">
     <meta property="og:title" content="{title}">
     <meta property="og:url" content="{url}">
     <meta property="og:type" content="{content_type}">\n""".format(
