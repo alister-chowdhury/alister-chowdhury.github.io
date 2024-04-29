@@ -10,8 +10,10 @@ _REPO_ROOT = os.path.abspath(
         __file__,
         "..",
         "..",
+        "..",
     )
 )
+
 _SOURCE_ROOT = os.path.join(_REPO_ROOT, "_source")
 _BUILD_ROOT = os.path.join(_REPO_ROOT, "_build")
 

@@ -251,6 +251,21 @@ export const makeGPUBuffer = (usage, data, offset=0, size=null)=>
     return buf;
 };
 
+
+export const createBuffer = (usage, size)=>
+{
+    if(WebGPUState.ok)
+    {
+        return WebGPUState.device.createBuffer({
+            size: size,
+            usage: usage,
+            mappedAtCreation: false
+        });
+    }
+    return null;
+};
+
+
 export const createShaderModule = (source)=>
 {
     if(WebGPUState.ok)
@@ -373,3 +388,18 @@ export const asyncCreateBindGroupLayout = makeSimpleAsyncCreateFunc(createBindGr
 export const asyncCreatePipelineLayout = makeAsyncCreateFunc(createPipelineLayout);
 export const asyncCreateComputePipeline = makeAsyncCreateFunc(createComputePipelineAsync);
 export const asyncCreateRenderPipeline = makeAsyncCreateFunc(createRenderPipelineAsync);
+
+
+export const queueSyncPoint = ()=>
+{
+    if(!WebGPUState.ok)
+    {
+        return { ready: ()=>false };
+    }
+    let syncPoint = false;
+    WebGPUState.device.queue.onSubmittedWorkDone().then(()=>
+    {
+        syncPoint = true;
+    });
+    return { ready: ()=>syncPoint };
+};

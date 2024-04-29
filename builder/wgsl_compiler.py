@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import tempfile
+from contextlib import contextmanager
 
 # This attempts to deal with the current state of generating
 # WGSL, which quite honestly is frustrating at best.
@@ -169,6 +170,50 @@ def _opt_spirv(spv_path):
     _check_call(spirv_opt_cmd)
 
 
+@contextmanager
+def _tmp_file(ext):
+    """Helper context manager to generate temp files."""
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+    try:
+        tmp_file.close()
+        yield tmp_file.name
+    finally:
+        os.unlink(tmp_file.name)
+
+
+@contextmanager
+def _compiled_spv(filepath, macros=None, includes=None):
+    """Compiles desktop glsl into a temporary spv file.
+
+    Args:
+        filepath(str): Filepath of shader to compile.
+        macros(dict): Macros to define. (Default: None)
+        includes(iterable): Directories to include. (Default: None)
+
+    Yields:
+        str: Path to compile spv.
+    """
+    with _tmp_file(".spv") as tmp_spv:
+        try:
+            _compile_to_spirv(
+                tmp_spv, filepath, macros=macros, includes=includes
+            )
+            _opt_spirv(tmp_spv)
+            yield tmp_spv
+        except Exception as e:
+            if _SPIRV_DIS_EXEC and os.path.isfile(tmp_spv):
+                try:
+                    spirv_dis = subprocess.check_output(
+                        [_SPIRV_DIS_EXEC, tmp_spv]
+                    ).decode("latin-1")
+                    print("!!!!!COMPILE ERROR!!!!")
+                    print("SPIRV-DIS")
+                    print(spirv_dis)
+                except Exception:
+                    pass
+                raise e
+
+
 def _spirv_to_glsl(spv_path):
     """Decompile spirv to GLSL.
 
@@ -196,26 +241,33 @@ def _spv_glsl_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path):
         spv_path (str): Input spirv binary.
         out_wgsl_path (str): Output path to wgsl.
     """
-    tmp_glsl = tempfile.NamedTemporaryFile(
-        delete=False, suffix=os.path.splitext(src_filepath)[-1]
-    )
-    try:
-        tmp_glsl.close()
-        with open(tmp_glsl.name, "w") as out_fp:
+    suffix = os.path.splitext(src_filepath)[-1].lower()
+    with _tmp_file(suffix) as tmp_glsl:
+        with open(tmp_glsl, "w") as out_fp:
             glsl = _spirv_to_glsl(spv_path)
+
             # Yet another naga bug: https://github.com/gfx-rs/wgpu/issues/4520
             # glslc and friends assume gl_VertexIndex to be int
             # but naga insists that it is uint.
             glsl = glsl.replace("gl_VertexIndex", "int(gl_VertexIndex)")
             out_fp.write(glsl)
+
+        # Strip leading .
+        stage = suffix[1:]
+        
+        if stage == "comp":
+            stage = "compute"
+
         naga_cmd = [
             _NAGA_EXEC,
-            tmp_glsl.name,
+            "--input-kind",
+            "glsl",
+            "--shader-stage",
+            stage,
+            tmp_glsl,
             out_wgsl_path,
         ]
         _check_call(naga_cmd)
-    finally:
-        os.unlink(tmp_glsl.name)
 
 
 def _spirv_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path):
@@ -230,6 +282,8 @@ def _spirv_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path):
     try:
         naga_cmd = [
             _NAGA_EXEC,
+            "--input-kind",
+            "spv",
             spv_path,
             out_wgsl_path,
         ]
@@ -242,7 +296,9 @@ def _spirv_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path):
         # But decompiling back to glsl will sometimes work.
         # https://github.com/gfx-rs/wgpu/issues/4915
         if _SPIRV_CROSS_EXEC:
+            print("USING SPIRV->GLSL:\n{0}".format(naga_err))
             _spv_glsl_to_wgsl_naga(src_filepath, spv_path, out_wgsl_path)
+            print("!SUCCESS!")
         else:
             raise naga_err
 
@@ -309,31 +365,10 @@ def compile_glsl(filepath, macros=None, includes=None, backend=None):
         backend_func = _spirv_to_wgsl_auto
     else:
         raise ValueError("Unsupported backend: {0}".format(backend))
-    tmp_spv = tempfile.NamedTemporaryFile(delete=False, suffix=".spv")
-    tmp_wgsl = tempfile.NamedTemporaryFile(delete=False, suffix=".wgsl")
 
-    try:
-        tmp_spv.close()
-        tmp_wgsl.close()
-        _compile_to_spirv(
-            tmp_spv.name, filepath, macros=macros, includes=includes
-        )
-        _opt_spirv(tmp_spv.name)
-        backend_func(filepath, tmp_spv.name, tmp_wgsl.name)
-        with open(tmp_wgsl.name, "r") as in_fp:
-            return in_fp.read()
-    except Exception as e:
-        if _SPIRV_DIS_EXEC and os.path.isfile(tmp_spv.name):
-            try:
-                spirv_dis = subprocess.check_output(
-                    [_SPIRV_DIS_EXEC, tmp_spv.name]
-                ).decode("latin-1")
-                print("!!!!!COMPILE ERROR!!!!")
-                print("SPIRV-DIS")
-                print(spirv_dis)
-            except Exception:
-                pass
-            raise e
-    finally:
-        os.unlink(tmp_spv.name)
-        os.unlink(tmp_wgsl.name)
+    tmp_wgsl = tempfile.NamedTemporaryFile(delete=False, suffix=".wgsl")
+    with _tmp_file(".wgsl") as tmp_wgsl:
+        with _compiled_spv(filepath, macros=macros, includes=includes) as tmp_spv:
+            backend_func(filepath, tmp_spv, tmp_wgsl)
+            with open(tmp_wgsl, "r") as in_fp:
+                return in_fp.read()

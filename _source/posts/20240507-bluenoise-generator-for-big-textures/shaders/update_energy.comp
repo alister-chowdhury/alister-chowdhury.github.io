@@ -1,4 +1,5 @@
 #version 460 core
+#extension GL_EXT_control_flow_attributes : require
 
 #include "bn2common.glsli"
 
@@ -39,8 +40,12 @@ void main()
 
     float totalEnergy = 0.0;
 
-    for(int dy=-1; dy<=1; ++dy)
-    for(int dx=-1; dx<=1; ++dx)
+    // For reasons I can't honestly be bothered to look into any further
+    // allowing this loop to not be unrolled results in basically the results
+    // in no energy being added.
+    // Might be a naga bug, might be a tint bug, who knows.
+    [[unroll]] for(int dy=-1; dy<=1; ++dy)
+    [[unroll]] for(int dx=-1; dx<=1; ++dx)
     {
         ivec2 offset = tileId + ivec2(dx, dy);
         if(offset.x < 0) { offset.x += numTiles.x; }
