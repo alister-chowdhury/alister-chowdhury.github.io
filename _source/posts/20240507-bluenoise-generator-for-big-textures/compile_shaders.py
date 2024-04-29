@@ -26,7 +26,27 @@ _COMPILED_DIR = os.path.abspath(
 )
 
 
-_SHADER_MAPPING = {}
+_SHADER_MAPPING = {
+
+    "vis_bluenoise_scaled.frag.wgsl" : {
+        "filepath": "vis_bluenoise.frag",
+        "macros": {
+            "TILE_SAMPLE": 0,
+        },
+    },
+
+    "vis_bluenoise_tiled.frag.wgsl" : {
+        "filepath": "vis_bluenoise.frag",
+        "macros": {
+            "TILE_SAMPLE": 1,
+        },
+    },
+
+    "bc4_compress.frag.wgsl" : {
+        "filepath": "bc4_compress.frag",
+    },
+
+}
 
 for _tile_size in (8, 16, 32):
     _SHADER_MAPPING["pick_{0}.comp.wgsl".format(_tile_size)] = {

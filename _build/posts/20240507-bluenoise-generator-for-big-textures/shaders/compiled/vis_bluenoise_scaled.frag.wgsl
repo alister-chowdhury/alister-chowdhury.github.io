@@ -1,0 +1,2 @@
+struct c{d:vec4f,}var<private>e:vec2f;@group(0)@binding(0)var<uniform>f:c;@group(0)@binding(1)var h:texture_2d<f32>;var<private>i:vec4f;fn function(){let j=e;let k=f.d;let l=textureLoad(h,vec2i((j*k.xy)),0i);i=vec4f(l.x,l.x,l.x,1f);return;}@fragment 
+fn main(@location(0)m:vec2f)->@location(0)vec4f{e=m;function();let n=i;return n;}

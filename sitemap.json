@@ -6,9 +6,9 @@
    "hash": "1d9f5ff8fcbc7eed16ac164c827db54e"
   },
   {
-   "lastmod": "2024-04-08",
+   "lastmod": "2024-05-07",
    "loc": "posts/20221230-bluenoise-generator/index.html",
-   "hash": "73d28b6da89a69c0cf05fdba4d47f2cc"
+   "hash": "8965881cb9daadfacbc8169239c8f94c"
   },
   {
    "lastmod": "2024-04-08",
@@ -51,9 +51,14 @@
    "hash": "eeafd8ac6c49ac31e11d265aca6a9970"
   },
   {
-   "lastmod": "2023-12-28",
+   "lastmod": "2024-05-07",
+   "loc": "posts/20240507-bluenoise-generator-for-big-textures/index.html",
+   "hash": "5ad23014ba43b41a0260928c6ddf1ae3"
+  },
+  {
+   "lastmod": "2024-05-07",
    "loc": "posts/index.html",
-   "hash": "fbc030d2b8f73b429903db395daa3193"
+   "hash": "67e7edc4ec0770d6559522dc0f83d675"
   }
  ]
 }

@@ -24,19 +24,19 @@
         }
       </script>
    
-    <link rel="canonical" href="https://alister-chowdhury.github.io/posts/20240415-bluenoise-generator-for-big-textures/">
+    <link rel="canonical" href="https://alister-chowdhury.github.io/posts/20240507-bluenoise-generator-for-big-textures/">
     <meta property="og:title" content="Bluenoise Generator For Bigger Textures">
-    <meta property="og:url" content="https://alister-chowdhury.github.io/posts/20240415-bluenoise-generator-for-big-textures/">
+    <meta property="og:url" content="https://alister-chowdhury.github.io/posts/20240507-bluenoise-generator-for-big-textures/">
     <meta property="og:type" content="article">
     <meta property="og:description" content="WEBGPU Bluenoise generator for bigger textures, using a tiled void and cluster variant.">
-    <meta property="og:image" content="https://alister-chowdhury.github.io/res/favicon.png">
-    <meta property="og:article:published_time" content="2024-04-15T00:00:00">
+    <meta property="og:image" content="https://alister-chowdhury.github.io/posts/20240507-bluenoise-generator-for-big-textures/thumbnail.png">
+    <meta property="og:article:published_time" content="2024-05-07T00:00:00">
     <meta property="og:article:tag" content="bluenoise">
     <meta property="og:article:tag" content="void and cluster">
     <meta property="og:article:tag" content="rendering">
     <meta property="og:article:tag" content="dithering">
     <meta property="og:article:tag" content="low discrepancy sequence">
-<script data-rh="true" type="application/ld+json">{"@context":"http://schema.org","@type":"Article","author":[{"@type":"Person","name":"By Alister Chowdhury"}],"name":"Bluenoise Generator For Bigger Textures","url":"https://alister-chowdhury.github.io/posts/20240415-bluenoise-generator-for-big-textures/","description":"WEBGPU Bluenoise generator for bigger textures, using a tiled void and cluster variant.","thumbnailUrl":"https://alister-chowdhury.github.io/res/favicon.png","datePublished":"2024-04-15T00:00:00"}</script>
+<script data-rh="true" type="application/ld+json">{"@context":"http://schema.org","@type":"Article","author":[{"@type":"Person","name":"By Alister Chowdhury"}],"name":"Bluenoise Generator For Bigger Textures","url":"https://alister-chowdhury.github.io/posts/20240507-bluenoise-generator-for-big-textures/","description":"WEBGPU Bluenoise generator for bigger textures, using a tiled void and cluster variant.","thumbnailUrl":"https://alister-chowdhury.github.io/posts/20240507-bluenoise-generator-for-big-textures/thumbnail.png","datePublished":"2024-05-07T00:00:00"}</script>
 
     <title>Bluenoise Generator For Bigger Textures</title>
     <meta name="description" content="WEBGPU Bluenoise generator for bigger textures, using a tiled void and cluster variant.">
@@ -190,7 +190,7 @@
 
     <script type="module">
         import { VAC2 } from './void_and_cluster2_webgpu.js';
-        window.bindVAC2Context = VAC2.bindRTV2Context;
+        window.bindVAC2Context = VAC2.bindVAC2Context;
         window.WebGPUState = VAC2.WebGPUState;
         window.resourcesReady = true;
         window.afterLoaded.forEach(f => {f()});
@@ -329,7 +329,7 @@ Even if you did, something like 64x64 is probably a reasonable enough size, assu
 <p>Additionally, it's pretty likely the final texture format you'd end up using is either going to be BC4, R8 or R16/R16f (if you're feeling fancy), making full precision is somewhat redundant.</p>
 <p>You probably see where this is heading, we're going to dice up the texture into tiles and update each tile per iteration.</p>
 <h2>Tiling</h2>
-<p>We can't simply evaluate every tile in parallel, we need process them in such a way that they can take their neighbouring tiles into account.</p>
+<p>We can't simply evaluate every tile in parallel, we need to process them in such a way that they can take their neighbouring tiles into account.</p>
 <p>Easily done with a 4x4 pattern, (also the reason why the number of tiles have be multiple of 2, could be made to work with odd numbers, but honestly I couldn't be bothered).</p>
 <div class="imTable">
   <div><canvas class="tileVis" id="tileV00"></canvas><br>[0, 0]</div>
@@ -389,6 +389,15 @@ This is the result of averaging 128 512x512 blue noise textures (again with σ=1
 <br>
 
 <p>I'm not sure if this actually matters, but seemed worth putting out there as an observation.</p>
+<p>Here are all the relevant source code files:</p>
+<ul>
+<li>Update Energy (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20240507-bluenoise-generator-for-big-textures/shaders/update_energy.comp">update_energy.comp</a></li>
+<li>Pick Tile Cell (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20240507-bluenoise-generator-for-big-textures/shaders/pick.comp">pick.comp</a></li>
+<li>Helpers (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20240507-bluenoise-generator-for-big-textures/shaders/bn2common.glsli">bn2common.glsli</a></li>
+<li>JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20240507-bluenoise-generator-for-big-textures/void_and_cluster2_webgpu.js">void_and_cluster2_webgpu.js</a></li>
+</ul>
+<p>Also (again) for funsies here is a shadertoy port:
+<a target="_blank" href="https://www.shadertoy.com/view/XcyXDh">https://www.shadertoy.com/view/XcyXDh</a></p>
 
 </main>
 
@@ -518,246 +527,420 @@ This is the result of averaging 128 512x512 blue noise textures (again with σ=1
     });
 
 
-    // Hook up ui stuff
-    (()=>{
+    addAfterLoaded(()=>
+    {
+        const drawCanvas = document.getElementById("bluenoiseViewport");
+        const drawCtx = window.bindVAC2Context(drawCanvas);
 
-        const createSync = (slider, value, validator)=>
+        drawCtx.onerror.then((err)=>
         {
-            const callbacks = [];
-            const syncState = [false];
-            const currentValue = [0];
-            const sync = (src, dst)=>
-            {
-                if(syncState[0]) { return; }
-                syncState[0] = true;
-                const newValue = src.value*1;
-                const validated = validator(newValue);
-                if(validated != newValue)
-                {
-                    src.value = validated;
-                }
-                currentValue[0] = validated;
-                dst.value = validated;
-                for(let callback of callbacks)
-                {
-                    callback(validated);
-                }
-                syncState[0] = false;
-            };
-            const syncSlider = ()=>{ sync(slider, value); };
-            const syncValue = ()=>{ sync(value, slider); };
-            slider.oninput = syncSlider;
-            slider.onchange = syncSlider;
-            value.onchange = syncValue;
-
-            let self = null;
-
-            const set = (newValue)=>
-            {
-                syncState[0] = true;
-                currentValue[0] = newValue;
-                slider.value = newValue;
-                value.value = newValue;
-                for(let callback of callbacks)
-                {
-                    callback(newValue);
-                }
-                syncState[0] = false;
-                return self;
-            };
-
-            self = {
-                "set": set,
-                "get": ()=>{return currentValue[0]; },
-                "enable": ()=>
-                {
-                    slider.disabled=false;
-                    value.disabled=false;
-                },
-                "addCallback": (newCallback)=>
-                {
-                    callbacks.push(newCallback);
-                    return self;
-                }
-            };
-
-            return self;
-        };
-
-        // const tileSizeSlider = document.getElementById("tileSizeSlider");
-        // const tileSizeValue = document.getElementById("tileSizeValue");
-        
-        // tileSizeSlider.min = 0; // 8
-        // tileSizeSlider.max = 2; // 32
-        // tileSizeSlider.step = 1;
-        // tileSizeSlider.value = 1; // default to 16
-        // tileSizeValue.value = 1
-
-        const tileSizeSync = (()=>
-        {
-            const callbacks = [];
-            const currentValue = [16];
-            const tileSizeCtrls = document.querySelectorAll("[id^=tileSizeCtrl]");
-            const getSize = (name)=>
-            {
-                const splitted = name.split("-");
-                return splitted[splitted.length-1]*1;
-            };
-            tileSizeCtrls.forEach(node=>
-            {
-                const currentTileSize = getSize(node.id);
-                node.onchange = ()=>
-                {
-                    currentValue[0] = currentTileSize;
-                    for(let callback of callbacks)
-                    {
-                        callback(currentTileSize);
-                    }
-                };
-            });
-
-            let self = null;
-            self = {
-                "get": ()=>{return currentValue[0]; },
-                "enable": ()=>
-                {
-                    tileSizeCtrls.forEach(node=>{node.disabled=false;});
-                },
-                "addCallback": (newCallback)=>
-                {
-                    callbacks.push(newCallback);
-                    return self;
-                }
-            };
-            return self;
-        })();
-
-
-        const widthTilesSlider = document.getElementById("widthTilesSlider");
-        const widthTilesValue = document.getElementById("widthTilesValue");
-        const widthTilesValueResolved = document.getElementById("widthTilesValueResolved");
-
-        const heightTilesSlider = document.getElementById("heightTilesSlider");
-        const heightTilesValue = document.getElementById("heightTilesValue");
-        const heightTilesValueResolved = document.getElementById("heightTilesValueResolved");
-
-        widthTilesSlider.min = 2;   // 32 at 16
-        widthTilesSlider.max = 32;
-        widthTilesSlider.step = 2;
-        
-        widthTilesValue.min = 2;   // 32 at 16
-        widthTilesValue.max = 128; // 8k at 32
-        widthTilesValue.step = 2;
-
-        heightTilesSlider.min = 2;   // 32 at 16
-        heightTilesSlider.max = 32; // 8k at 32
-        heightTilesSlider.step = 2;
-
-        heightTilesValue.min = 2;   // 32 at 16
-        heightTilesValue.max = 128; // 8k at 32
-        heightTilesValue.step = 2;
-
-        const widthTilesValidator = (value)=>
-        {
-            if(value < 2)   { return 2; }
-            // todo
-            if(value > 128) { return 128; }
-
-            if(value & 1)
-            {
-                value ^= 1;
-            }
-            return value;
-        };
-        const widthTilesSync = createSync(widthTilesSlider, widthTilesValue, widthTilesValidator)
-                             .addCallback((value)=> {
-                                    const tileSize = tileSizeSync.get();
-                                    widthTilesValueResolved.value = value * tileSize;
-                                })
-                             .set(4) // default to 128
-                             ;
-
-        const heightTilesValidator = (value)=>
-        {
-            if(value < 2)   { return 2; }
-            // todo
-            if(value > 128) { return 128; }
-            
-            if(value & 1)
-            {
-                value ^= 1;
-            }
-            return value;
-        };
-        const heightTilesSync = createSync(heightTilesSlider, heightTilesValue, heightTilesValidator)
-                              .addCallback((value)=> {
-                                    const tileSize = tileSizeSync.get();
-                                    heightTilesValueResolved.value = value * tileSize;
-                                })
-                              .set(4) // default to 128
-                              ;
-
-        tileSizeSync.addCallback((tileSize)=>
-        {
-            widthTilesValueResolved.value = widthTilesSync.get() * tileSize;
-            heightTilesValueResolved.value = heightTilesSync.get() * tileSize;
+            drawCanvas.style.display = "none";
+            document.getElementById("supportedBrowser").style.display = "none";
+            var notSupported = document.getElementById("notSupportedBrowser");
+            notSupported.style.display = "block";
+            notSupported.innerHTML = `
+Sorry, this demo won't work on your browser.<br>
+Reason: <strong>${err}</strong><br>`;
+            return;
         });
 
 
-        const sigmaSlider = document.getElementById("sigmaSlider");
-        const sigmaValue = document.getElementById("sigmaValue");
+        drawCtx.onready.then(()=>
+        {
+            // Hook up ui stuff
+            const createSync = (slider, value, validator)=>
+            {
+                const callbacks = [];
+                const syncState = [false];
+                const currentValue = [0];
+                const sync = (src, dst)=>
+                {
+                    if(syncState[0]) { return; }
+                    syncState[0] = true;
+                    const newValue = src.value*1;
+                    const validated = validator(newValue);
+                    if(validated != newValue)
+                    {
+                        src.value = validated;
+                    }
+                    currentValue[0] = validated;
+                    dst.value = validated;
+                    for(let callback of callbacks)
+                    {
+                        callback(validated);
+                    }
+                    syncState[0] = false;
+                };
+                const syncSlider = ()=>{ sync(slider, value); };
+                const syncValue = ()=>{ sync(value, slider); };
+                slider.oninput = syncSlider;
+                slider.onchange = syncSlider;
+                value.onchange = syncValue;
 
-        sigmaSlider.min = 1;
-        sigmaSlider.max = 3;
-        sigmaSlider.step = 0.01;
-        sigmaValue.step = 0.1;
+                let self = null;
 
-        const sigmaSync = createSync(sigmaSlider, sigmaValue, (x)=>x)
-                        .set(1.9)
-                        ;
+                const set = (newValue)=>
+                {
+                    syncState[0] = true;
+                    currentValue[0] = newValue;
+                    slider.value = newValue;
+                    value.value = newValue;
+                    for(let callback of callbacks)
+                    {
+                        callback(newValue);
+                    }
+                    syncState[0] = false;
+                    return self;
+                };
 
-        widthTilesSync.enable();
-        heightTilesSync.enable();
-        tileSizeSync.enable();
-        sigmaSync.enable();
+                self = {
+                    "set": set,
+                    "get": ()=>{return currentValue[0]; },
+                    "enable": ()=>
+                    {
+                        slider.disabled=false;
+                        value.disabled=false;
+                    },
+                    "addCallback": (newCallback)=>
+                    {
+                        callbacks.push(newCallback);
+                        return self;
+                    }
+                };
+
+                return self;
+            };
+
+            const initialState = drawCtx.getInitialState();
+            const tileSizeSync = (()=>
+            {
+                const callbacks = [];
+                const currentValue = [initialState.tileSize];
+                const tileSizeCtrls = document.querySelectorAll("[id^=tileSizeCtrl]");
+                const getSize = (name)=>
+                {
+                    const splitted = name.split("-");
+                    return splitted[splitted.length-1]*1;
+                };
+                tileSizeCtrls.forEach(node=>
+                {
+                    const currentTileSize = getSize(node.id);
+                    node.onchange = ()=>
+                    {
+                        currentValue[0] = currentTileSize;
+                        for(let callback of callbacks)
+                        {
+                            callback(currentTileSize);
+                        }
+                    };
+                });
+
+                let self = null;
+                self = {
+                    "get": ()=>{return currentValue[0]; },
+                    "enable": ()=>
+                    {
+                        tileSizeCtrls.forEach(node=>{node.disabled=false;});
+                    },
+                    "addCallback": (newCallback)=>
+                    {
+                        callbacks.push(newCallback);
+                        return self;
+                    }
+                };
+                return self;
+            })();
+
+            const sigmaSlider = document.getElementById("sigmaSlider");
+            const sigmaValue = document.getElementById("sigmaValue");
+
+            sigmaSlider.min = 1;
+            sigmaSlider.max = 3;
+            sigmaSlider.step = 0.01;
+            sigmaValue.step = 0.1;
+
+            const sigmaSync = createSync(sigmaSlider, sigmaValue, (x)=>x)
+                            .set(initialState.sigma)
+                            ;
+
+            const widthTilesSlider = document.getElementById("widthTilesSlider");
+            const widthTilesValue = document.getElementById("widthTilesValue");
+            const widthTilesValueResolved = document.getElementById("widthTilesValueResolved");
+
+            const heightTilesSlider = document.getElementById("heightTilesSlider");
+            const heightTilesValue = document.getElementById("heightTilesValue");
+            const heightTilesValueResolved = document.getElementById("heightTilesValueResolved");
+
+            const limits = drawCtx.limits;
+            const dimValidator = (value)=>
+            {
+                if(value & 1)
+                {
+                    value ^= 1;
+                }
+                if(value < 2)   { return 2; }
+                const limit = limits[tileSizeSync.get()].trueMax;
+                if(value > limit) { return limit; }
+                return value;
+            };
+
+            widthTilesSlider.min = 2;
+            widthTilesSlider.max = limits[16].prefMax;
+            widthTilesSlider.step = 2;
+            
+            widthTilesValue.min = 2;
+            widthTilesValue.max = limits[16].trueMax;
+            widthTilesValue.step = 2;
+
+            heightTilesSlider.min = 2;
+            heightTilesSlider.max = limits[16].prefMax;
+            heightTilesSlider.step = 2;
+
+            heightTilesValue.min = 2;
+            heightTilesValue.max = limits[16].trueMax;
+            heightTilesValue.step = 2;
 
 
-        // const heightTilesOnChange = ()=>
-        // {
-        //     const tileSize = 8 << tileSizeSlider.value;
-        //     const numTilesY = heightTilesSlider.value*1;
-        //     heightTilesValue.value = numTilesY * tileSize;
-        // };        
-        // heightTilesSlider.oninput = heightTilesOnChange;
-        // heightTilesSlider.onchange = heightTilesOnChange;
+            const widthTilesSync = createSync(widthTilesSlider, widthTilesValue, dimValidator)
+                                 .addCallback((value)=> {
+                                        const tileSize = tileSizeSync.get();
+                                        widthTilesValueResolved.value = value * tileSize;
+                                    })
+                                 .set(initialState.numTilesX)
+                                 ;
 
-        // const tileSizeOnChange = ()=>
-        // {
-        //     const tileSize = 8 << tileSizeSlider.value;
-        //     tileSizeValue.value = tileSize;
-        // };        
-        // tileSizeSlider.oninput = tileSizeOnChange;
-        // tileSizeSlider.onchange = tileSizeOnChange;
+            const heightTilesSync = createSync(heightTilesSlider, heightTilesValue, dimValidator)
+                                  .addCallback((value)=> {
+                                        const tileSize = tileSizeSync.get();
+                                        heightTilesValueResolved.value = value * tileSize;
+                                    })
+                                  .set(initialState.numTilesY)
+                                  ;
+
+            tileSizeSync.addCallback((tileSize)=>
+            {
+                widthTilesSync.set(dimValidator(widthTilesSync.get()));
+                heightTilesSync.set(dimValidator(heightTilesSync.get()));
+
+                widthTilesSlider.max = limits[tileSize].prefMax;
+                widthTilesValue.max = limits[tileSize].trueMax;
+                heightTilesSlider.max = limits[tileSize].prefMax
+                heightTilesValue.max = limits[tileSize].trueMax;
+
+                widthTilesValueResolved.value = widthTilesSync.get() * tileSize;
+                heightTilesValueResolved.value = heightTilesSync.get() * tileSize;
+            });
 
 
+            const visTiled = document.getElementById("visTiled");
+            visTiled.disabled = false;
+            visTiled.onchange = ()=>
+            {
+                drawCtx.setVisTiled(visTiled.checked);
+            };
+
+            widthTilesSync.addCallback(x=>drawCtx.setNumTilesX(x));
+            heightTilesSync.addCallback(x=>drawCtx.setNumTilesY(x));
+            tileSizeSync.addCallback(x=>drawCtx.setTileSize(x));
+            sigmaSync.addCallback(x=>drawCtx.setSigma(x));
+
+            widthTilesSync.enable();
+            heightTilesSync.enable();
+            tileSizeSync.enable();
+            sigmaSync.enable();
+
+            const newBlueNoise = document.getElementById("newBlueNoise");
+            newBlueNoise.disabled = false;
+            newBlueNoise.onclick = ()=>
+            {
+                drawCtx.reset();
+            };
 
 
-    })();
+            document.getElementById("viewportFullscreen").onclick = ()=>
+            {
+                drawCanvas.requestFullscreen();
+            };
 
 
-    // REFERENCE
+            // Resizing viewport logic
+            function vpResizeBegin(event)
+            {
+               event.preventDefault();
+               if(event.type == "mousedown")
+               {
+                   document.documentElement.addEventListener("mousemove", vpResizeIter, false);
+                   document.documentElement.addEventListener("mouseup", vpResizeEnd, false);
+               }
+               else
+               {
+                   document.documentElement.addEventListener("touchmove", vpResizeIter, false);
+                   document.documentElement.addEventListener("touchend", vpResizeEnd, false);
+               }
+            }
 
-//         drawCtx.onerror.then((err)=>
-//         {
-//             drawCanvas.style.display = "none";
-//             document.getElementById("drawCanvasControls").style.display = "none";
-//             var notSupported = document.getElementById("notSupportedBrowser");
-//             notSupported.style.display = "block";
-//             notSupported.innerHTML = `
-// Sorry, this demo won't work on your browser.<br>
-// Reason: <strong>${err}</strong><br>`;
-//             return;
-//         });
+
+            function vpResizeIter(event)
+            {
+               event.preventDefault();
+               var viewportWrapper = document.getElementById("viewportWrapper");
+               const bounds = viewportWrapper.getBoundingClientRect();
+               const resizerMid = 11;
+               const viewportResizer = document.getElementById("viewportResizer");
+
+               var clientX = event.type == "mousemove" ? event.clientX : event.touches[0].clientX;
+               var clientY = event.type == "mousemove" ? event.clientY : event.touches[0].clientY;
+
+               viewportWrapper.style.width = `${Math.max(1, Math.round(clientX - bounds.x + resizerMid))}px`;
+               viewportWrapper.style.height = `${Math.max(1, Math.round(clientY - bounds.y + resizerMid))}px`;
+
+            }
+
+
+            function vpResizeEnd(event)
+            {
+               event.preventDefault();
+               if(event.type == "mouseup")
+               {
+                   document.documentElement.removeEventListener("mousemove", vpResizeIter, false);
+                   document.documentElement.removeEventListener("mouseup", vpResizeEnd, false);
+               }
+               else
+               {
+                   document.documentElement.removeEventListener("touchmove", vpResizeIter, false);
+                   document.documentElement.removeEventListener("touchend", vpResizeEnd, false);
+               }
+            }
+
+
+            function vpSizeInit()
+            {
+               var viewportWrapper = document.getElementById("viewportWrapper");
+               const bounds = viewportWrapper.getBoundingClientRect();
+               viewportWrapper.style.width = `${Math.max(1, Math.round(bounds.width))}px`;
+               viewportWrapper.style.height = `${Math.max(1, Math.round(bounds.height))}px`;
+
+               var viewportResizer = document.getElementById("viewportResizer");
+               viewportResizer.addEventListener("mousedown", vpResizeBegin, false);
+               viewportResizer.addEventListener("touchstart", vpResizeBegin, false);
+            }
+
+            vpSizeInit();
+
+            let mainUpdateLoop = null;
+            const savePng = document.getElementById("savePng");
+            const saveBC4 = document.getElementById("saveBC4");
+
+            const uiElements = [
+                newBlueNoise,
+                savePng,
+                saveBC4,
+                sigmaSlider,
+                sigmaValue,
+                widthTilesSlider,
+                widthTilesValue,
+                heightTilesSlider,
+                heightTilesValue,
+            ];
+            document.querySelectorAll("[id^=tileSizeCtrl]").forEach(x=>{uiElements.push(x);})
+
+            const disableUI = ()=>
+            {
+                uiElements.forEach(x=>{
+                    x.prevDisabled = x.disabled;
+                    x.disabled = true;
+                });
+            };
+
+            const enableUI = ()=>
+            {
+                uiElements.forEach(x=>{
+                    x.disabled = x.prevDisabled;
+                });
+            };
+
+            let thirdPartyPngLibsLoaded = false;
+            savePng.onclick = ()=>
+            {
+                disableUI();
+
+                const blueNoiseAsnyc = drawCtx.getBlueNoiseRaw("r8unorm");
+                const savePng = ()=>
+                {
+                    blueNoiseAsnyc.then(bufferAndSize=>
+                    {
+                        const buffer = bufferAndSize[0];
+                        const width = bufferAndSize[1];
+                        const height = bufferAndSize[2];
+                        const png8 = UPNG.encodeLL([buffer], width, height, 1, 0, 8);
+                        window.open(URL.createObjectURL(new Blob([png8], {type: "image/png"})), "_blank").focus();
+                        enableUI();
+                    });
+                };
+
+                if(!thirdPartyPngLibsLoaded)
+                {
+                   async function injectJavascriptAsync(src, onload)
+                   {
+                       let script = document.createElement("script");
+                       script.src = src;
+                       script.onload = onload;
+                       document.body.appendChild(script);
+                   }
+                    injectJavascriptAsync("/thirdparty/UZIP.min.js", function(){
+                        injectJavascriptAsync("/thirdparty/pako.min.js", function(){
+                            injectJavascriptAsync("/thirdparty/UPNG.min.js", function(){
+                                thirdPartyPngLibsLoaded = true;
+                                savePng();
+                            })
+                        })
+                    });
+                }
+                else
+                {
+                    savePng();
+                }
+            };
+
+            saveBC4.onclick = ()=>
+            {
+                disableUI();
+                drawCtx.getBc4Compressed().then(buffer=>
+                {
+                    window.open(URL.createObjectURL(new Blob([buffer.buffer], {type: "application/octet-stream"})), "_blank").focus();
+                    enableUI();
+                });
+            };
+
+            mainUpdateLoop = ()=>
+            {
+                if(drawCtx.getIteration() == 0)
+                {
+                    savePng.disabled = true;
+                    saveBC4.disabled = true;
+                }
+
+                const wasDone = drawCtx.isDone();
+
+                drawCtx.redraw();
+                window.requestAnimationFrame(mainUpdateLoop);
+                const progressBar = document.getElementById("progressBar");
+                const progressBarPercent = document.getElementById("progressPercent");
+                const progress = drawCtx.getProgress();
+                progressBar.style.width = `${progress*100}%`;
+                progressPercent.innerHTML = `${Math.round(progress * 100)}%`;
+
+                if(drawCtx.isDone() != wasDone)
+                {
+                    savePng.disabled = false;
+                    saveBC4.disabled = false;
+                }
+            };
+
+            mainUpdateLoop();
+
+        });
+    });
 
 </script>
 
