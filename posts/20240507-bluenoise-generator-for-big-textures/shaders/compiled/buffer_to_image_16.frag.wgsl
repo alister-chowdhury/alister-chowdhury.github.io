@@ -1,0 +1,2 @@
+struct c{d:vec2i,}struct e{d:array<f32>,}struct f{@location(0)h:f32,}@group(0)@binding(0)var<uniform>i:c;@group(0)@binding(1)var<storage>j:e;var<private>h:f32;var<private>k:vec4f;fn l(){var m:vec2i;var n:vec2i;var o:vec2i;let p=k;m=vec2i(p.xy);let q=m;n=(q/vec2(16i));let s=m;o=(s % vec2(16i));let t=n;let u=i;let v=n;let A=o;let B=o;let C=j.d[(((((t.y*u.d.x)+v.x)*256i)+(A.y*16i))+B.x)];h=C;return;}@fragment 
+fn main(@builtin(position)D:vec4f)->f{k=D;l();let E=h;return f(E);}
