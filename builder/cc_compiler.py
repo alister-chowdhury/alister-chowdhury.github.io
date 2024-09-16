@@ -114,7 +114,8 @@ def _get_compile_obj_args(
         filepath,
         out_file,
         include_paths=None,
-        extra_args=None):
+        extra_args=None,
+        fast_math=True):
     """Compiles c or c++ into a wasm object object file.
 
     Args:
@@ -124,6 +125,7 @@ def _get_compile_obj_args(
         include_paths(iterable[str]): Extra paths to include (Default: None)
         extra_args(iterable[str]): Extra args to pass to clang.
             (Default: None)
+        fast_math(bool): Enable fast math. (Default: True)
 
     Returns:
         list[str]: Arguments to execute.
@@ -135,8 +137,14 @@ def _get_compile_obj_args(
         "-mbulk-memory",
         "-flto",
         "-O3",
-        "-ffast-math",
     ]
+
+    if fast_math:
+        args.extend((
+            "-ffast-math",
+            "-Wno-nan-infinity-disabled",
+        ))
+
 
     if extra_args:
         args.extend(_tuple_if_str(extra_args))
@@ -152,7 +160,8 @@ def get_compile_c_args(
         filepath,
         out_file,
         include_paths=None,
-        extra_args=None):
+        extra_args=None,
+        fast_math=True):
     """Compiles c into a wasm object object file.
 
     Args:
@@ -161,6 +170,7 @@ def get_compile_c_args(
         include_paths(iterable[str]): Extra paths to include (Default: None)
         extra_args(iterable[str]): Extra args to pass to clang.
             (Default: None)
+        fast_math(bool): Enable fast math. (Default: True)
 
     Returns:
         list[str]: Arguments to execute.
@@ -171,7 +181,8 @@ def get_compile_c_args(
         filepath,
         out_file,
         include_paths=include_paths,
-        extra_args=extra_args
+        extra_args=extra_args,
+        fast_math=fast_math
     )
 
 
@@ -179,7 +190,8 @@ def get_compile_cpp_args(
         filepath,
         out_file,
         include_paths=None,
-        extra_args=None):
+        extra_args=None,
+        fast_math=True):
     """Compiles cpp into a wasm object object file.
 
     Args:
@@ -188,6 +200,7 @@ def get_compile_cpp_args(
         include_paths(iterable[str]): Extra paths to include (Default: None)
         extra_args(iterable[str]): Extra args to pass to clang.
             (Default: None)
+        fast_math(bool): Enable fast math. (Default: True)
 
     Returns:
         list[str]: Arguments to execute.
@@ -198,7 +211,8 @@ def get_compile_cpp_args(
         filepath,
         out_file,
         include_paths=include_paths,
-        extra_args=extra_args
+        extra_args=extra_args,
+        fast_math=fast_math
     )
 
 
@@ -286,7 +300,8 @@ def compile_c(
         filepath,
         out_file,
         include_paths=None,
-        extra_args=None):
+        extra_args=None,
+        fast_math=True):
     """Compiles c into a wasm object object file.
 
     Args:
@@ -295,12 +310,14 @@ def compile_c(
         include_paths(iterable[str]): Extra paths to include (Default: None)
         extra_args(iterable[str]): Extra args to pass to clang.
             (Default: None)
+        fast_math(bool): Enable fast math. (Default: True)
     """
     _check_call(get_compile_c_args(
         filepath,
         out_file,
         include_paths=include_paths,
-        extra_args=extra_args
+        extra_args=extra_args,
+        fast_math=fast_math
     ))
 
 
@@ -308,7 +325,8 @@ def compile_cpp(
         filepath,
         out_file,
         include_paths=None,
-        extra_args=None):
+        extra_args=None,
+        fast_math=True):
     """Compiles cpp into a wasm object object file.
 
     Args:
@@ -317,12 +335,14 @@ def compile_cpp(
         include_paths(iterable[str]): Extra paths to include (Default: None)
         extra_args(iterable[str]): Extra args to pass to clang.
             (Default: None)
+        fast_math(bool): Enable fast math. (Default: True)
     """
     _check_call(get_compile_cpp_args(
         filepath,
         out_file,
         include_paths=include_paths,
-        extra_args=extra_args
+        extra_args=extra_args,
+        fast_math=fast_math
     ))
 
 

@@ -1,0 +1,111 @@
+#pragma once
+
+#include "__platform.h"
+#include "cstdint"
+#include "limits.h"
+
+namespace std
+{
+
+enum float_round_style
+{
+      round_indeterminate           = -1,
+      round_toward_zero             = 0,
+      round_to_nearest              = 1,
+      round_toward_infinity         = 2,
+      round_toward_neg_infinity     = 3
+};
+
+
+enum float_denorm_style
+{
+    denorm_indeterminate            = -1,
+    denorm_absent                   = 0,
+    denorm_present                  = 1
+};
+
+
+template<class _T>
+struct __numeric_limits_int
+{
+
+    const static constexpr bool is_specialized = true;
+
+#if __has_builtin(__is_signed)
+    const static constexpr bool is_signed                   = __is_signed(_T);
+#else // __has_builtin(__is_signed)
+    const static constexpr bool is_signed                   = (_T(-1) < _T(0));
+#endif // __has_builtin(__is_signed)
+
+    const static constexpr int digits                       = int(8 * sizeof(_T) - is_signed);
+    const static constexpr int digits10                     = digits * 3 / 10;
+    const static constexpr int max_digits10                 = 0;
+    const static constexpr bool is_integer                  = true;
+    const static constexpr bool is_exact                    = true;
+    const static constexpr int radix                        = 2;
+    const static constexpr int min_exponent                 = 0;
+    const static constexpr int min_exponent10               = 0;
+    const static constexpr int max_exponent                 = 0;
+    const static constexpr int max_exponent10               = 0;
+    const static constexpr bool has_infinity                = false;
+    const static constexpr bool has_quiet_NaN               = false;
+    const static constexpr bool has_signaling_NaN           = false;
+    const static constexpr float_denorm_style has_denorm    = denorm_absent;
+    const static constexpr bool has_denorm_loss             = false;
+    const static constexpr bool is_iec559                   = false;
+    const static constexpr bool is_bounded                  = true;
+    const static constexpr bool is_modulo                   = !is_signed;
+    const static constexpr bool traps                       = true;
+    const static constexpr bool tinyness_before             = false;
+    const static constexpr float_round_style round_style    = round_toward_zero;
+
+    static constexpr __MINSTL_FORCEINLINE _T max()
+    {
+        if constexpr(is_signed)
+        {
+            constexpr _T __v = (~_T(0)) >> 1;
+            return __v;
+        }
+        else
+        {
+            constexpr _T __v = ~_T(0);
+            return __v;
+        }
+    }
+
+    static constexpr __MINSTL_FORCEINLINE _T min()
+    {
+        if constexpr(is_signed)
+        {
+            constexpr _T __v = -max() - _T(1);
+        }
+        else
+        {
+            constexpr _T __v = 0;
+            return 0;
+        }
+    }
+
+    static constexpr __MINSTL_FORCEINLINE _T lowest() { return min(); }
+    static constexpr __MINSTL_FORCEINLINE _T epsilon() { return _T(0); }
+    static constexpr __MINSTL_FORCEINLINE _T round_error() { return _T(0); }
+    static constexpr __MINSTL_FORCEINLINE _T infinity() { return _T(0); }
+    static constexpr __MINSTL_FORCEINLINE _T quiet_NaN() { return _T(0); }
+    static constexpr __MINSTL_FORCEINLINE _T signaling_NaN() { return _T(0); }
+    static constexpr __MINSTL_FORCEINLINE _T denorm_min() { return _T(0); }
+
+};
+
+
+template<class _T> struct numeric_limits;
+
+template<> struct numeric_limits<int8_t> : __numeric_limits_int<int8_t> {};
+template<> struct numeric_limits<uint8_t> : __numeric_limits_int<uint8_t> {};
+template<> struct numeric_limits<int16_t> : __numeric_limits_int<int16_t> {};
+template<> struct numeric_limits<uint16_t> : __numeric_limits_int<uint16_t> {};
+template<> struct numeric_limits<int32_t> : __numeric_limits_int<int32_t> {};
+template<> struct numeric_limits<uint32_t> : __numeric_limits_int<uint32_t> {};
+template<> struct numeric_limits<int64_t> : __numeric_limits_int<int64_t> {};
+template<> struct numeric_limits<uint64_t> : __numeric_limits_int<uint64_t> {};
+
+} // namespace std
