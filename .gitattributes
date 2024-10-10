@@ -1,1 +1,2 @@
 *.glsli linguist-language=GLSL
+*.comp linguist-language=GLSL
