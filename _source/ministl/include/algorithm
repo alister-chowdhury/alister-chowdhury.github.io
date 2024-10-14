@@ -467,7 +467,7 @@ constexpr __MINSTL_FORCEINLINE void sort(const _RandAccIt& __start,
 
 template<class _RandAccIt>
 constexpr __MINSTL_FORCEINLINE void sort(const _RandAccIt& __start,
-                                        const _RandAccIt& __end)
+                                         const _RandAccIt& __end)
 {
     std::sort(__start, __end, std::__default_it_less_t<_RandAccIt>{});
 }

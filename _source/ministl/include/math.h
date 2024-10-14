@@ -3,6 +3,9 @@
 
 #include "__platform.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnan-infinity-disabled"
+
 
 #if __MISTL_CPP
 __MINSTL_FORCEINLINE int isnan(float __x) { return __builtin_isnan(__x); }
@@ -192,4 +195,7 @@ float tgammaf(float);
 __MINSTL_EXTERN_C_END
 
 
+#pragma clang diagnostic pop
+
 #endif // __MINSTL_MATH_H
+

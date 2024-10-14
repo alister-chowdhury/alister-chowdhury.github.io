@@ -3,6 +3,8 @@
     "res/*.svg": {},
     "res/*.png": {},
     "res/*.wasm": {},
+    "res/texture_compressor/*.js": {"minify": true},
+    "res/texture_compressor/*.wasm": {},
     "res/*.f32": {},
     "res/shaders/compiled_webgl/*": {"minify": true},
     "res/shaders/compiled_webgpu/*": {"minify": true},
