@@ -2,6 +2,9 @@
 
 #include "math.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnan-infinity-disabled"
+
 namespace std
 {
 
@@ -122,3 +125,5 @@ __MINSTL_FORCEINLINE int ilogb(double __x)  { return ::ilogb(__x); }
 __MINSTL_FORCEINLINE int ilogb(float __x)    { return ::ilogbf(__x); }
 
 } // namespace std
+
+#pragma clang diagnostic pop
