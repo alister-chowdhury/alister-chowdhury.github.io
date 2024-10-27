@@ -52,16 +52,87 @@
             text-align: center;
             padding-top: 1em;
         }
+
+
     </style>
 
  </head>
  <body>
 
 
+<div>
+<div id="drawCanvasControls">
+
+<div class="twoxnctrls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhLevelsDivLabel">BVH Levels</div>
+<!--    --><div><input aria-labelledby="bvhLevelsDivLabel" id="bvhLevels" disabled type="range" min="1" max="4" value="3" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Scene</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType"><label for="sceneType-simple">Simple</label>
+<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
+<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType" checked="checked"><label for="sceneType-complex">Complex</label>
+<!--        --><input disabled type="radio" id="sceneType-veryComplex" name="sceneType"><label for="sceneType-veryComplex">Very Complex</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="editLinesLabel">Edit Lines</div>
+<!--    --><div><input aria-labelledby="editLinesLabel" id="editLinesCtrl" disabled type="checkbox"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="snappingLabel">Snapping</div>
+<!--    --><div><input aria-labelledby="snappingLabel" id="snappingCtrl" disabled type="checkbox" checked=""><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div></div>
+<!--    --><div><input aria-label="reset" id="resetLinesCtrl" value="Reset Edits" disabled type="button"><br/></div>
+<!----></div>
+</div>
+
+<!---------->
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<!---------->
+
+<div class="twoxnctrls mw40em">
+<!----><div>
+<!--    --><div>Vis Type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-pointlight" name="visModeTypeCtrl"><label for="visModeTypeCtrl-pointlight">Pointlight</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-visibility" checked="checked" name="visModeTypeCtrl"><label for="visModeTypeCtrl-visibility">Visibility</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numNodeVisits" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numNodeVisits">Num Node Visits</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIntersections" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIntersections">Num Intersections</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-composite" name="visModeTypeCtrl"><label for="visModeTypeCtrl-composite">Composite</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-bvh" name="visModeTypeCtrl"><label for="visModeTypeCtrl-bvh">BVH</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhStartLevelDivLabel">BVH Start</div>
+<!--    --><div><input aria-labelledby="bvhStartLevelDivLabel" id="bvhStartLevel" disabled type="range" min="0" max="7" value="0" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhEndLevelDivLabel">BVH End</div>
+<!--    --><div><input aria-labelledby="bvhEndLevelDivLabel" id="bvhEndLevel" disabled type="range" min="0" max="7" value="5" step="1"><br/></div>
+<!----></div>
+</div>
+
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+<br>
+
 <main>
 <markdown>
 
 # Raytracing In 2D, Using A GPU Generated BVH
+
+<table_of_contents />
 
 ## Background
 
@@ -139,7 +210,7 @@ Except our bottom level nodes always come in pairs of two, so the actual amount 
 =   gridSize * gridSize - 1
 ```
 
-We can proove this via the <a href="https://en.m.wikipedia.org/wiki/Geometric_series#Sum" href="_blank">Geometric Series</a>:
+We can proove this via the <a href="https://en.m.wikipedia.org/wiki/Geometric_series#Sum" target="_blank">Geometric Series</a>:
 
 <latex>\sum _{k=0}^{n-1}X^{k}=\frac{1-X^n}{1-X}</latex>
 
@@ -154,7 +225,7 @@ You may have noticed the power of two sequence we have going on:
 \begin{align*}
 \sum _{k=0}^{n-1}2^{k} &= \frac{1-2^n}{1-2} \\
                        &= \frac{2^n - 1}{2 - 1} \\
-                       &= 2^n - 1\\
+                       &= 2^n - 1 \\
 2^{log_{2}{G^2}} - 1   &= G^2 - 1
 \end{align*}
 </latex>
@@ -164,6 +235,7 @@ You may have noticed the power of two sequence we have going on:
 <br>
 
 Alternatively, for every 4 cells (2x2), there will be 3 nodes:
+
 <latex>
 \text{Where n is } \log_{4}{\langle\text{gridSize}^2\rangle}\\
 \\
@@ -171,7 +243,7 @@ Alternatively, for every 4 cells (2x2), there will be 3 nodes:
 3 \sum _{k=0}^{n-1}4^{k} &= 3 \frac{1-4^n}{1-4} \\
                          &= 3 \frac{4^n - 1}{4 - 1} \\
                          &= 3 \frac{4^n - 1}{3} \\
-                         &= 4^n - 1\\
+                         &= 4^n - 1 \\
 4^{log_{4}{G^2}} - 1     &= G^2 - 1
 \end{align*}
 </latex>
@@ -555,85 +627,12 @@ as such I'm not going to get into it here.
 
 ## Demo
 
-As always, here's a demo, this one allows you to edit the lines, which is all handled
+As always, there's a demo (at the top), this one allows you to edit the lines, which is all handled
 on the GPU side (picking a vertex and updating the lines buffer).
 
 First time using <a href="https://www.w3.org/TR/webgpu/" target="_blank">WebGPU</a>, the API is sort of like
 a Vulkan-lite, or a primitive RHI abstraction (which I guess is what it kind of is) and is quite nice
 compared to WebGL (although still has teething issues).
-
-<div>
-<div id="drawCanvasControls">
-
-<div class="sectionHeader">Global Controls</div>
-<div class="twoxnctrls">
-<!----><div>
-<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
-<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="bvhLevelsDivLabel">BVH Levels</div>
-<!--    --><div><input aria-labelledby="bvhLevelsDivLabel" id="bvhLevels" disabled type="range" min="1" max="4" value="3" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Scene</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType"><label for="sceneType-simple">Simple</label>
-<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
-<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType" checked="checked"><label for="sceneType-complex">Complex</label>
-<!--        --><input disabled type="radio" id="sceneType-veryComplex" name="sceneType"><label for="sceneType-veryComplex">Very Complex</label>
-<!--    --></div>
-<!----></div>
-</div>
-
-
-<div class="sectionHeader">Editing Controls</div>
-<div class="twoxnctrls">
-<!----><div>
-<!--    --><div id="editLinesLabel">Edit Lines</div>
-<!--    --><div><input aria-labelledby="editLinesLabel" id="editLinesCtrl" disabled type="checkbox"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="snappingLabel">Snapping</div>
-<!--    --><div><input aria-labelledby="snappingLabel" id="snappingCtrl" disabled type="checkbox" checked=""><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div></div>
-<!--    --><div><input aria-label="reset" id="resetLinesCtrl" value="Reset" disabled type="button"><br/></div>
-<!----></div>
-</div>
-
-<!---------->
-<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
-<!---------->
-
-<div class="sectionHeader">Visualisation Controls</div>
-<div class="twoxnctrls">
-<!----><div>
-<!--    --><div>Vis Type</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-pointlight" name="visModeTypeCtrl"><label for="visModeTypeCtrl-pointlight">Pointlight</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-visibility" checked="checked" name="visModeTypeCtrl"><label for="visModeTypeCtrl-visibility">Visibility</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-numNodeVisits" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numNodeVisits">Num Node Visits</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIntersections" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIntersections">Num Intersections</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-composite" name="visModeTypeCtrl"><label for="visModeTypeCtrl-composite">Composite</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-bvh" name="visModeTypeCtrl"><label for="visModeTypeCtrl-bvh">BVH</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="bvhStartLevelDivLabel">BVH Start</div>
-<!--    --><div><input aria-labelledby="bvhStartLevelDivLabel" id="bvhStartLevel" disabled type="range" min="0" max="7" value="0" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="bvhEndLevelDivLabel">BVH End</div>
-<!--    --><div><input aria-labelledby="bvhEndLevelDivLabel" id="bvhEndLevel" disabled type="range" min="0" max="7" value="5" step="1"><br/></div>
-<!----></div>
-</div>
-
-</div>
-<div id="notSupportedBrowser"></div>
-</div>
-
 
 Here are all the relevant source code files:
 * BVH Gen (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/shaders/v2_tracing_generate_bvh.comp">v2_tracing_generate_bvh.comp</a>

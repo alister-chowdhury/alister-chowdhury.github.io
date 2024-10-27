@@ -298,13 +298,23 @@
 
 <main>
 <h1>Bluenoise Generator For Bigger Textures</h1>
-<h2>Background</h2>
+<div class="toc">
+  <ul>
+    <li><a href="#background">Background</a></li>
+    <li><a href="#why-is-it-slow">Why Is It Slow?</a></li>
+    <li><a href="#how-can-we-speed-it-up">How Can We Speed It Up?</a></li>
+    <li><a href="#tiling">Tiling</a></li>
+  </ul>
+</div>
+
+
+<h2 id="background">Background</h2>
 <p>A while back I wrote a <a href="/posts/20221230-bluenoise-generator/" target="_blank">Bluenoise Generator</a> using WEBGL2, which works reasonably well and was only ever intended to be used for small-ish textures, say 64x64.</p>
 <p>That said, trying to generate bigger textures (say 1024x1024) and you'd be waiting for minutes.</p>
 <p>Practically this is fine, you don't typically attempt to generate bluenoise at runtime, normally offsetting the texture read by some multiple of the golden ratio each frame.
 Even if you did, something like 64x64 is probably a reasonable enough size, assuming it tiles.</p>
 <p>Theoretically, this isn't very satisfying.</p>
-<h2>Why Is It Slow?</h2>
+<h2 id="why-is-it-slow">Why Is It Slow?</h2>
 <p>The reason the previous generator is slow, is simply because there are as many iterations as there are pixels on the final image.</p>
 <p>With each iteration having to:</p>
 <ul>
@@ -323,12 +333,12 @@ Even if you did, something like 64x64 is probably a reasonable enough size, assu
 </code></pre>
 <p>As a result, if you want to fill a 1024x1024 image, you would need to dispatch 6291456 (1024 * 1024 * 6) commands.</p>
 <p>No wonder it takes so long.</p>
-<h2>How Can We Speed It Up?</h2>
+<h2 id="how-can-we-speed-it-up">How Can We Speed It Up?</h2>
 <p>If you've read the previous write up I did, you'll have noticed that quite a lot of it revolves around &quot;how much updating can I get away with not doing&quot;.</p>
 <p>In case you haven't, if we have a σ around the 1.9 mark, then realistically we should only have to worry about the surrounding 8x8 to get a reasonably artefact free result.</p>
 <p>Additionally, it's pretty likely the final texture format you'd end up using is either going to be BC4, R8 or R16/R16f (if you're feeling fancy), making full precision is somewhat redundant.</p>
 <p>You probably see where this is heading, we're going to dice up the texture into tiles and update each tile per iteration.</p>
-<h2>Tiling</h2>
+<h2 id="tiling">Tiling</h2>
 <p>We can't simply evaluate every tile in parallel, we need to process them in such a way that they can take their neighbouring tiles into account.</p>
 <p>Easily done with a 4x4 pattern, (also the reason why the number of tiles have be multiple of 2, could be made to work with odd numbers, but honestly I couldn't be bothered).</p>
 <div class="imTable">

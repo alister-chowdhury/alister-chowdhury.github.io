@@ -132,9 +132,59 @@
    
 
 
+<div>
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<div class="twoxnctrls mw40em" id="drawCanvasControls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="dfResolutionCtrlDivLabel">DF Resolution</div>
+<!--    --><div><input aria-labelledby="dfResolutionCtrlDivLabel" id="dfResolutionCtrl" disabled type="number" min="32" max="256" value="128" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
+<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Vis Type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-pointlight" name="visModeTypeCtrl" checked="checked"><label for="visModeTypeCtrl-pointlight">Pointlight</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-visibility" name="visModeTypeCtrl"><label for="visModeTypeCtrl-visibility">Visibility</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIntersections" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIntersections">Num Intersections</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIterations" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIterations">Num DF Iterations</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-compositeray" name="visModeTypeCtrl"><label for="visModeTypeCtrl-compositeray">Composite (ray)</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-df" name="visModeTypeCtrl"><label for="visModeTypeCtrl-df">Distance Field</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numlines" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numlines">Num Lines</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-compositedf" name="visModeTypeCtrl"><label for="visModeTypeCtrl-compositedf">Composite (DF)</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Scene</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType"><label for="sceneType-simple">Simple</label>
+<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
+<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType" checked="checked"><label for="sceneType-complex">Complex</label>
+<!--    --></div>
+<!----></div>
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+<br>
+
 <main>
 <h1>Hybrid Distance Field / Raytracing In 2D</h1>
-<h2>Background</h2>
+<div class="toc">
+  <ul>
+    <li><a href="#background">Background</a></li>
+    <li><a href="#creating-a-hybrid">Creating A Hybrid</a></li>
+    <li><a href="#demo">Demo</a></li>
+  </ul>
+</div>
+
+
+<h2 id="background">Background</h2>
 <p>It's not a secret that raytracing isn't cheap, even if you're using hardware accelerated raytracing, most of the engineering
 effort ends up creatively avoiding actually raytracing (denoising, upscaling or using screen traces).</p>
 <p>Comparatively, distance field tracing is very cheap.</p>
@@ -175,7 +225,7 @@ The other problem, even at higher resolutions are thin tunnels:
 
 <p>If you only need a very coarse visibility test for something like an AI, maybe this is fine.<br>
 Likewise if you're only concerned with what's on the screen (for instance ambient shadows), you can generate a screen-sized DF from a BVH very quickly per frame.<br></p>
-<h2>Creating A Hybrid</h2>
+<h2 id="creating-a-hybrid">Creating A Hybrid</h2>
 <p>Ideally, we would be able to evaluate a distance field, up until we're near some geometry, then do proper line-ray intersections.<br>
 The immediate reaction to this idea is &quot;I'm not storing a list of lines per pixel&quot;, an understandable response.<br>
 <br>
@@ -327,51 +377,8 @@ while(!done)
     }
 }
 </code></pre>
-<br>
-<div style="font-weight:bold;font-size:1.3em;text-align:center">As always, here is a live demo</div>
-<br>
-
-<div>
-<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
-<div class="twoxnctrls" id="drawCanvasControls">
-<!----><div>
-<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
-<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="dfResolutionCtrlDivLabel">DF Resolution</div>
-<!--    --><div><input aria-labelledby="dfResolutionCtrlDivLabel" id="dfResolutionCtrl" disabled type="number" min="32" max="256" value="128" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
-<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Vis Type</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-pointlight" name="visModeTypeCtrl" checked="checked"><label for="visModeTypeCtrl-pointlight">Pointlight</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-visibility" name="visModeTypeCtrl"><label for="visModeTypeCtrl-visibility">Visibility</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIntersections" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIntersections">Num Intersections</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIterations" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIterations">Num DF Iterations</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-compositeray" name="visModeTypeCtrl"><label for="visModeTypeCtrl-compositeray">Composite (ray)</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-df" name="visModeTypeCtrl"><label for="visModeTypeCtrl-df">Distance Field</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-numlines" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numlines">Num Lines</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-compositedf" name="visModeTypeCtrl"><label for="visModeTypeCtrl-compositedf">Composite (DF)</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Scene</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType"><label for="sceneType-simple">Simple</label>
-<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
-<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType" checked="checked"><label for="sceneType-complex">Complex</label>
-<!--    --></div>
-<!----></div>
-</div>
-<div id="notSupportedBrowser"></div>
-</div>
-
-<p>Here are all the relevant source code files:</p>
+<h2 id="demo">Demo</h2>
+<p>Here are all the relevant source code files for the demo at the top:</p>
 <ul>
 <li>DFRT generation (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/df_rtrace_hybrid_v1/dfrt_generate_v1.cpp">dfrt_generate_v1.cpp</a></li>
 <li>WASM Bootstrap (C++): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/df_rtrace_hybrid_v1/wasm_bootstreap_dfrt_v1.c">wasm_bootstreap_dfrt_v1.c</a></li>

@@ -93,6 +93,8 @@
             text-align: center;
             padding-top: 1em;
         }
+
+
     </style>
 
  
@@ -110,13 +112,95 @@
    
 
 
+<div>
+<div id="drawCanvasControls">
+
+<div class="twoxnctrls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhLevelsDivLabel">BVH Levels</div>
+<!--    --><div><input aria-labelledby="bvhLevelsDivLabel" id="bvhLevels" disabled type="range" min="1" max="4" value="3" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Scene</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType"><label for="sceneType-simple">Simple</label>
+<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
+<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType" checked="checked"><label for="sceneType-complex">Complex</label>
+<!--        --><input disabled type="radio" id="sceneType-veryComplex" name="sceneType"><label for="sceneType-veryComplex">Very Complex</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="editLinesLabel">Edit Lines</div>
+<!--    --><div><input aria-labelledby="editLinesLabel" id="editLinesCtrl" disabled type="checkbox"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="snappingLabel">Snapping</div>
+<!--    --><div><input aria-labelledby="snappingLabel" id="snappingCtrl" disabled type="checkbox" checked=""><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div></div>
+<!--    --><div><input aria-label="reset" id="resetLinesCtrl" value="Reset Edits" disabled type="button"><br/></div>
+<!----></div>
+</div>
+
+<!---------->
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<!---------->
+
+<div class="twoxnctrls mw40em">
+<!----><div>
+<!--    --><div>Vis Type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-pointlight" name="visModeTypeCtrl"><label for="visModeTypeCtrl-pointlight">Pointlight</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-visibility" checked="checked" name="visModeTypeCtrl"><label for="visModeTypeCtrl-visibility">Visibility</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numNodeVisits" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numNodeVisits">Num Node Visits</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIntersections" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIntersections">Num Intersections</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-composite" name="visModeTypeCtrl"><label for="visModeTypeCtrl-composite">Composite</label>
+<!--        --><input disabled type="radio" id="visModeTypeCtrl-bvh" name="visModeTypeCtrl"><label for="visModeTypeCtrl-bvh">BVH</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhStartLevelDivLabel">BVH Start</div>
+<!--    --><div><input aria-labelledby="bvhStartLevelDivLabel" id="bvhStartLevel" disabled type="range" min="0" max="7" value="0" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="bvhEndLevelDivLabel">BVH End</div>
+<!--    --><div><input aria-labelledby="bvhEndLevelDivLabel" id="bvhEndLevel" disabled type="range" min="0" max="7" value="5" step="1"><br/></div>
+<!----></div>
+</div>
+
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+<br>
+
 <main>
 <h1>Raytracing In 2D, Using A GPU Generated BVH</h1>
-<h2>Background</h2>
+<div class="toc">
+  <ul>
+    <li><a href="#background">Background</a></li>
+    <li><a href="#building-a-bvh-on-the-gpu">Building A BVH On The GPU</a>
+      <ul>
+      <li><a href="#memory">Memory</a></li>
+      <li><a href="#tiny-bucket-problem">Tiny Bucket Problem</a></li>
+      <li><a href="#putting-it-together">Putting It Together</a></li>
+      </ul>
+    </li>
+    <li><a href="#demo">Demo</a></li>
+  </ul>
+</div>
+
+
+<h2 id="background">Background</h2>
 <p>Another month, another vaguely raytracing related post.</p>
 <p>If you've read some of the other stuff I've written about 2D raytracing (<a href="/posts/20230620-raytracing-in-2d/" target="_blank">Raytracing In 2D</a>, <a href="/posts/20231206-hybrid-df-rtrace-2d/" target="_blank">Hybrid Distance Field / Raytracing In 2D</a> etc), you may have noticed all of those require the acceleration structure to be generated on the CPU.</p>
 <p>While that's all very well and good for most use cases, it would be handy to be able to generate a BVH on the GPU itself (procedural or animating maps come to mind).</p>
-<h2>Building A BVH On The GPU</h2>
+<h2 id="building-a-bvh-on-the-gpu">Building A BVH On The GPU</h2>
 <p>Originally, I attempted to do a similar thing to <a href="/posts/20230620-raytracing-in-2d/" target="_blank">Raytracing In 2D</a>, but on the GPU.</p>
 <p>Needless to say, the amount of passes required mixed with needing to perform a lot of <code>nth_element</code> seems rather impractical.</p>
 <p>Rather than starting at root node and working down, I attempt to flip this and start with buckets and work up towards the root node</p>
@@ -148,7 +232,7 @@
 <p>Happily fitting within three float4s.</p>
 <br>
 
-<h3>Memory</h3>
+<h3 id="memory">Memory</h3>
 <p>We can also determine the amount of memory required up front.</p>
 <p>Lets say we have grid size of 8x8 and had a node per cell:</p>
 <pre><code>    8x8 + 4x8 + 4x4 + 2x4 + 2x2 + 1x2 + 1x1
@@ -162,7 +246,7 @@
 =   63
 =   gridSize * gridSize - 1
 </code></pre>
-<p>We can proove this via the <a href="https://en.m.wikipedia.org/wiki/Geometric_series#Sum" href="_blank">Geometric Series</a>:</p>
+<p>We can proove this via the <a href="https://en.m.wikipedia.org/wiki/Geometric_series#Sum" target="_blank">Geometric Series</a>:</p>
 <p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:3.1032em;vertical-align:-1.3021em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.8011em;"><span style="top:-1.8479em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span><span class="mrel mtight">=</span>0</span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span class="mop op-symbol large-op">∑</span></span><span style="top:-4.3em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">n</span><span class="mbin mtight">−</span>1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.3021em;"></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mathnormal" style="margin-right:0.07847em;">X</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8991em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.1297em;vertical-align:-0.7693em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord">1<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal" style="margin-right:0.07847em;">X</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord">1<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mathnormal" style="margin-right:0.07847em;">X</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6644em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7693em;"></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span>
 </p>
 <br>
@@ -175,9 +259,10 @@
 
 <br>
 
-<p>Alternatively, for every 4 cells (2x2), there will be 3 nodes:
-<em>&amp;&amp;&amp;&amp;&amp;</em><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:3.4032em;vertical-align:-1.4516em;"></span><span class="mord text"><span class="mord">Where n is </span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">lo<span style="margin-right:0.01389em;">g</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.207em;"><span style="top:-2.4559em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">4</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2441em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mopen">⟨</span><span class="text"><span class="mord">gridSize</span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8984em;"><span style="top:-3.1473em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span><span class="mclose">⟩</span></span><span class="mspace"> </span><span class="mspace"> </span><span class="mtable"><span class="col-align-r"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.9516em;"><span style="top:-3.9516em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord">3<span class="mspace" style="margin-right:0.1667em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.8011em;"><span style="top:-1.8479em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span><span class="mrel mtight">=</span>0</span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span class="mop op-symbol large-op">∑</span></span><span style="top:-4.3em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">n</span><span class="mbin mtight">−</span>1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.3021em;"></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8991em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">3</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3414em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord">1<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">4</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord">1<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6644em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7693em;"></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace"> </span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">3</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3414em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord">4<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6644em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7693em;"></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace"> </span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">3</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3414em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord">3</span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6644em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace"> </span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.7144em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span><span class="mspace"> </span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:1.0369em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.01968em;">l</span><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">g</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3173em;"><span style="top:-2.357em;margin-left:-0.0359em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight">4</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.143em;"></span></span></span></span><span class="mord mtight"><span class="mord mathnormal mtight">G</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-2.931em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord"><span class="mathnormal">G</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.4516em;"></span></span></span></span></span><span class="tag"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.9516em;"><span style="top:-3.9516em;"><span class="pstrut" style="height:3.8011em;"></span><span class="eqn-num"></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.4516em;"></span></span></span></span></span></span></span>
-</p>
+<p>Alternatively, for every 4 cells (2x2), there will be 3 nodes:</p>
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.1484em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">Where n is </span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">lo<span style="margin-right:0.01389em;">g</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.207em;"><span style="top:-2.4559em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">4</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2441em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mopen">⟨</span><span class="text"><span class="mord">gridSize</span></span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8984em;"><span style="top:-3.1473em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span><span class="mclose">⟩</span></span></span><span class="mspace newline"></span><span class="mspace newline"></span><span class="base"><span class="strut" style="height:11.3383em;vertical-align:-5.4191em;"></span><span class="mord"><span class="mtable"><span class="col-align-r"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:5.9191em;"><span style="top:-7.9191em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord">3<span class="mspace" style="margin-right:0.1667em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.8011em;"><span style="top:-1.8479em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span><span class="mrel mtight">=</span>0</span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span class="mop op-symbol large-op">∑</span></span><span style="top:-4.3em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">n</span><span class="mbin mtight">−</span>1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.3021em;"></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8991em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span></span></span></span></span></span></span></span></span></span></span><span style="top:-4.9756em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord"></span></span><span style="top:-2.5649em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord"></span></span><span style="top:-0.7389em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord"></span></span><span style="top:0.958em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:1.0369em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.01968em;">l</span><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">g</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3173em;"><span style="top:-2.357em;margin-left:-0.0359em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight">4</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.143em;"></span></span></span></span><span class="mord mtight"><span class="mord mathnormal mtight">G</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-2.931em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:5.4191em;"></span></span></span></span><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:5.9191em;"><span style="top:-7.9191em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord"><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">3</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3414em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord">1<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">4</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord">1<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6644em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7693em;"></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span><span style="top:-4.9756em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord"><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">3</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3414em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord">4<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6644em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7693em;"></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span><span style="top:-2.5649em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord"><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">3</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3414em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord">3</span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6644em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span><span style="top:-0.7389em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord"><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">4<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.7144em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span><span style="top:0.958em;"><span class="pstrut" style="height:3.8011em;"></span><span class="mord"><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord"><span class="mathnormal">G</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:5.4191em;"></span></span></span></span></span></span></span></span></span>
+
+
 <br>
 
 <p>Pednantic math aside, when you take into account the number of lines:</p>
@@ -186,7 +271,7 @@ uint numFloat4s = (gridSize * gridSize - 1) * bvhFloat4Size
                 + numLines
                 ;
 </code></pre>
-<h3>Tiny Bucket Problem</h3>
+<h3 id="tiny-bucket-problem">Tiny Bucket Problem</h3>
 <p>One problem we may encounter is that we end up with a lot of tiny buckets, which
 cause needless overhead when traversing.</p>
 <p>Ideally we would &quot;merge&quot; line buckets when they are smaller than some threshold (say 16).</p>
@@ -197,7 +282,7 @@ a cache.</p>
   <div><img alt="bvh-memory-addr" src="res/bvh-memory-addr.png"></div>
 </div>
 
-<h3>Putting It Together</h3>
+<h3 id="putting-it-together">Putting It Together</h3>
 <p>We can generate the BVH in a single pass using a compute shader and shared memory
 (now possible to do in a browser with WebGPU).</p>
 <p>Here is a example of how that may look:</p>
@@ -538,84 +623,12 @@ void main()
 The ray traversal is largely the same as previous stuff I've done (a stack based method),
 as such I'm not going to get into it here.
 
-<h2>Demo</h2>
-<p>As always, here's a demo, this one allows you to edit the lines, which is all handled
+<h2 id="demo">Demo</h2>
+<p>As always, there's a demo (at the top), this one allows you to edit the lines, which is all handled
 on the GPU side (picking a vertex and updating the lines buffer).</p>
 <p>First time using <a href="https://www.w3.org/TR/webgpu/" target="_blank">WebGPU</a>, the API is sort of like
 a Vulkan-lite, or a primitive RHI abstraction (which I guess is what it kind of is) and is quite nice
 compared to WebGL (although still has teething issues).</p>
-<div>
-<div id="drawCanvasControls">
-
-<div class="sectionHeader">Global Controls</div>
-<div class="twoxnctrls">
-<!----><div>
-<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
-<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="bvhLevelsDivLabel">BVH Levels</div>
-<!--    --><div><input aria-labelledby="bvhLevelsDivLabel" id="bvhLevels" disabled type="range" min="1" max="4" value="3" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Scene</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType"><label for="sceneType-simple">Simple</label>
-<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
-<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType" checked="checked"><label for="sceneType-complex">Complex</label>
-<!--        --><input disabled type="radio" id="sceneType-veryComplex" name="sceneType"><label for="sceneType-veryComplex">Very Complex</label>
-<!--    --></div>
-<!----></div>
-</div>
-
-<div class="sectionHeader">Editing Controls</div>
-<div class="twoxnctrls">
-<!----><div>
-<!--    --><div id="editLinesLabel">Edit Lines</div>
-<!--    --><div><input aria-labelledby="editLinesLabel" id="editLinesCtrl" disabled type="checkbox"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="snappingLabel">Snapping</div>
-<!--    --><div><input aria-labelledby="snappingLabel" id="snappingCtrl" disabled type="checkbox" checked=""><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div></div>
-<!--    --><div><input aria-label="reset" id="resetLinesCtrl" value="Reset" disabled type="button"><br/></div>
-<!----></div>
-</div>
-
-<!---------->
-
-<p><canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/></p>
-<!---------->
-
-<div class="sectionHeader">Visualisation Controls</div>
-<div class="twoxnctrls">
-<!----><div>
-<!--    --><div>Vis Type</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-pointlight" name="visModeTypeCtrl"><label for="visModeTypeCtrl-pointlight">Pointlight</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-visibility" checked="checked" name="visModeTypeCtrl"><label for="visModeTypeCtrl-visibility">Visibility</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-numNodeVisits" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numNodeVisits">Num Node Visits</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-numIntersections" name="visModeTypeCtrl"><label for="visModeTypeCtrl-numIntersections">Num Intersections</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-composite" name="visModeTypeCtrl"><label for="visModeTypeCtrl-composite">Composite</label>
-<!--        --><input disabled type="radio" id="visModeTypeCtrl-bvh" name="visModeTypeCtrl"><label for="visModeTypeCtrl-bvh">BVH</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="bvhStartLevelDivLabel">BVH Start</div>
-<!--    --><div><input aria-labelledby="bvhStartLevelDivLabel" id="bvhStartLevel" disabled type="range" min="0" max="7" value="0" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="bvhEndLevelDivLabel">BVH End</div>
-<!--    --><div><input aria-labelledby="bvhEndLevelDivLabel" id="bvhEndLevel" disabled type="range" min="0" max="7" value="5" step="1"><br/></div>
-<!----></div>
-</div>
-
-</div>
-<div id="notSupportedBrowser"></div>
-</div>
-
 <p>Here are all the relevant source code files:</p>
 <ul>
 <li>BVH Gen (GLSL): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/res/shaders/v2_tracing_generate_bvh.comp">v2_tracing_generate_bvh.comp</a></li>

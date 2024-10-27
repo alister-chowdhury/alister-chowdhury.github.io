@@ -112,9 +112,93 @@
    
 
 
+<div>
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<div class="twoxnctrls" id="drawCanvasControls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lineMapResCtrlDivLabel">Linemap Resolution</div>
+<!--    --><div><div><input aria-labelledby="lineMapResCtrlDivLabel" id="lineMapResCtrl" disabled type="range" min="5" max="11" value="9" step="1"><div id="lineMapResVis">512</div></div><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightCountCtrlDivLabel"># Lights</div>
+<!--    --><div><input aria-labelledby="lightCountCtrlDivLabel" id="lightCountCtrl" disabled type="range" min="1" max="100" value="10" step="1"><div id="numLightsVis">10</div><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
+<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawBoundsOverlayLabel">Draw bounds</div>
+<!--    --><div><input aria-labelledby="drawBoundsOverlayLabel" id="drawBoundsOverlayCtrl" disabled type="checkbox"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Scene</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType" checked="checked"><label for="sceneType-simple">Simple</label>
+<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
+<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType"><label for="sceneType-complex">Complex</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Bounds type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="boundsType-bbox" name="boundsType"><label for="boundsType-bbox">BBOX</label>
+<!--        --><input disabled type="radio" id="boundsType-obbox" name="boundsType" checked="checked"><label for="boundsType-obbox">OBBOX</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Filtering</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="filtering-binary" name="filtering"><label for="filtering-binary">Binary</label>
+<!--        --><input disabled type="radio" id="filtering-pcf" name="filtering" checked="checked"><label for="filtering-pcf">PCF</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightSelectCtrlDivLabel">Select light</div>
+<!--    --><div><input aria-labelledby="lightSelectCtrlDivLabel" id="lightSelectCtrl" disabled type="range" min="0" max="49" value="0" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightColCtrlDivLabel">Light Colour</div>
+<!--    --><div><input aria-labelledby="lightColCtrlDivLabel" id="lightColCtrl" disabled type="color" value="#000000"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightIntensityCtrlDivLabel">Intensity</div>
+<!--    --><div><input aria-labelledby="lightIntensityCtrlDivLabel" id="lightIntensityCtrl" disabled type="range" min="0" max="10" value="1" step="0.01"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightDecayRateCtrlDivLabel">Decay Rate</div>
+<!--    --><div><input aria-labelledby="lightDecayRateCtrlDivLabel" id="lightDecayRateCtrl" disabled type="range" min="0.01" max="10" value="0" step="0.01"><br/></div>
+<!----></div>
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+<br>
+
 <main>
 <h1>2D Circular Shadow Mapping</h1>
-<h2>Background</h2>
+<div class="toc">
+  <ul>
+    <li><a href="#background">Background</a></li>
+    <li><a href="#faster-atan2">Faster atan2</a></li>
+    <li><a href="#generating-a-shadowmap">Generating A Shadowmap</a></li>
+    <li><a href="#planemaps">Planemaps</a>
+      <ul>
+      <li><a href="#binary-sampling">Binary sampling</a></li>
+      <li><a href="#pcf">PCF</a></li>
+      </ul>
+    </li>
+    <li><a href="#filtering-lights-to-evaluate">Filtering Lights To Evaluate</a></li>
+    <li><a href="#demo">Demo</a></li>
+  </ul>
+</div>
+
+
+<h2 id="background">Background</h2>
 <p>Lighting a scene efficiently is pretty difficult in 3D and in 2D that is still the case.
 The de-facto standard for shadows has remained shadow mapping (and derivative techniques) for quite a number of years and that doesn't look like it will change any time soon.</p>
 <p>For 3D, you'd typically render the scene from the perspective of a light (or if it's a directional light, a cascade of orthographic projections that cover what the player can see), storing only the depth and sampling it when it comes time to apply lighting.</p>
@@ -131,11 +215,12 @@ float u = atan2(circlePosition.y, circlePosition.x) / TWOPI;
 <!--    --><div><input aria-labelledby="circleToLineDemoLerpLabel" id="circleToLineDemoLerp" type="range" min="0" max="1" value="0" step="0.0001"><br/></div>
 <!----></div>
 </div>
+</div>
 
 <p>Storing information in this way has the added bonus, that we can store the shadow information of multiple lights in a single 2D texture, where each light is it's own row.
 So if we have 100 lights and we choose to have a resolution of 512, we allocate a single <code>512x100</code> texture, this simplifies binding and opens the door for evaluating all pointlights in a single pass.</p>
 <p><strong>If you have truly static lights, baking them all down either onto the background image or as a seperate overlay is always going to be faster at runtime.</strong></p>
-<h2>Faster atan2</h2>
+<h2 id="faster-atan2">Faster atan2</h2>
 <p>You may know that <code>atan2</code> is expensive, especially if it's something we plan on doing potentially multiple times per pixel.
 As such, we are going to want to use approximations.</p>
 <p>This is a pretty decent one I've found, courtesy of <a target="_blank" href="https://math.stackexchange.com/a/1105038">njuffa on math.stackexchange.com</a>.</p>
@@ -319,7 +404,7 @@ v_xor_b32     v0, v0, v1
 </div>
 </div>
 
-<h2>Generating A Shadowmap</h2>
+<h2 id="generating-a-shadowmap">Generating A Shadowmap</h2>
 <p>If you've got a BVH of the scene (<a href="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/">Raytracing In 2D</a>), you can very quickly generate your maps.</p>
 <pre><code class="language-glsl">// Assuming you're just doing a fullscreen pass with the vertex shader
 // that outputs the screen uv coordinate and have a uniform buffer of pointlight
@@ -536,7 +621,7 @@ If we move our light source and zoom in a bit, the true horror of acne reveals i
 <p>You might attempt to create lines between depth samples and then do line-line intersection tests, or even just render a line directly and this
 does work to some extent, but looks pretty bad when you get to the lines end points.</p>
 <p>A nicer solution I've found is to use <a target="_blank" href="https://en.wikipedia.org/wiki/Hesse_normal_form">Hesse Normal Form</a> (basically planes).</p>
-<h2>Planemaps</h2>
+<h2 id="planemaps">Planemaps</h2>
 <p>The idea is to store the equation of the line rather than its distance.
 It's not massively different pipeline wise to make the switch, although a bit more involved.</p>
 <p>Using <code>R10G10B10A2</code> is a natural fit, with <code>N</code> being stored in <code>RG</code> and <code>dist</code> being stored in <code>B</code>
@@ -574,7 +659,7 @@ void main()
 }
 </code></pre>
 <p>When it comes to sampling, there are two flavours that I've found work well.</p>
-<h3>Binary sampling</h3>
+<h3 id="binary-sampling">Binary sampling</h3>
 <p>This is by far the simplest method and works rather well, it can feel a bit jittery though and break down a tad
 when there is a sharp change in orientation.</p>
 <pre><code class="language-glsl">float getBinaryPlaneVisibility(vec2 uv, vec3 sampledNormalAndDistance, float bias /* = 0.5 / lightPlaneMapSize.x */)
@@ -584,7 +669,7 @@ when there is a sharp change in orientation.</p>
                             dot(uv, sampledNormalAndDistance.xy));
 }
 </code></pre>
-<h3>PCF</h3>
+<h3 id="pcf">PCF</h3>
 <p>Can look better when the linemap resolution is very low, but overall <strong>Binary sampling</strong> should probably be preferred.</p>
 <pre><code class="language-glsl">// Two taps and two binary plane tests, texture width is assumed to be a power of 2,
 // more expensive, but generally just looks better.
@@ -615,7 +700,7 @@ float getPCFPlaneVisibility(sampler2D lightPlaneMap,
     return mix(visbility0, visbility1, lerpWeight);
 }
 </code></pre>
-<h2>Filtering Lights To Evaluate</h2>
+<h2 id="filtering-lights-to-evaluate">Filtering Lights To Evaluate</h2>
 <p>Up until this point, we've been evaluating every light per pixel, this is not going to scale well beyond a handful of lights.</p>
 <p>The first obvious optimisation would be to only evaluate pixels the player sees (<a href="https://alister-chowdhury.github.io/posts/20230628-project-and-stencil/">Blocking 2D Player Visibility</a>), although this might not always be possible.</p>
 <p>We can generate bounds for each light, using the planemaps we've already generated and draw a series of quads which add the colour to the scene.</p>
@@ -852,72 +937,8 @@ shadow mapping at all would result in the fastest solution (although that's not 
 of what we're attempting to do here).</p>
 <p>Regardless, one of the main bottlenecks to expect here is the amount of lights that overlap the same pixel, as this increases the
 amount of implicit dependencies the GPU will need to resolve when blending (a complex scene may then actually be cheaper to evaluate).</p>
-<p>Anyway, this post has gone on for long enough, here is a mini demo (drag to move lights around):</p>
-<div>
-<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
-<div class="twoxnctrls" id="drawCanvasControls">
-<!----><div>
-<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
-<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lineMapResCtrlDivLabel">Linemap Resolution</div>
-<!--    --><div><div><input aria-labelledby="lineMapResCtrlDivLabel" id="lineMapResCtrl" disabled type="range" min="5" max="11" value="9" step="1"><div id="lineMapResVis">512</div></div><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightCountCtrlDivLabel"># Lights</div>
-<!--    --><div><input aria-labelledby="lightCountCtrlDivLabel" id="lightCountCtrl" disabled type="range" min="1" max="100" value="10" step="1"><div id="numLightsVis">10</div><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
-<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawBoundsOverlayLabel">Draw bounds</div>
-<!--    --><div><input aria-labelledby="drawBoundsOverlayLabel" id="drawBoundsOverlayCtrl" disabled type="checkbox"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Scene</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType" checked="checked"><label for="sceneType-simple">Simple</label>
-<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
-<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType"><label for="sceneType-complex">Complex</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Bounds type</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="boundsType-bbox" name="boundsType"><label for="boundsType-bbox">BBOX</label>
-<!--        --><input disabled type="radio" id="boundsType-obbox" name="boundsType" checked="checked"><label for="boundsType-obbox">OBBOX</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Filtering</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="filtering-binary" name="filtering"><label for="filtering-binary">Binary</label>
-<!--        --><input disabled type="radio" id="filtering-pcf" name="filtering" checked="checked"><label for="filtering-pcf">PCF</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightSelectCtrlDivLabel">Select light</div>
-<!--    --><div><input aria-labelledby="lightSelectCtrlDivLabel" id="lightSelectCtrl" disabled type="range" min="0" max="49" value="0" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightColCtrlDivLabel">Light Colour</div>
-<!--    --><div><input aria-labelledby="lightColCtrlDivLabel" id="lightColCtrl" disabled type="color" value="#000000"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightIntensityCtrlDivLabel">Intensity</div>
-<!--    --><div><input aria-labelledby="lightIntensityCtrlDivLabel" id="lightIntensityCtrl" disabled type="range" min="0" max="10" value="1" step="0.01"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightDecayRateCtrlDivLabel">Decay Rate</div>
-<!--    --><div><input aria-labelledby="lightDecayRateCtrlDivLabel" id="lightDecayRateCtrl" disabled type="range" min="0.01" max="10" value="0" step="0.01"><br/></div>
-<!----></div>
-</div>
-<div id="notSupportedBrowser"></div>
-</div>
-
+<h2 id="demo">Demo</h2>
+<p>Here are all the relevant source code files for the demo at the top:</p>
 <ul>
 <li>JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230710-2d-circular-shadow-mapping/circular_mapping.js">circular_mapping.js</a></li>
 <li>Shader used for demo:</li>

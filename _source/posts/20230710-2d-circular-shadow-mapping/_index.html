@@ -60,11 +60,79 @@
  <body>
 
 
+<div>
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<div class="twoxnctrls" id="drawCanvasControls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lineMapResCtrlDivLabel">Linemap Resolution</div>
+<!--    --><div><div><input aria-labelledby="lineMapResCtrlDivLabel" id="lineMapResCtrl" disabled type="range" min="5" max="11" value="9" step="1"><div id="lineMapResVis">512</div></div><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightCountCtrlDivLabel"># Lights</div>
+<!--    --><div><input aria-labelledby="lightCountCtrlDivLabel" id="lightCountCtrl" disabled type="range" min="1" max="100" value="10" step="1"><div id="numLightsVis">10</div><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
+<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawBoundsOverlayLabel">Draw bounds</div>
+<!--    --><div><input aria-labelledby="drawBoundsOverlayLabel" id="drawBoundsOverlayCtrl" disabled type="checkbox"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Scene</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType" checked="checked"><label for="sceneType-simple">Simple</label>
+<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
+<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType"><label for="sceneType-complex">Complex</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Bounds type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="boundsType-bbox" name="boundsType"><label for="boundsType-bbox">BBOX</label>
+<!--        --><input disabled type="radio" id="boundsType-obbox" name="boundsType" checked="checked"><label for="boundsType-obbox">OBBOX</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div>Filtering</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="filtering-binary" name="filtering"><label for="filtering-binary">Binary</label>
+<!--        --><input disabled type="radio" id="filtering-pcf" name="filtering" checked="checked"><label for="filtering-pcf">PCF</label>
+<!--    --></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightSelectCtrlDivLabel">Select light</div>
+<!--    --><div><input aria-labelledby="lightSelectCtrlDivLabel" id="lightSelectCtrl" disabled type="range" min="0" max="49" value="0" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightColCtrlDivLabel">Light Colour</div>
+<!--    --><div><input aria-labelledby="lightColCtrlDivLabel" id="lightColCtrl" disabled type="color" value="#000000"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightIntensityCtrlDivLabel">Intensity</div>
+<!--    --><div><input aria-labelledby="lightIntensityCtrlDivLabel" id="lightIntensityCtrl" disabled type="range" min="0" max="10" value="1" step="0.01"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="lightDecayRateCtrlDivLabel">Decay Rate</div>
+<!--    --><div><input aria-labelledby="lightDecayRateCtrlDivLabel" id="lightDecayRateCtrl" disabled type="range" min="0.01" max="10" value="0" step="0.01"><br/></div>
+<!----></div>
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+<br>
+
 <main>
 <markdown>
 
 # 2D Circular Shadow Mapping
 
+<table_of_contents />
 
 ## Background
 
@@ -88,6 +156,7 @@ float u = atan2(circlePosition.y, circlePosition.x) / TWOPI;
 <!--    --><div id="circleToLineDemoLerpLabel">line &lt;=&gt; circle</div>
 <!--    --><div><input aria-labelledby="circleToLineDemoLerpLabel" id="circleToLineDemoLerp" type="range" min="0" max="1" value="0" step="0.0001"><br/></div>
 <!----></div>
+</div>
 </div>
 
 
@@ -906,73 +975,10 @@ of what we're attempting to do here).
 Regardless, one of the main bottlenecks to expect here is the amount of lights that overlap the same pixel, as this increases the
 amount of implicit dependencies the GPU will need to resolve when blending (a complex scene may then actually be cheaper to evaluate).
 
-Anyway, this post has gone on for long enough, here is a mini demo (drag to move lights around):
 
-<div>
-<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
-<div class="twoxnctrls" id="drawCanvasControls">
-<!----><div>
-<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
-<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lineMapResCtrlDivLabel">Linemap Resolution</div>
-<!--    --><div><div><input aria-labelledby="lineMapResCtrlDivLabel" id="lineMapResCtrl" disabled type="range" min="5" max="11" value="9" step="1"><div id="lineMapResVis">512</div></div><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightCountCtrlDivLabel"># Lights</div>
-<!--    --><div><input aria-labelledby="lightCountCtrlDivLabel" id="lightCountCtrl" disabled type="range" min="1" max="100" value="10" step="1"><div id="numLightsVis">10</div><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
-<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawBoundsOverlayLabel">Draw bounds</div>
-<!--    --><div><input aria-labelledby="drawBoundsOverlayLabel" id="drawBoundsOverlayCtrl" disabled type="checkbox"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Scene</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="sceneType-simple" name="sceneType" checked="checked"><label for="sceneType-simple">Simple</label>
-<!--        --><input disabled type="radio" id="sceneType-moderate" name="sceneType"><label for="sceneType-moderate">Moderate</label>
-<!--        --><input disabled type="radio" id="sceneType-complex" name="sceneType"><label for="sceneType-complex">Complex</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Bounds type</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="boundsType-bbox" name="boundsType"><label for="boundsType-bbox">BBOX</label>
-<!--        --><input disabled type="radio" id="boundsType-obbox" name="boundsType" checked="checked"><label for="boundsType-obbox">OBBOX</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div>Filtering</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="filtering-binary" name="filtering"><label for="filtering-binary">Binary</label>
-<!--        --><input disabled type="radio" id="filtering-pcf" name="filtering" checked="checked"><label for="filtering-pcf">PCF</label>
-<!--    --></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightSelectCtrlDivLabel">Select light</div>
-<!--    --><div><input aria-labelledby="lightSelectCtrlDivLabel" id="lightSelectCtrl" disabled type="range" min="0" max="49" value="0" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightColCtrlDivLabel">Light Colour</div>
-<!--    --><div><input aria-labelledby="lightColCtrlDivLabel" id="lightColCtrl" disabled type="color" value="#000000"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightIntensityCtrlDivLabel">Intensity</div>
-<!--    --><div><input aria-labelledby="lightIntensityCtrlDivLabel" id="lightIntensityCtrl" disabled type="range" min="0" max="10" value="1" step="0.01"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="lightDecayRateCtrlDivLabel">Decay Rate</div>
-<!--    --><div><input aria-labelledby="lightDecayRateCtrlDivLabel" id="lightDecayRateCtrl" disabled type="range" min="0.01" max="10" value="0" step="0.01"><br/></div>
-<!----></div>
-</div>
-<div id="notSupportedBrowser"></div>
-</div>
+## Demo
 
+Here are all the relevant source code files for the demo at the top:
 
 * JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230710-2d-circular-shadow-mapping/circular_mapping.js">circular_mapping.js</a>
 * Shader used for demo:

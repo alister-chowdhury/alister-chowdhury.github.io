@@ -185,6 +185,31 @@ input[type="button"]:disabled
     height: 100%;
 }
 
+.toc
+{
+    border: #7373c3 1px solid;
+    display: inline-block;
+    margin-top: 2em;
+    font-size: 1.2em;
+    background-color: #22222c;
+}
+
+.toc > ul
+{
+    padding: 1em;
+    margin: 1em;
+}
+
+.toc > ul > * > ul
+{
+   font-size: 0.95em;
+}
+
+.mw40em
+{
+    max-width: 40em;
+}
+
 #notSupportedBrowser
 {
     display: none;

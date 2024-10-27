@@ -82,10 +82,11 @@ async function _hsInit(...langs){{
 
 
 def insert_syntax_highlighting(source):
-    """Render markdown nested inside html source code.
+    """Insert syntax highlighting.
 
     Args:
-        source (str): Source HTML, Markdown should be inside of markdown tags.
+        source (str): Source HTML, should already have been rendered with
+            markdown.
 
     Returns:
         str: Rendered HTML.

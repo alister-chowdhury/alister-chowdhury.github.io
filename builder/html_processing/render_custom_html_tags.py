@@ -13,9 +13,11 @@ def render_custom_html_tags(source, source_file):
     from ._inline_mako_render import inline_mako_render
     from ._inline_markdown_render import inline_markdown_render
     from ._inline_latex_render import inline_latex_render
+    from ._insert_table_of_contents import insert_table_of_contents
     from ._insert_syntax_highlighting import insert_syntax_highlighting
     source = inline_mako_render(source, source_file=source_file)
     source = inline_markdown_render(source)
     source = inline_latex_render(source)
+    source = insert_table_of_contents(source)
     source = insert_syntax_highlighting(source)
     return source

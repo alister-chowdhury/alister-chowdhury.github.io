@@ -167,7 +167,29 @@
 
 <main>
 <h1>Preserving Small Values</h1>
-<h2>Background</h2>
+<div class="toc">
+  <ul>
+    <li><a href="#background">Background</a></li>
+    <li><a href="#approximating-roots">Approximating Roots</a>
+      <ul>
+      <li><a href="#live-demo">Live demo</a></li>
+      </ul>
+    </li>
+    <li><a href="#making-tiny-floats">Making Tiny Floats</a>
+      <ul>
+      <li><a href="#live-demo2">Live demo</a></li>
+      </ul>
+    </li>
+    <li><a href="#finally-actually-packing-bits">Finally Actually Packing Bits</a>
+      <ul>
+      <li><a href="#optimization-for-encoding-decoding-using-denormals">Optimization For Encoding / Decoding using Denormals</a></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+
+<h2 id="background">Background</h2>
 <p>It's not massively uncommon to want a higher level of precision for smaller values.
 A good example of this is luminance, our eyes can detect subtle changes in low light much better than in a bright room.
 There is a reason modern computers use <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank">IEE-754 floats</a> rather than fixed, which does this (very cleverly) by design.
@@ -211,7 +233,7 @@ float4 decode(float4 x)
 }
 </code></pre>
 <p>So what other less travelled alternatives are there?</p>
-<h2>Approximating Roots</h2>
+<h2 id="approximating-roots">Approximating Roots</h2>
 <p>If using <code>pow</code> is a bit on the expensive side, what if we approximated it?
 We don't necessarily care if the approximation is fully accurate, as long as it gets us in the right ball park and we can reverse it.</p>
 <p>Most (graphics) people at one point or another have come across the legendary <a href="https://en.wikipedia.org/wiki/Fast_inverse_square_root" target="_blank">fast inverse square root</a>.</p>
@@ -372,7 +394,7 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 
 <hr>
 
-<h3>Live demo</h3>
+<h3 id="live-demo">Live demo</h3>
 <div class="rootContainer">
 <!----><div id="approxRootContainerHead">
 <!-- --><div class="twoxnctrls">
@@ -396,7 +418,7 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 <!----></div>
 <!----><br>
 <!----><div id="approxRooResultsContainer" style="display:none">
-<!--  --><h4>Quantized Preview</h4>
+<!--  --><h4 id="quantized-preview">Quantized Preview</h4>
 <!--  --><div>
 <!--    --><div><canvas id="approxRootQuantVis" style="width:256px;height:256px"></canvas></div>
 <!--   --><div class="twoxnctrls">
@@ -406,12 +428,12 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 <!--   ----></div>
 <!--   --></div>
 <!--  --></div>
-<!--  --><h4>Shader source</h4>
+<!--  --><h4 id="shader-source">Shader source</h4>
 <!--  --><div class="imTable flexcode">
 <!--    --><div><pre class="nomargin"><code class="language-c" id="approxRootEncodeSource"></code></pre></div>
 <!--    --><div><pre class="nomargin"><code class="language-c" id="approxRootDecodeSource"></code></pre></div>
 <!--  --></div>
-<!--  --><h4>Refinement Steps</h4>
+<!--  --><h4 id="refinement-steps">Refinement Steps</h4>
 <!--  --><div id="approxRootRefinementPasses" class="imTable">
 <!--  --></div>
 <!----></div>
@@ -425,7 +447,7 @@ of normalised offsets with the max ulp error appearing on y (lower is better).</
 <li>Code to determine the &quot;goodness&quot; of a magic number (C): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/res/calc_ulp_error/calc_ulp_error.c">calc_ulp_error.c</a></li>
 <li>WASM binary: <a target="_blank" href="res/calc_ulp_error.wasm">calc_ulp_error.wasm</a></li>
 </ul>
-<h2>Making Tiny Floats</h2>
+<h2 id="making-tiny-floats">Making Tiny Floats</h2>
 <p>Floats already do a pretty good job of preserving small values, so can we use this to our advantage?</p>
 <p>As it turns out, yes!
 If we logically split an 8 bit number to have a few bits dedicated to the exponent and the rest the mantissa, we
@@ -468,7 +490,7 @@ done at the cost of two extra instructions.</p>
 If we take <code>2.5</code> as the number of exponent bits, simply lerp between <code>1 &lt;&lt; (23 + 2) - 1</code> and <code>1 &lt;&lt; (23 + 3) - 1</code>.</p>
 <hr>
 
-<h3>Live demo</h3>
+<h3 id="live-demo2">Live demo</h3>
 <div class="rootContainer">
 <!----><div class="twoxnctrls">
 <!--  --><div>
@@ -484,9 +506,9 @@ If we take <code>2.5</code> as the number of exponent bits, simply lerp between 
 <!--   --    --><div><input aria-labelledby="smFloatQuantLabel" id="smFloatQuantInput" type="number" min="2" max="8" value="4" step="1"><br/></div>
 <!--   ----></div>
 <!----></div>
-<!----><h4>Quantized Preview</h4>
+<!----><h4 id="quantized-preview2">Quantized Preview</h4>
 <!----><div><canvas id="smFloatQuantVis" style="width:256px;height:256px"></canvas></div>
-<!----><h4>Shader source</h4>
+<!----><h4 id="shader-source2">Shader source</h4>
 <!----><div class="imTable flexcode">
 <!--  --><div><pre class="nomargin"><code class="language-c" id="smFloatEncodeSource"></code></pre></div>
 <!--  --><div><pre class="nomargin"><code class="language-c" id="smFloatDecodeSource"></code></pre></div>
@@ -499,7 +521,7 @@ If we take <code>2.5</code> as the number of exponent bits, simply lerp between 
 <ul>
 <li>Norm small float (JS): <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20231030-preserving-small-values/norm_small_float.js">norm_small_float.js</a></li>
 </ul>
-<h2>Finally Actually Packing Bits</h2>
+<h2 id="finally-actually-packing-bits">Finally Actually Packing Bits</h2>
 <p>Once you've chosen whatever method seems most appropriate, you may wish to actually pack your data inside of a single uint.</p>
 <p>For example, maybe you want to pack RGB into a uint32, with the following layout:</p>
 <pre><code class="language-c">struct PackedRgb
@@ -531,7 +553,7 @@ float3 unpack(uint packed)
     // 1 x cvt f32 to u32
     uint R = uint(rgb.x * 2047.0 + 0.5);
 </code></pre>
-<h3>Optimization For Encoding / Decoding using Denormals</h3>
+<h3 id="optimization-for-encoding-decoding-using-denormals">Optimization For Encoding / Decoding using Denormals</h3>
 <br>
 
 <div style="color:#fc0;font-weight:bold">&#9888; Denormal support (atleast with WebGL) is spotty at best &#9888;</div>
@@ -539,7 +561,7 @@ float3 unpack(uint packed)
 <p>Massive thanks to the lovely people at shadertoy for doing a little survey: <a href="https://www.shadertoy.com/view/dlcyD7" target="_blank">Does Your GPU Support Denormals?</a></p>
 <br>
 
-<h4>Encoding</h4>
+<h4 id="encoding">Encoding</h4>
 <p>Assuming the target architecture handles denormals correctly,
 we can reduce the number of instructions from 2 to 1:</p>
 <pre><code class="language-c">    // 1 x mul
@@ -555,7 +577,7 @@ work up to 23bits.</p>
     return R | (G &lt;&lt; 11) | (B &lt;&lt; 23);
 }
 </code></pre>
-<h4>Theoretical Optimization For Decoding</h4>
+<h4 id="theoretical-optimization-for-decoding">Theoretical Optimization For Decoding</h4>
 <p>Unfortunately, we can't simply do the inverse of the above, since by definition of it being a denormal,
 it has no representable inverse.</p>
 <p>We can however shift our number such that the most significant bit lies on the least significant exponent bit.</p>

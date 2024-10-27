@@ -51,11 +51,48 @@
  </head>
  <body>
 
+<div>
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<div class="twoxnctrls" id="drawCanvasControls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawSelectOverlayLabel">Draw selection overlay</div>
+<!--    --><div><input aria-labelledby="drawSelectOverlayLabel" id="drawSelectOverlayCtrl" disabled type="checkbox" checked><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
+<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="enablePlayersLabel">Enable players</div>
+<!--    --><div>
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer0" disabled type="checkbox" checked style="width: auto">
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer1" disabled type="checkbox" checked style="width: auto">
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer2" disabled type="checkbox" checked style="width: auto">
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer3" disabled type="checkbox" checked style="width: auto">
+           </div>
+<!----></div>
+<!----><div>
+<!--    --><div>Display type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="displayType-combined" name="displayType" checked="checked"><label for="displayType-combined">Combined</label>
+<!--        --><input disabled type="radio" id="displayType-playermasks" name="displayType"><label for="displayType-playermasks">Player masks</label>
+<!--    --></div>
+<!----></div>
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+<br>
   <main>
 <markdown>
 
 # Blocking 2D Player Visibility
 
+<table_of_contents />
 
 ## Background
 
@@ -440,42 +477,10 @@ glStencilFunc(GL_NOTEQUAL, specificVisibleMask, specificVisibleMask);
 
 </details>
 
-And here is a little demo of it in action (you can move around the players):
 
-<div>
-<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
-<div class="twoxnctrls" id="drawCanvasControls">
-<!----><div>
-<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
-<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawSelectOverlayLabel">Draw selection overlay</div>
-<!--    --><div><input aria-labelledby="drawSelectOverlayLabel" id="drawSelectOverlayCtrl" disabled type="checkbox" checked><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
-<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="enablePlayersLabel">Enable players</div>
-<!--    --><div>
-<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer0" disabled type="checkbox" checked style="width: auto">
-<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer1" disabled type="checkbox" checked style="width: auto">
-<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer2" disabled type="checkbox" checked style="width: auto">
-<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer3" disabled type="checkbox" checked style="width: auto">
-           </div>
-<!----></div>
-<!----><div>
-<!--    --><div>Display type</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="displayType-combined" name="displayType" checked="checked"><label for="displayType-combined">Combined</label>
-<!--        --><input disabled type="radio" id="displayType-playermasks" name="displayType"><label for="displayType-playermasks">Player masks</label>
-<!--    --></div>
-<!----></div>
-</div>
-<div id="notSupportedBrowser"></div>
-</div>
+## Demo
+
+Here are all the relevant source code files for the demo at the top:
 
 * JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230628-project-and-stencil/pas.js">pas.js</a>
 * Project shader used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230628-project-and-stencil/shaders/project_lines.vert">project_lines.vert</a>

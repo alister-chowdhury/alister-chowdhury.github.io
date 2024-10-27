@@ -104,19 +104,73 @@
     </div>
    
 
+<div>
+<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
+<div class="twoxnctrls" id="drawCanvasControls">
+<!----><div>
+<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
+<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawSelectOverlayLabel">Draw selection overlay</div>
+<!--    --><div><input aria-labelledby="drawSelectOverlayLabel" id="drawSelectOverlayCtrl" disabled type="checkbox" checked><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
+<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
+<!----></div>
+<!----><div>
+<!--    --><div id="enablePlayersLabel">Enable players</div>
+<!--    --><div>
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer0" disabled type="checkbox" checked style="width: auto">
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer1" disabled type="checkbox" checked style="width: auto">
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer2" disabled type="checkbox" checked style="width: auto">
+<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer3" disabled type="checkbox" checked style="width: auto">
+           </div>
+<!----></div>
+<!----><div>
+<!--    --><div>Display type</div>
+<!--    --><div class="knkRadio">
+<!--        --><input disabled type="radio" id="displayType-combined" name="displayType" checked="checked"><label for="displayType-combined">Combined</label>
+<!--        --><input disabled type="radio" id="displayType-playermasks" name="displayType"><label for="displayType-playermasks">Player masks</label>
+<!--    --></div>
+<!----></div>
+</div>
+<div id="notSupportedBrowser"></div>
+</div>
+
+<br>
   <main>
 <h1>Blocking 2D Player Visibility</h1>
-<h2>Background</h2>
+<div class="toc">
+  <ul>
+    <li><a href="#background">Background</a>
+      <ul>
+      <li><a href="#enter-project-and-stencil">Enter project and stencil!</a></li>
+      </ul>
+    </li>
+    <li><a href="#projection">Projection</a></li>
+    <li><a href="#project-and-stencil">Project And Stencil</a>
+      <ul>
+      <li><a href="#one-bit-per-player-variant">One Bit Per Player Variant</a></li>
+      </ul>
+    </li>
+    <li><a href="#demo">Demo</a></li>
+  </ul>
+</div>
+
+
+<h2 id="background">Background</h2>
 <p>Blocking the players vision is an important part of any top down game / virtual tabletop, but doing it isn't exactly trivial (especially doing it efficiently).</p>
 <p>You <u><em>could</em></u> awkwardly use something like raytracing (<a target="_blank" href="https://alister-chowdhury.github.io/posts/20230620-raytracing-in-2d/">Raytracing In 2D</a>) or possibly something more sensible like raymarching, both of these have some pretty bad drawbacks.</p>
 <p>Raytracing is so obscenely slow when applied per pixel that you've basically just blown out your entire frame budget (and forget about sharing vision between players).</p>
 <p>Raymarching is faster, but requires a pretty big texture buffer to accurately represent an entire scene and isn't something you'd want to totally generate at runtime.</p>
-<h3>Enter project and stencil!</h3>
+<h3 id="enter-project-and-stencil">Enter project and stencil!</h3>
 <p>This has the per-pixel accuracy of raytracing, is usually faster or on-par with raymarching, requires substantially less memory then both, needs no offline processing and can be used to share vision between multiple players.</p>
 <p>This involves projecting lines to the edge of the screen and incrementing the stencil buffer only if it also occludes all previous players, as far as I can tell is a novel idea. (Which has similar vibes to <a target="_blank" href="https://en.wikipedia.org/wiki/Shadow_volume">Shadow Volumes</a>).</p>
 <p>Effectively, it flips the problem of masking what you see, into masking what you cannot see, while exploiting what GPUs do best, rasterization!</p>
 <p>While I suppose this <u><em>could</em></u> be used for light shadows, this is probably a better technique to use exclusively for player visibility, since while it provides perfect shadows, realistically won't scale to hundreds of lights but should scale to roughly 1-8 players with shared vision.</p>
-<h2>Projection</h2>
+<h2 id="projection">Projection</h2>
 <p>The first stage involves projecting the edges of each blocking line to the edge of the screen, from the perspective of a player.
 This covers all pixels that the player cannot possibly see, using the GPUs rasterization hardware!</p>
 <p>I'm using a 5-gon for the projected polygon itself, as it handles some of the more extreme projections that could result in coordinates near
@@ -260,7 +314,7 @@ glDrawArrays(GL_TRIANGLES, 0, 9 * numLines);
 glDepthFunc(GL_LESS);
 </code></pre>
 <p>And that's it, you're done!</p>
-<h2>Project And Stencil</h2>
+<h2 id="project-and-stencil">Project And Stencil</h2>
 <p>When it comes to shared vision between players, intuitively the obvious solution would be to compute the visibility of a pixel for each player then <strong>OR</strong> the result.</p>
 <p>We can flip this around and compute the occlusion for each player then <strong>AND</strong> the result.</p>
 <p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord"><span class="mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∨</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord"><span class="mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∨</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord"><span class="mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∨</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord"><span class="mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∨</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">...</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">¬</span><span class="mopen">(</span><span class="mord">¬</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord"><span class="mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∧</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord">¬</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord"><span class="mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∧</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord">¬</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord"><span class="mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∧</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord">¬</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord"><span class="mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∧</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">...</span><span class="mclose">)</span></span></span></span>
@@ -390,7 +444,7 @@ glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 </code></pre>
 </details>
 
-<h3>One Bit Per Player Variant</h3>
+<h3 id="one-bit-per-player-variant">One Bit Per Player Variant</h3>
 <p>If you aren't really using the stencil buffer for anything else, have players that don't move every frame and have a maximum of 8 players you can quite easily store each players projected occlusion in a separate bit.</p>
 <p>e.g:</p>
 <pre><code>player0Mask =&gt; (1 &lt;&lt; 0);
@@ -443,42 +497,8 @@ glStencilFunc(GL_NOTEQUAL, specificVisibleMask, specificVisibleMask);
 </code></pre>
 </details>
 
-<p>And here is a little demo of it in action (you can move around the players):</p>
-<div>
-<canvas id="drawCanvas" style="width:500px;height:500px;" width=500 height=500></canvas><br/>
-<div class="twoxnctrls" id="drawCanvasControls">
-<!----><div>
-<!--    --><div id="resolutionCtrlDivLabel">Resolution</div>
-<!--    --><div><input aria-labelledby="resolutionCtrlDivLabel" id="resolutionCtrl" disabled type="number" min="1" max="2048" value="500" step="1"><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawSelectOverlayLabel">Draw selection overlay</div>
-<!--    --><div><input aria-labelledby="drawSelectOverlayLabel" id="drawSelectOverlayCtrl" disabled type="checkbox" checked><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="drawLinesOverlayLabel">Draw lines</div>
-<!--    --><div><input aria-labelledby="drawLinesOverlayLabel" id="drawLinesOverlayCtrl" disabled type="checkbox" checked><br/></div>
-<!----></div>
-<!----><div>
-<!--    --><div id="enablePlayersLabel">Enable players</div>
-<!--    --><div>
-<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer0" disabled type="checkbox" checked style="width: auto">
-<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer1" disabled type="checkbox" checked style="width: auto">
-<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer2" disabled type="checkbox" checked style="width: auto">
-<!--        --><input aria-labelledby="enablePlayersLabel" id="enablePlayer3" disabled type="checkbox" checked style="width: auto">
-           </div>
-<!----></div>
-<!----><div>
-<!--    --><div>Display type</div>
-<!--    --><div class="knkRadio">
-<!--        --><input disabled type="radio" id="displayType-combined" name="displayType" checked="checked"><label for="displayType-combined">Combined</label>
-<!--        --><input disabled type="radio" id="displayType-playermasks" name="displayType"><label for="displayType-playermasks">Player masks</label>
-<!--    --></div>
-<!----></div>
-</div>
-<div id="notSupportedBrowser"></div>
-</div>
-
+<h2 id="demo">Demo</h2>
+<p>Here are all the relevant source code files for the demo at the top:</p>
 <ul>
 <li>JS used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230628-project-and-stencil/pas.js">pas.js</a></li>
 <li>Project shader used for demo: <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/posts/20230628-project-and-stencil/shaders/project_lines.vert">project_lines.vert</a></li>
