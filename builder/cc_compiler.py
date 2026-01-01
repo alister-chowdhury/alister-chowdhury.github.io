@@ -1,12 +1,12 @@
-import distutils.spawn
+import shutil
 import subprocess
 import tempfile
 import os
 
-_CLANG_EXEC = distutils.spawn.find_executable("clang")
-_CLANGPP_EXEC = distutils.spawn.find_executable("clang++")
-_LLVM_AR_EXEC = distutils.spawn.find_executable("llvm-ar")
-_WASM_LD_EXEC = distutils.spawn.find_executable("wasm-ld")
+_CLANG_EXEC = shutil.which("clang")
+_CLANGPP_EXEC = shutil.which("clang++")
+_LLVM_AR_EXEC = shutil.which("llvm-ar")
+_WASM_LD_EXEC = shutil.which("wasm-ld")
 
 
 _MINISTL_ROOT = os.path.abspath(os.path.join(

@@ -1,6 +1,6 @@
 import html
-import distutils.spawn
 import os
+import shutil
 import subprocess
 
 from ._transformer_base import _BaseHtmlTransformer
@@ -8,7 +8,7 @@ from .._cache import _test_cache, _insert_cache
 
 
 _CACHE_DIR = os.path.abspath(os.path.join(__file__, "..", ".cache", "katex"))
-_NODE_EXEC = distutils.spawn.find_executable("node")
+_NODE_EXEC = shutil.which("node")
 _KATEX_DIR_PATH = os.path.abspath(os.path.join(
     __file__,
     "..",

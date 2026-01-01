@@ -5,15 +5,15 @@ Repo that builds: `alister-chowdhury.github.io`.
 Uses a custom static site generator (which lives under `builder`).
 
 ## Dependencies
-* python (Been using 3.8.3)
-* * mako (Been using 1.2.4)
-* * mistune (Been using 2.0.4)
+* python (Been using 3.13.1)
+* * mako (Been using 1.3.10)
+* * mistune (Been using 3.2.0)
 * * xxhash (Optional)
-* nodejs (Been using 12.18.2, optional, Latex won't be prerendered without it)
-* LLVM (Been using 16.0.0), optional to compile C/C++
-* VulkanSDK (Been using 1.3.211.0), optional to compile to WebGPU and WGSL
+* nodejs (Been using 24.12.0, optional, Latex won't be prerendered without it)
+* LLVM (Been using 21.1.8), optional to compile C/C++
+* VulkanSDK (Been using 1.4.328.1), optional to compile to WebGPU and WGSL
 * tint, optional to compile to WGSL (needs SPIRV reader and WGSL writer options enabled).
-* naga, optional to compile to WSGL (been using 0.14.0).
+* naga, optional to compile to WSGL (been using 28.0.0).
 
 
 ## Layout

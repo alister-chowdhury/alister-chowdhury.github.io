@@ -1,7 +1,7 @@
-import distutils.spawn
 import os
 import re
 import subprocess
+import shutil
 import tempfile
 from contextlib import contextmanager
 
@@ -13,13 +13,13 @@ from contextlib import contextmanager
 # you need to compile it yourself and doesn't support writing to
 # integer textures.
 
-_DXC_EXEC = distutils.spawn.find_executable("dxc")
-_GLSLC_EXEC = distutils.spawn.find_executable("glslc")
-_SPIRV_OPT_EXEC = distutils.spawn.find_executable("spirv-opt")
-_SPIRV_DIS_EXEC = distutils.spawn.find_executable("spirv-dis")
-_SPIRV_CROSS_EXEC = distutils.spawn.find_executable("spirv-cross")
-_NAGA_EXEC = distutils.spawn.find_executable("naga")
-_TINT_EXEC = distutils.spawn.find_executable("tint")
+_DXC_EXEC = shutil.which("dxc")
+_GLSLC_EXEC = shutil.which("glslc")
+_SPIRV_OPT_EXEC = shutil.which("spirv-opt")
+_SPIRV_DIS_EXEC = shutil.which("spirv-dis")
+_SPIRV_CROSS_EXEC = shutil.which("spirv-cross")
+_NAGA_EXEC = shutil.which("naga")
+_TINT_EXEC = shutil.which("tint")
 
 
 GLOBAL_SHADER_INCLUDE_DIR = os.path.abspath(
