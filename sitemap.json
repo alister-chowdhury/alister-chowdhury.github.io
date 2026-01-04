@@ -41,24 +41,29 @@
    "hash": "f1f4299235af5858d3287d9bea0dad4b"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-01-12",
    "loc": "posts/20231206-hybrid-df-rtrace-2d/index.html",
    "hash": "bbd50a8d901e8cf86e199db8cf4d022b"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-01-12",
    "loc": "posts/20231228-raytracing-2d-gpu-bvh/index.html",
    "hash": "a85ed48e62135235b5b53bcdc49ae818"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-01-12",
    "loc": "posts/20240507-bluenoise-generator-for-big-textures/index.html",
    "hash": "060de77fb5b6e8e2486f01d48a80cb75"
   },
   {
-   "lastmod": "2024-05-07",
+   "lastmod": "2026-01-12",
+   "loc": "posts/20260105-minifloat-formats/index.html",
+   "hash": "9729e5389267e1aece3afad383809e02"
+  },
+  {
+   "lastmod": "2026-01-12",
    "loc": "posts/index.html",
-   "hash": "67e7edc4ec0770d6559522dc0f83d675"
+   "hash": "55b7ca9749144500e76a27e6e5b0e35f"
   }
  ]
 }

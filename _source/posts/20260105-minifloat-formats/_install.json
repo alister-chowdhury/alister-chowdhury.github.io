@@ -1,0 +1,5 @@
+{
+    "index.html": {"minify": true},
+    "minifloat_interface.js": {"minify": true},
+    "thumbnail.png": {}
+}

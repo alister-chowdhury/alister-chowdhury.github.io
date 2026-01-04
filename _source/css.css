@@ -98,6 +98,10 @@ details
     display: none;
 }
 
+.flexbreak {
+    flex-basis: 100%;
+    width: 0;
+}
 
 .knkRadio input[type="radio"]+label,
 input[type="button"]

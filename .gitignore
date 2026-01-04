@@ -1,3 +1,6 @@
 __pycache__
 *.pyc
 .cache
+_source/node_modules/*
+_source/package.json
+_source/package-lock.json

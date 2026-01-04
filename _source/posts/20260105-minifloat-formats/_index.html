@@ -1,0 +1,648 @@
+
+ <head>
+  <title>Minifloat Formats</title>
+  <meta name="description" content="An overview of minifloat formats and converting to them.">
+  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, fp8, e4m3, e5m2, bfloat16, half, R11G11B10">
+
+  <script>
+    window.minifloatsModuleLoaded = false;
+    window.afterMiniFloatsModuleLoaded = [];
+    function addAfterMiniFloatsModuleLoaded(f)
+    {
+      if(!window.minifloatsModuleLoaded)
+      {
+        window.afterMiniFloatsModuleLoaded.push(f);
+      }
+      else
+      {
+        f();
+      }
+    }
+  </script>
+
+  <script type="module">
+    import { minifloatInterface } from './minifloat_interface.js';
+    minifloatInterface.then(x => {
+       window.minifloatInterface = x;
+       window.minifloatsModuleLoaded = true;
+       window.afterMiniFloatsModuleLoaded.forEach(f => {f()});
+    })
+  </script>
+
+  <style>
+
+    .knkRadio input[type="radio"]+label,
+    .knkRadio input[type="radio"]:checked+label,
+    .knkRadio input[type="radio"]:disabled+label {
+      text-align: center;
+      margin: 0.1rem;
+    }
+
+    #cnv_disc {
+      text-align: center;
+    }
+
+    #cnv_top {
+      background-color: #1f1f1f;
+      padding: 1rem;
+      max-width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #cnv_formats_cont {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    #cnv_controls {
+      display: grid;
+      grid-auto-flow: column;
+      align-items: center;
+      justify-content: center;
+      grid-template-rows: repeat(4, auto);
+      align-content: center;
+      padding-top: 1em;
+    }
+
+    .cnv_sec {
+      box-sizing: border-box;
+      display: contents;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      text-align: center;
+    }
+
+    .cnv_header {
+      font-weight: bolder;
+      font-size: 1.2rem;
+    }
+
+    .cnv_header_raw {
+      padding: 0;
+      margin: 0;
+      padding-left: 3em;
+      padding-right: 3em;
+    }
+
+    .cnv_header_val {
+      padding: 0;
+      margin: 0;
+    }
+
+    #cnv_mant_val {
+      min-width: 13.75em;
+    }
+
+    .cnv_bits {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding-left: 1em;
+      padding-right: 1em;
+    }
+
+    .fmt_breakdown {
+      display: grid;
+      grid-template-columns: auto auto auto;
+      align-items: center;
+      justify-content: start;
+      justify-items: end;
+      font-family: monospace;
+    }
+
+    .fmt_s_t,.fmt_e_t,.fmt_m_t {
+      padding-bottom: 0.5em;
+      text-align: center;
+    }
+
+    .fmt_e_t,.fmt_m_t {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .fmt_m_wr {
+      max-width: 1em;
+      overflow: visible;
+      white-space: nowrap;
+    }
+
+    .fmt_s_v,.fmt_e_v,.fmt_m_v {
+      background-color: #000;
+      letter-spacing: 2px;
+      font-size: 2em;
+    }
+
+    .fmt_s_v {
+      color: #d5ffff;
+    }
+    .fmt_e_v {
+      color: #a4ffb4;
+    }
+    .fmt_m_v {
+      color: #ffb2b4;
+    }
+
+    .fmt_o {
+      text-align: right;
+      margin-right: 0.75ch;
+    }
+
+    table {
+      border-collapse: collapse;
+      border-spacing: 0;
+      border: #7373c3 1px solid;
+    }
+
+    th,td {
+      border: #7373c3 1px solid;
+      text-align: right;
+      padding: 0.25em;
+      font-family: monospace;
+    }
+
+  </style>
+
+ </head>
+
+ <body>
+
+
+
+<div id="cnv_top">
+
+  <div class="knkRadio" id="cnv_formats_cont">
+      <input disabled type="radio" id="cnvFormat-bfloat16" name="cnvFormat"><label for="cnvFormat-bfloat16">bfloat16</label>
+      <input disabled type="radio" id="cnvFormat-f16" name="cnvFormat" checked="checked"><label for="cnvFormat-f16">Half (F16)</label>
+      <input disabled type="radio" id="cnvFormat-fp8" name="cnvFormat"><label for="cnvFormat-fp8">FP8</label>
+      <input disabled type="radio" id="cnvFormat-e5m2_nosat" name="cnvFormat"><label for="cnvFormat-e5m2_nosat">E5M2</label>
+      <input disabled type="radio" id="cnvFormat-e5m2_sat" name="cnvFormat"><label for="cnvFormat-e5m2_sat">E5M2 (Sat)</label>
+      <input disabled type="radio" id="cnvFormat-e4m3_nosat" name="cnvFormat"><label for="cnvFormat-e4m3_nosat">E4M3</label>
+      <input disabled type="radio" id="cnvFormat-e4m3_sat" name="cnvFormat"><label for="cnvFormat-e4m3_sat">E4M3 (Sat)</label>
+      <input disabled type="radio" id="cnvFormat-e2m1" name="cnvFormat"><label for="cnvFormat-e2m1">E2M1</label>
+      <input disabled type="radio" id="cnvFormat-binary4p2sf" name="cnvFormat"><label for="cnvFormat-binary4p2sf">binary4p2sf</label>
+      <input disabled type="radio" id="cnvFormat-binary4p2se" name="cnvFormat"><label for="cnvFormat-binary4p2se">binary4p2se</label>
+      <input disabled type="radio" id="cnvFormat-u11" name="cnvFormat"><label for="cnvFormat-u11">u11 (R11G11B10)</label>
+      <input disabled type="radio" id="cnvFormat-u10" name="cnvFormat"><label for="cnvFormat-u10">u10 (R11G11B10)</label>
+  </div>
+
+  <div id="cnv_controls">
+  <mako>
+<%
+
+# Default to 1.0 in f16
+initially_vis_exp_bits = 5
+exp_bit_mask = 0b001111
+initially_vis_mant_bits = 10
+
+
+emit_bit_checkbox = lambda prefix, n, hidden, checked: r"""
+  <input type="checkbox" id="{0}{1}"{2}{3} disabled=disabled\>
+""".format(
+  prefix,
+  n,
+  " hidden" if hidden else "",
+  " checked=checked" if checked else ""
+)
+%>
+
+    <div id="cnv_sgn_cont" class="cnv_sec">
+      <div class="cnv_header">Sign</div>
+      <div class="cnv_header_val" id="cnv_sign_val">+</div>
+      <div class="cnv_header_raw" id="cnv_sign_raw">0</div>
+      <div class="cnv_bits">
+      ${emit_bit_checkbox("cnv_s", "", False, False)}
+      </div>
+    </div>
+
+    <div id="cnv_exp_cont" class="cnv_sec">
+      <div class="cnv_header">Exponent</div>
+      <div class="cnv_header_val">2<sup id="cnv_exp_val">0</sup></div>
+      <div class="cnv_header_raw" id="cnv_exp_raw">15</div>
+      <div class="cnv_bits">
+% for i in range(8):
+  ${emit_bit_checkbox(
+    "cnv_e",
+    (7 - i),
+    (7 - i) >= initially_vis_exp_bits,
+    ((exp_bit_mask >> (7 - i)) & 1) == 1
+  )}
+% endfor
+      </div>
+    </div>
+
+    <div id="cnv_mant_cont" class="cnv_sec">
+      <div class="cnv_header">Mantissa</div>
+      <div class="cnv_header_val" id="cnv_mant_val">0</div>
+      <div class="cnv_header_raw" id="cnv_mant_raw">0</div>
+      <div class="cnv_bits">
+% for i in range(23):
+  ${emit_bit_checkbox(
+    "cnv_m",
+    (22 - i),
+    (22 - i) >= initially_vis_mant_bits,
+    False
+  )}
+% endfor
+      </div>
+    </div>
+  </mako>
+  </div>
+
+
+  <div class="twoxnctrls">
+    <div>
+      <div id="cnv_val_inp_lbl">Decimal Input</div>
+      <div><input aria-labelledby="cnv_val_inp_lbl" id="cnv_val_inp" disabled></div>
+    </div>
+    <div>
+      <div id="cnv_val_lbl">Value Stored</div>
+      <div><input aria-labelledby="cnv_val_lbl" id="cnv_val" value="1" disabled></div>
+    </div>
+    <div>
+      <div id="cnv_bin_lbl">Bin Representation</div>
+      <div><input aria-labelledby="cnv_bin_lbl" id="cnv_bin" value="0011110000000000" disabled></div>
+    </div>
+    <div>
+      <div id="cnv_hex_lbl">Hex Representation</div>
+      <div><input aria-labelledby="cnv_hex_lbl" id="cnv_hex" value="0x3c00" disabled></div>
+    </div>
+  </div>
+
+  <div id=cnv_disc>
+    NB: e5m2 / e4m3 saturation modes only apply when providing a decimal value.<br>
+    Lovingly based of <a href="https://www.h-schmidt.net/FloatConverter/IEEE754.html" target="_blank">https://www.h-schmidt.net/FloatConverter</a> and <a href="https://flop.evanau.dev/" target="_blank">flop.evanau.dev</a>
+
+<br>
+<br>
+
+<mako>
+<%
+import os
+
+GITHUB_LINK = "https://github.com/alister-chowdhury/alister-chowdhury.github.io/blob/master/_source/{0}".format(
+    os.path.relpath(os.path.dirname(source_file), SOURCE_ROOT).replace(os.sep, "/")
+)
+
+def add_link(link, text):
+    return "<a target=\"_blank\" href=\"{0}\">{1}</a>".format(link, text)
+
+def add_github_link(path, text):
+    return add_link("{0}/{1}".format(GITHUB_LINK, path), text)
+
+%>
+    
+    <strong>Source code</strong><br>
+    Minifloat (C++ with a C interface): ${add_github_link("../../res/minifloat/src", "minifloat")}<br>
+    Wasm Binding (C): ${add_github_link("../../res/minifloat/bootstrap.c", "bootstrap.c")}<br>
+    Wasm Binding (js): ${add_github_link("minifloat_interface.js", "minifloat_interface.js")}<br>
+
+</mako>
+
+  </div>
+</div>
+
+<br>
+<br>
+
+<main>
+<markdown>
+
+# Minifloat Formats
+
+<table_of_contents />
+
+
+## 16bit formats
+
+### bfloat16 (1.8.7)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(8 bit)</div>
+  <div class=fmt_m_t>mantissa<br>(7 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>15</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+Shortened IEEE 754 single-precision floating-point format.
+(Has the same exponent as a f32, but less mantissa bits).
+
+Can be converted into a f32 by simply shifting.
+```c
+float f = asuint((uint32_t)bfloat16_bits << 16);
+```
+
+
+### f16 (half, 1.5.10)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class=fmt_m_t>mantissa<br>(10 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>15</div>
+  <div class=fmt_o>&#9679;<br>10</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+
+Probably the third most widely used format globally, after f32 and f64.
+
+Commonly used for storing pre-tonemapped and HDR textures.
+
+On GPUs you would expect to see dedicated `f32tof16` / `f16tof32` instructions.<br>
+Additionally many GPUs can perform arithmetic directly on f16 values (usually packing two in a 32bit register).
+
+
+## 8bit formats
+
+### fp8 (1.5.2)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(2 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>2</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+Shortened IEEE 754 half-precision binary floating-point format.
+(Has the same exponent as a f16, but less mantissa bits).
+
+Can be converted into a [f16](#f16-half-1510) by simply shifting.
+```c
+half h = ashalf((uint16_t)fp8_bits << 8);
+```
+
+
+### e5m2 (OCP-E5M2, 1.5.2)
+
+The same as [fp8](#fp8-152), but with OFP8 saturation applied.
+
+* Saturate: Clamp to the max magnitude.
+* NonSaturate: Greater than max magnitude becomes infinity.
+
+
+### e4m3 (OCP-E4M3, 1.4.3)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(4 bit)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(3 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>3</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+Has no dedicated infinity, with NaN being 0xff / 0x7f.
+
+Like [e5m2](#e5m2-ocpe5m2-152) has saturating mode:
+
+* Saturate: Clamp to the max magnitude.
+* NonSaturate: Greater than max magnitude becomes NaN.
+
+
+## 4bit formats
+
+### e2m1
+
+
+|  |*s*000|*s*001|*s*010|*s*011|*s*100|*s*101|*s*110|*s*111|
+|-----|----|----|----|----|----|----|----|----|
+| *s=0* |   0| 0.5|   1| 1.5|   2|   3|   4|   6|
+| *s=1* |  −0|−0.5|  −1|−1.5|  −2|  −3|  −4|  −6|
+
+
+### binary4p2sf
+
+The same as [e2m1](#e2m1), but -0 is replaced with NaN.
+
+|  |*s*000|*s*001|*s*010|*s*011|*s*100|*s*101|*s*110|*s*111|
+|-----|----|----|----|----|----|----|----|----|
+| *s=0* |   0| 0.5|   1| 1.5|   2|   3|   4|   6|
+| *s=1* |  NaN|−0.5|  −1|−1.5|  −2|  −3|  −4|  −6|
+
+
+### binary4p2se
+
+The same as [binary4p2sf](#binary4p2sf), but 6 is replaced with Inf.
+
+|  |*s*000|*s*001|*s*010|*s*011|*s*100|*s*101|*s*110|*s*111|
+|-----|----|----|----|----|----|----|----|----|
+| *s=0* |   0| 0.5|   1| 1.5|   2|   3|   4| &infin;|
+| *s=1* | NaN|−0.5|  −1|−1.5|  −2|  −3|  −4| -&infin;|
+
+
+## Other
+
+### R11G11B10 (0.5.6 / 0.5.5)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t></div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class=fmt_m_t>mantissa<br>(6 bit)</div>
+  <div class=fmt_s_v></div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_o></div>
+  <div class=fmt_o>&#9679;<br>6</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t></div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class=fmt_m_t>mantissa<br>(5 bit)</div>
+  <div class=fmt_s_v></div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_o></div>
+  <div class=fmt_o>&#9679;<br>5</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+Often used in place of RGBA16f for render targets.
+
+Shortened unsigned IEEE 754 half-precision binary floating-point format.
+(Has the same exponent as a f16, but less mantissa bits).
+
+Can be converted into a [f16](#f16-half-1510) by simply shifting.
+```c
+half h10 = ashalf((uint16_t)u10_bits << 5);
+half h11 = ashalf((uint16_t)u11_bits << 4);
+```
+
+</markdown>
+</main>
+
+<script>
+  addAfterMiniFloatsModuleLoaded(()=>{
+    const minifloatInterface = window.minifloatInterface;
+    const interfaces = minifloatInterface.interfaces;
+    const breakdownFunc = minifloatInterface.breakdown;
+    const removeEngNotation = minifloatInterface.remove_eng_notation;
+
+    const getElement = (x)=>document.getElementById(x);
+    const cnv_val_inp = getElement("cnv_val_inp");
+    const cnv_bin = getElement("cnv_bin");
+    const cnv_hex = getElement("cnv_hex");
+
+    let currentSelection = "";
+    let currentInterface = null;
+    let numNibbles = 0;
+
+    const storedValues = {};
+
+    const updateValue = (value) => {
+      storedValues[currentSelection] = value;
+
+      const breakdown = breakdownFunc(value, currentInterface);
+
+      // Update bits
+      getElement("cnv_s").checked = breakdown.s;
+      getElement("cnv_sign_val").innerText = breakdown.s_val > 0.0 ? "+" : "-";
+      getElement("cnv_sign_raw").innerText = breakdown.s;
+ 
+      for (let e=0; e<currentInterface.e_bits;++e) {
+        getElement(`cnv_e${e}`).checked = (breakdown.e >> e) & 1;
+      }
+      getElement("cnv_exp_val").innerText = breakdown.e_val;
+      getElement("cnv_exp_raw").innerText = breakdown.e;
+
+      for (let m=0; m<currentInterface.m_bits;++m) {
+        getElement(`cnv_m${m}`).checked = (breakdown.m >> m) & 1;
+      }
+      getElement("cnv_mant_val").innerText = breakdown.m_val;
+      const mantRawText = breakdown.subnormal ? `(subnormal) ${breakdown.m}` : breakdown.m;
+      getElement("cnv_mant_raw").innerText = mantRawText;
+
+      // Write actual value
+      getElement("cnv_val").value = removeEngNotation(breakdown.val);
+      // Write binary value
+      cnv_bin.value = value.toString(2).padStart(currentInterface.num_bits, "0");
+      // Write hex value
+      const hexValue = value.toString(16).padStart(numNibbles, "0");
+      cnv_hex.value = `0x${hexValue}`;
+
+      // Reset error styling
+      cnv_bin.style="";
+      cnv_hex.style="";
+    };
+
+    const setMinifloatFormat = (minifloatFormat) => {
+      currentInterface = interfaces[minifloatFormat];
+      numNibbles = Math.floor((currentInterface.num_bits + 3) / 4);
+
+      const setDisabled = (elem, disabled) => {
+        elem.disabled = disabled;
+        elem.hidden = disabled;
+      };
+
+      const createSetBitFunc = (bitMask, elem) => {
+        return ()=>{
+          let v = storedValues[currentSelection];
+          if (elem.checked) {
+            v |= bitMask;
+          }
+          else {
+            v &= ~bitMask;
+          }
+          updateValue(v);
+        };
+      };
+
+      cnv_val_inp.value = "";
+      getElement("cnv_sgn_cont").style.display = (
+        currentInterface.has_sign ? "contents" : "none"
+      );
+
+      const signBitMask = 1 << (currentInterface.e_bits + currentInterface.m_bits);
+      const signCtrl = getElement("cnv_s");
+      setDisabled(signCtrl, !currentInterface.has_sign);
+      signCtrl.onchange = createSetBitFunc(signBitMask, signCtrl);
+
+      const numExpBitCtrls = 8;
+      for (let i=0; i < numExpBitCtrls; ++i) {
+        const expCtrl = getElement(`cnv_e${i}`);
+        setDisabled(expCtrl, (i >= currentInterface.e_bits));
+        const expBitMask = 1 << (currentInterface.m_bits + i);
+        expCtrl.onchange = createSetBitFunc(expBitMask, expCtrl);
+      }
+
+      const numMantBitCtrls = 23;
+      for (let i=0; i < numMantBitCtrls; ++i) {
+        const mantCtrl = getElement(`cnv_m${i}`);
+        setDisabled(mantCtrl, (i >= currentInterface.m_bits));
+        const mantBitMask = 1 << i;
+        mantCtrl.onchange = createSetBitFunc(mantBitMask, mantCtrl);
+      }
+
+      currentSelection = minifloatFormat;
+      updateValue(storedValues[currentSelection]);
+    };
+
+    cnv_val_inp.onchange = ()=>{
+      if (!cnv_val_inp.value.match(/^\s*$/)) {
+        updateValue(currentInterface.from_f32(cnv_val_inp.value * 1));
+      }
+    };
+
+    cnv_bin.onchange = ()=>{
+      if (cnv_bin.value.match(/^[01]{1,32}$/)) {
+        updateValue(`0b${cnv_bin.value}` * 1);
+      }
+      else {
+        cnv_bin.style="background-color:#ff6a6a";
+      }
+    };
+
+    cnv_hex.onchange = ()=>{
+      if (cnv_hex.value.match(/^(0x)?[a-fA-F0-9]{1,8}$/)) {
+        let hex = cnv_hex.value;
+        if (!hex.startsWith("0x")) {
+          hex = `0x${hex}`;
+        }
+        updateValue(hex * 1);
+      }
+      else {
+        cnv_hex.style="background-color:#ff6a6a";
+      }
+    };
+
+    for (const [key, value] of Object.entries(interfaces)) {
+        const checkbox = getElement(`cnvFormat-${key}`);
+        checkbox.onchange = ((key)=>{
+          return ()=> {
+            setMinifloatFormat(key)
+          };
+        })(key);
+        checkbox.disabled = false;
+        storedValues[key] = interfaces[key].from_f32(1.0);
+    }
+
+    cnv_val_inp.disabled = false;
+    cnv_bin.disabled = false;
+    cnv_hex.disabled = false;
+    setMinifloatFormat("f16");
+
+  });
+</script>
+
+
+ </body>
