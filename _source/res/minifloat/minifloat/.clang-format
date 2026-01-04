@@ -1,0 +1,7 @@
+﻿---
+BasedOnStyle: Google
+AlignConsecutiveMacros: 'true'
+AlignConsecutiveAssignments: 'true'
+BinPackParameters: 'false'
+
+...

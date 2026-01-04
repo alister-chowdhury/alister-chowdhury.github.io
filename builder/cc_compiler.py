@@ -136,6 +136,7 @@ def _get_compile_obj_args(
         "-flto",
         "-O3",
         "-ffast-math",
+        "-Wno-nan-infinity-disabled"
     ]
 
     if extra_args:
