@@ -518,7 +518,7 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 </div>
 
 <p>Has no dedicated infinity, with NaN being 0xff / 0x7f.</p>
-<p>Like <a href="#e5m2-ocpe5m2-152">e5m2</a> has saturating mode:</p>
+<p>Like <a href="#e5m2-ocpe5m2-152">e5m2</a> has saturating modes:</p>
 <ul>
 <li>Saturate: Clamp to the max magnitude.</li>
 <li>NonSaturate: Greater than max magnitude becomes NaN.</li>
@@ -816,13 +816,15 @@ half h11 = ashalf((uint16_t)u11_bits &lt;&lt; 4);
       }
     };
 
+    const createChangeFormat = (key)=>{
+      return ()=>{
+        setMinifloatFormat(key);
+      }
+    };
+
     for (const [key, value] of Object.entries(interfaces)) {
         const checkbox = getElement(`cnvFormat-${key}`);
-        checkbox.onchange = ((key)=>{
-          return ()=> {
-            setMinifloatFormat(key)
-          };
-        })(key);
+        checkbox.onchange = createChangeFormat(key);
         checkbox.disabled = false;
         storedValues[key] = interfaces[key].from_f32(1.0);
     }

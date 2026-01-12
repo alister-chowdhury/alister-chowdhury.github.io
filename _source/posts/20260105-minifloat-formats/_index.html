@@ -411,7 +411,7 @@ The same as [fp8](#fp8-152), but with OFP8 saturation applied.
 
 Has no dedicated infinity, with NaN being 0xff / 0x7f.
 
-Like [e5m2](#e5m2-ocpe5m2-152) has saturating mode:
+Like [e5m2](#e5m2-ocpe5m2-152) has saturating modes:
 
 * Saturate: Clamp to the max magnitude.
 * NonSaturate: Greater than max magnitude becomes NaN.
@@ -625,13 +625,15 @@ half h11 = ashalf((uint16_t)u11_bits << 4);
       }
     };
 
+    const createChangeFormat = (key)=>{
+      return ()=>{
+        setMinifloatFormat(key);
+      }
+    };
+
     for (const [key, value] of Object.entries(interfaces)) {
         const checkbox = getElement(`cnvFormat-${key}`);
-        checkbox.onchange = ((key)=>{
-          return ()=> {
-            setMinifloatFormat(key)
-          };
-        })(key);
+        checkbox.onchange = createChangeFormat(key);
         checkbox.disabled = false;
         storedValues[key] = interfaces[key].from_f32(1.0);
     }
