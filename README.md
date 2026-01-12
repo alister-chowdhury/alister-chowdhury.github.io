@@ -61,6 +61,13 @@ You want to ensure the `posts/index.html` gets updated, hence the blanket rebuil
 ## Deploying
 
 The site is live on the `gh-pages` branch and uses `git worktree` to map it to `_build`.
+
+Setting up:
+```
+rm -rf _build
+git worktree add _build gh-pages
+```
+
 Updating should basically be:
 
 ```
