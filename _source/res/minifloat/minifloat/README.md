@@ -3,6 +3,8 @@
 Helpers for converting to and from minifloat formats.
 Implementation is C++, but interface is C.
 
+Live demo: [Minifloat Format Converter](https://alister-chowdhury.github.io/posts/20260105-minifloat-formats/)
+
 ## 4bit formats
 * e2m1
 * binary4p2sf
