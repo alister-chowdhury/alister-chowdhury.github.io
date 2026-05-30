@@ -5,11 +5,10 @@
 #include "generic.h"
 
 uint8_t f32_to_e2m1(float f) {
-  uint8_t r = 0x0;
-  // Handle negatives, we're going to potentially
+  // Handle negatives (including -0), we're going to potentially
   // allow the value to overflow when converting.
+  uint8_t r = (0x8 & (asuint(f) >> 28));
   if (f < 0.0f) {
-    r |= 0x8;
     f = -f;
   }
   uint32_t v = generic_convert_from_f32(f, false, 2, 1, 0, false);
@@ -61,10 +60,8 @@ uint8_t f32_to_binary4p2sf(float f) {
   if (std::isnan(f)) {
     return 0x8;
   }
-  if (f == 0.0f) {
-    return 0x0;
-  }
-  return f32_to_e2m1(f);
+  uint8_t r = f32_to_e2m1(f);
+  return (r == 0x8) ? 0x0 : r;  // -0 [e2m1] => 0 [binary4p2sf/binary4p2se]
 }
 
 float binary4p2sf_to_f32(uint8_t x) {

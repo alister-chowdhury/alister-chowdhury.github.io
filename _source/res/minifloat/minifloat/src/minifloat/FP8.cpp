@@ -11,26 +11,23 @@ uint8_t f32_to_fp8(float x) {
 float fp8_to_f32(uint8_t x) { return generic_convert_to_f32(x, true, 5, 2); }
 
 uint8_t f16_to_fp8(uint16_t x) {
-  // Clamp to 0, but allow NaNs to propagate
+  // Ensure NaNs propagate
   if (x & 0x8000) {
-    if (x < 0xfc01) {
-      return 0;
+    if (x > 0xfc00) {
+      return 0xff;
     }
-    return 0x7f;
   } else if (x >= 0x7c01) {
     return 0x7f;
   }
-  return uint8_t(x >> 8) + rtne(x, 8);
+  return uint8_t(rtne_trunc(x, 8));
 }
 
 uint8_t f32_to_e4m3(float x, OFP8_SatMode sat_mode) {
-  uint8_t s = 0;
-
-  // Handle negatives, we're going to potentially
+  // Handle negatives (including -0), we're going to potentially
   // allow the value to overflow when converting.
+  uint8_t s = 0x80 & (asuint(x) >> 24);
   if (x < 0.0f) {
     x = -x;
-    s = 0x80;
   }
 
   // Handle NaNs
@@ -71,7 +68,7 @@ uint8_t f32_to_e5m2(float x, OFP8_SatMode sat_mode) {
   return e5m2_saturate(y, sat_mode);
 }
 
-uint8_t f16_to_e5m2(uint8_t x, OFP8_SatMode sat_mode) {
+uint8_t f16_to_e5m2(uint16_t x, OFP8_SatMode sat_mode) {
   uint8_t y = f16_to_fp8(x);
   return e5m2_saturate(y, sat_mode);
 }

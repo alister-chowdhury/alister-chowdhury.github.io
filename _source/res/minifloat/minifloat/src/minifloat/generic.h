@@ -16,17 +16,40 @@ inline float asfloat(const uint32_t x) {
   return y;
 }
 
-// Round to nearest even.
+// Round to nearest even and truncate.
 // e.g, for a trunc_bits = 3
+//
 //  x000 - x011 = 0
 //  x100        = tie breaker, use prefix bit (x)
 //  x101 - x111 = 1
-inline bool rtne(uint32_t fv, uint32_t trunc_bits) {
-  // Move the prefix bit to the lsb to bias tie-breakers.
-  fv |= (fv >> trunc_bits) & 1u;
-  uint32_t tie  = (1u << (trunc_bits - 1u));
-  uint32_t mask = (1u << trunc_bits) - 1u;
-  return ((fv & mask) > tie);
+//
+//   h = (1 << (3-1)) - 1 = 0b011
+//   o = h + x            = 0b011 or 0b100
+//   result               = (fv + o) >> 3
+//
+//  Rounded down:
+//   0000x000 = (00001000 + 00000100 [00001100]) >> 3 = 00001
+//              (00000000 + 00000011 [00000011]) >> 3 = 00000
+//   0000x001 = (00001001 + 00000100 [00001101]) >> 3 = 00001
+//              (00000001 + 00000011 [00000100]) >> 3 = 00000
+//   0000x011 = (00001011 + 00000100 [00001111]) >> 3 = 00001
+//              (00000011 + 00000011 [00000110]) >> 3 = 00000
+//
+//  Tie breaker:
+//   0000x100 = (00001100 + 00000100 [00010000]) >> 3 = 00010 | rounded up
+//              (00000100 + 00000011 [00000111]) >> 3 = 00000 | rounded down
+//
+//  Rounded up:
+//   0000x101 = (00001101 + 00000100 [00010001]) >> 3 = 00010
+//              (00000101 + 00000011 [00001000]) >> 3 = 00001
+//   0000x110 = (00001110 + 00000100 [00010010]) >> 3 = 00010
+//              (00000110 + 00000011 [00001001]) >> 3 = 00001
+//   0000x111 = (00001111 + 00000100 [00010011]) >> 3 = 00010
+//              (00000111 + 00000011 [00001010]) >> 3 = 00001
+inline uint32_t rtne_trunc(uint32_t fv, uint32_t trunc_bits) {
+  uint32_t h = (1u << (trunc_bits - 1)) - 1u;
+  uint32_t o = ((fv >> trunc_bits) & 1u) + h;
+  return (o + fv) >> trunc_bits;
 }
 
 inline float f32_bias(int8_t bias) {
@@ -98,8 +121,7 @@ inline uint32_t generic_convert_from_f32(float f,
   }
 
   const uint32_t trunc_bits = (23 - mant_bits);
-  uint32_t vl               = v >> trunc_bits;
-  vl += rtne(v, trunc_bits);
+  uint32_t vl               = rtne_trunc(v, trunc_bits);
 
   // Overflow to infinity
   if (handle_nan_inf) {
@@ -143,6 +165,7 @@ inline float generic_convert_to_f32(uint32_t v,
   if (handle_nan_inf) {
     if ((v & e_mask) == e_mask) {
       vu |= 0x7f800000u;
+      return asfloat(vu);
     }
   }
 

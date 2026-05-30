@@ -6,14 +6,13 @@
 #include "generic.h"
 
 uint16_t f32_to_bfloat16(float f) {
-  uint32_t v  = asuint(f);
-  uint32_t vl = v >> 16;
+  uint32_t v = asuint(f);
   // Propagate lower nan bits, so we don't
   // accidentally turn this into an inf.
-  if (std::isnan(f) & (v & 0xffff)) {
-    return vl | (0x7f0000 >> 16);
+  if (std::isnan(f) && (v & 0xffff)) {
+    return (v >> 16) | (0x7f0000 >> 16);
   }
-  return vl + rtne(v, 16);
+  return rtne_trunc(v, 16);
 }
 
 float bfloat16_to_f32(uint16_t x) { return asfloat((uint32_t)x << 16); }
@@ -43,7 +42,7 @@ uint16_t f16_to_u11(uint16_t x) {
   } else if (x >= 0x7c01) {
     return 0x7fff >> 4;
   }
-  return (x >> 4) + rtne(x, 4);
+  return uint16_t(rtne_trunc(x, 4));
 }
 
 uint16_t f16_to_u10(uint16_t x) {
@@ -56,5 +55,5 @@ uint16_t f16_to_u10(uint16_t x) {
   } else if (x >= 0x7c01) {
     return 0x7fff >> 5;
   }
-  return (x >> 5) + rtne(x, 5);
+  return uint16_t(rtne_trunc(x, 5));
 }
