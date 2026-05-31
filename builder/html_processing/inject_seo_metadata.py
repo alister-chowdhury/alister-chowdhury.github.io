@@ -36,7 +36,8 @@ def inject_seo_metadata(source, source_file):
     target = source_file
 
     thumbnail_file_path = target.parent / "thumbnail.png"
-    if thumbnail_file_path.exists():
+    has_thumbnail = thumbnail_file_path.exists()
+    if has_thumbnail:
         thumbnail_url = "{0}/{1}".format(
             _WEBSITE_ROOT,
             thumbnail_file_path.relative_to(_SOURCE_ROOT).as_posix()
@@ -94,13 +95,30 @@ def inject_seo_metadata(source, source_file):
         .format(thumbnail_url)
     )
 
+    head_to_inject += (
+        '    <meta name="twitter:card" content="{0}">\n'
+        '    <meta name="twitter:title" content="{1}">\n'
+        '    <meta name="twitter:image" content="{2}">\n'
+        .format(
+            "summary_large_image" if has_thumbnail else "summary",
+            title,
+            thumbnail_url,
+        )
+    )
+    if "description" in metatags:
+        head_to_inject += (
+            '    <meta name="twitter:description" content="{0}">\n'.format(
+                metatags["description"]
+            )
+        )
+
     # Add tags and publish time to posts
     if is_post:
 
         schema = {
-            "@context": "http://schema.org",
+            "@context": "https://schema.org",
             "@type": "Article",
-            "author": [{"@type": "Person", "name": "By Alister Chowdhury"}],
+            "author": [{"@type": "Person", "name": "Alister Chowdhury"}],
             "name": title,
             "url": full_url,
         }

@@ -1,69 +1,69 @@
 {
  "data": [
   {
-   "lastmod": "2023-06-27",
+   "lastmod": "2026-05-31",
    "loc": "index.html",
-   "hash": "1d9f5ff8fcbc7eed16ac164c827db54e"
+   "hash": "a63fce926a0a0a2e087d8d0967cf0d7f"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-05-31",
    "loc": "posts/20221230-bluenoise-generator/index.html",
-   "hash": "e05ec3f12e07a9ae7f8b5b2128e1f9c4"
+   "hash": "4e7f1981e0f33cb13f5bd019072e65f9"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-05-31",
    "loc": "posts/20230120-simplifying-drawing-numbers-on-the-gpu/index.html",
-   "hash": "f5bc95f8e9445bf5ed27e682f3a10813"
+   "hash": "fae2363f5f90f4c5411a939418370c61"
   },
   {
-   "lastmod": "2023-06-27",
+   "lastmod": "2026-05-31",
    "loc": "posts/20230131-various-rendering-related-visualisations/index.html",
-   "hash": "5ec3940f25acb0c79c073d542f1cbfa1"
+   "hash": "46c57e404b9215de7956db0647d50f80"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-05-31",
    "loc": "posts/20230620-raytracing-in-2d/index.html",
-   "hash": "aaa5ba129958aed338ca5e358a2942d1"
+   "hash": "ab7c37b9d6b1ef1fcc29a124901bc19a"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-05-31",
    "loc": "posts/20230628-project-and-stencil/index.html",
-   "hash": "3839100cfd472d1a3fb36a631aefde4b"
+   "hash": "4e7d48fd71e3def0fcc0d33b9087d234"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-05-31",
    "loc": "posts/20230710-2d-circular-shadow-mapping/index.html",
-   "hash": "e6e46292486b1f04f44bb4884a17a754"
+   "hash": "3638abfbf7e85b8105c473bcc9e1ad08"
   },
   {
-   "lastmod": "2024-10-27",
+   "lastmod": "2026-05-31",
    "loc": "posts/20231030-preserving-small-values/index.html",
-   "hash": "f1f4299235af5858d3287d9bea0dad4b"
+   "hash": "9156bf3734caa7729f02c640596ed072"
   },
   {
-   "lastmod": "2026-01-12",
+   "lastmod": "2026-05-31",
    "loc": "posts/20231206-hybrid-df-rtrace-2d/index.html",
-   "hash": "bbd50a8d901e8cf86e199db8cf4d022b"
+   "hash": "eb5a6c7c101a682ba96b455d9619f505"
   },
   {
-   "lastmod": "2026-01-12",
+   "lastmod": "2026-05-31",
    "loc": "posts/20231228-raytracing-2d-gpu-bvh/index.html",
-   "hash": "a85ed48e62135235b5b53bcdc49ae818"
+   "hash": "75ac41e1dcc2691b9097d33599bfd59f"
   },
   {
-   "lastmod": "2026-01-12",
+   "lastmod": "2026-05-31",
    "loc": "posts/20240507-bluenoise-generator-for-big-textures/index.html",
-   "hash": "060de77fb5b6e8e2486f01d48a80cb75"
+   "hash": "a6098565428b816a767629f506b177ee"
   },
   {
    "lastmod": "2026-05-31",
    "loc": "posts/20260105-minifloat-formats/index.html",
-   "hash": "8d9cbe184ff0a0f4345b20e9b33a5b28"
+   "hash": "93847c9659e24cff938fbddad2341b8e"
   },
   {
-   "lastmod": "2026-01-23",
+   "lastmod": "2026-05-31",
    "loc": "posts/index.html",
-   "hash": "356dd6c6688e8b8764dd215dc19add5d"
+   "hash": "eb7a936d18e0db35d56effbf43f52af1"
   }
  ]
 }

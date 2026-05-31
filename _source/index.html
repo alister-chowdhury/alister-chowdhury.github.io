@@ -10,16 +10,19 @@
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <link rel="icon" type="image/png" sizes="32x32" href="/res/favicon-32x32.png">
       <link rel="icon" type="image/png" sizes="16x16" href="/res/favicon-16x16.png">
-      <!-- Google tag (gtag.js) -->
-      <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WDZZ2C662"></script>
+      <link rel="preconnect" href="https://www.googletagmanager.com">
+      <link rel="preconnect" href="https://www.google-analytics.com">
       <script>
-        window.dataLayer = window.dataLayer || [];
-        // Don't push stuff if we're testing things locally
         if(window.location.hostname == "alister-chowdhury.github.io")
         {
+          let s = document.createElement("script");
+          s.async = true;
+          s.src = "https://www.googletagmanager.com/gtag/js?id=G-1WDZZ2C662";
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-1WDZZ2C662');
+          gtag("js", new Date());
+          gtag("config", "G-1WDZZ2C662");
         }
       </script>
    
@@ -29,6 +32,10 @@
     <meta property="og:type" content="website">
     <meta property="og:description" content="Rendering related stuff and things.">
     <meta property="og:image" content="https://alister-chowdhury.github.io/res/favicon.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Stuff And Also Things">
+    <meta name="twitter:image" content="https://alister-chowdhury.github.io/res/favicon.png">
+    <meta name="twitter:description" content="Rendering related stuff and things.">
 
     <title>Stuff And Also Things</title>
     <meta name="keywords" content="rendering, graphics programming">
@@ -47,10 +54,10 @@
    
     <main>
 <p>Hi, my name is Alister, I write code.<br>
-I work at <a target="_blank" href="https://www.splashdamage.com/">Splash Damage</a> as a Graphics Programmer, previously worked at <a target="_blank" href="https://dneg.com/">DNEG</a> and before that at <a target="_blank" href="https://www.unit9.com/">UNIT9</a>.</p>
+I work at <a target="_blank" href="https://www.splashdamage.com/" rel="noopener noreferrer">Splash Damage</a> as a Graphics Programmer, previously worked at <a target="_blank" href="https://dneg.com/" rel="noopener noreferrer">DNEG</a> and before that at <a target="_blank" href="https://www.unit9.com/" rel="noopener noreferrer">UNIT9</a>.</p>
 <br>
 
-<p>I originally made this site as a place to house a <a href="posts/20221230-bluenoise-generator/">Bluenoise Generator</a>, but then got very wrapped up in the details of writing a <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/">static site generator</a> more or less from scratch, so here we are</p>
+<p>I originally made this site as a place to house a <a href="posts/20221230-bluenoise-generator/">Bluenoise Generator</a>, but then got very wrapped up in the details of writing a <a target="_blank" href="https://github.com/alister-chowdhury/alister-chowdhury.github.io/" rel="noopener noreferrer">static site generator</a> more or less from scratch, so here we are</p>
 
     </main>
 
