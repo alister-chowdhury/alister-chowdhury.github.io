@@ -10,7 +10,7 @@ uint16_t f32_to_bfloat16(float f) {
   // Propagate lower nan bits, so we don't
   // accidentally turn this into an inf.
   if (std::isnan(f) && (v & 0xffff)) {
-    return (v >> 16) | (0x7f0000 >> 16);
+    return (v >> 16) | 1u;
   }
   return rtne_trunc(v, 16);
 }

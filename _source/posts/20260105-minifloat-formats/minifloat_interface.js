@@ -11,6 +11,8 @@ const minifloat = WebAssembly.instantiateStreaming(fetch("/res/minifloat.wasm"))
         binary4p2se_to_f32: wasm_funcs.binary4p2se_to_f32_,
         binary4p2sf_to_f32: wasm_funcs.binary4p2sf_to_f32_,
         e2m1_to_f32: wasm_funcs.e2m1_to_f32_,
+        e2m3_to_f32: wasm_funcs.e2m3_to_f32_,
+        e3m2_to_f32: wasm_funcs.e3m2_to_f32_,
         e4m3_to_f32: wasm_funcs.e4m3_to_f32_,
         e5m2_to_f16: wasm_funcs.e5m2_to_f16_,
         e5m2_to_f32: wasm_funcs.e5m2_to_f32_,
@@ -23,14 +25,18 @@ const minifloat = WebAssembly.instantiateStreaming(fetch("/res/minifloat.wasm"))
         f32_to_binary4p2se: wasm_funcs.f32_to_binary4p2se_,
         f32_to_binary4p2sf: wasm_funcs.f32_to_binary4p2sf_,
         f32_to_e2m1: wasm_funcs.f32_to_e2m1_,
+        f32_to_e2m3: wasm_funcs.f32_to_e2m3_,
+        f32_to_e3m2: wasm_funcs.f32_to_e3m2_,
         f32_to_e4m3: wasm_funcs.f32_to_e4m3_,
         f32_to_e5m2: wasm_funcs.f32_to_e5m2_,
         f32_to_f16: wasm_funcs.f32_to_f16_,
         f32_to_fp8: wasm_funcs.f32_to_fp8_,
+        f32_to_tf32: wasm_funcs.f32_to_tf32_,
         f32_to_u10: wasm_funcs.f32_to_u10_,
         f32_to_u11: wasm_funcs.f32_to_u11_,
         fp8_to_f16: wasm_funcs.fp8_to_f16_,
         fp8_to_f32: wasm_funcs.fp8_to_f32_,
+        tf32_to_f32: wasm_funcs.tf32_to_f32_,
         u10_to_f16: wasm_funcs.u10_to_f16_,
         u10_to_f32: wasm_funcs.u10_to_f32_,
         u11_to_f16: wasm_funcs.u11_to_f16_,
@@ -140,6 +146,24 @@ export const minifloatInterface = minifloat.then( funcs => {
         from_f32: funcs.f32_to_binary4p2se
     };
 
+    const e2m3 = {
+        has_sign: true,
+        e_bits: 2,
+        m_bits: 3,
+        num_bits: 6,
+        to_f32: funcs.e2m3_to_f32,
+        from_f32: funcs.f32_to_e2m3
+    };
+
+    const e3m2 = {
+        has_sign: true,
+        e_bits: 3,
+        m_bits: 2,
+        num_bits: 6,
+        to_f32: funcs.e3m2_to_f32,
+        from_f32: funcs.f32_to_e3m2
+    };
+
     const binary4p2sf = {
         has_sign: true,
         e_bits: 2,
@@ -149,10 +173,22 @@ export const minifloatInterface = minifloat.then( funcs => {
         from_f32: funcs.f32_to_binary4p2sf
     };
 
+    const tf32 = {
+        has_sign: true,
+        e_bits: 8,
+        m_bits: 10,
+        num_bits: 19,
+        to_f32: funcs.tf32_to_f32,
+        from_f32: funcs.f32_to_tf32
+    };
+
     const interfaces = {
         "e2m1": e2m1,
         "binary4p2sf": binary4p2sf,
         "binary4p2se": binary4p2se,
+
+        "e2m3": e2m3,
+        "e3m2": e3m2,
 
         "fp8": fp8,
         "e5m2_sat": e5m2_sat,
@@ -164,7 +200,9 @@ export const minifloatInterface = minifloat.then( funcs => {
         "u11": u11,
 
         "bfloat16": bfloat16,
-        "f16": f16
+        "f16": f16,
+
+        "tf32": tf32
     };
 
     // Breaks down a minifloat into it's components (s, exp, mant).

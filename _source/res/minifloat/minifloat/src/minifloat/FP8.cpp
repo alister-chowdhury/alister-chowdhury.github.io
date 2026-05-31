@@ -26,13 +26,14 @@ uint8_t f32_to_e4m3(float x, OFP8_SatMode sat_mode) {
   // Handle negatives (including -0), we're going to potentially
   // allow the value to overflow when converting.
   uint8_t s = 0x80 & (asuint(x) >> 24);
-  if (x < 0.0f) {
-    x = -x;
-  }
 
   // Handle NaNs
   if (std::isnan(x)) {
     return 0x7f | s;
+  }
+
+  if (x < 0.0f) {
+    x = -x;
   }
 
   uint32_t v = generic_convert_from_f32(x, false, 4, 3, 0, false);

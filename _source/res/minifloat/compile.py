@@ -32,8 +32,10 @@ _BUILD_DIR = os.path.abspath(
 
 _SRC_FILES = [
     "FP4.cpp",
+    "FP6.cpp",
     "FP8.cpp",
     "FP16.cpp",
+    "FP19.cpp",
 ]
 
 

@@ -10,9 +10,13 @@ Live demo: [Minifloat Format Converter](https://alister-chowdhury.github.io/post
 * binary4p2sf
 * binary4p2se
 
+## 6bit formats
+* e2m3 (OCP-MX-E2M3, 1.2.3)
+* e3m2 (OCP-MX-E3M2, 1.3.2)
+
 ## 8bit formats
 * fp8 (1.5.2)
-* e4m3 (OCP-E4M3, 1.5.2)
+* e4m3 (OCP-E4M3, 1.4.3)
 * e5m2 (OCP-E5M2, 1.5.2)
 
 ## 16bit formats
@@ -20,5 +24,6 @@ Live demo: [Minifloat Format Converter](https://alister-chowdhury.github.io/post
 * f16 (half, 1.5.10)
 
 ## Other
+* tf32 (1.8.10)
 * u11 (R11G11B10, 0.5.6)
 * u10 (R11G11B10, 0.5.5)

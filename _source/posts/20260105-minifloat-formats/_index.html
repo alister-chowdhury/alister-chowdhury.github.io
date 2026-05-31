@@ -2,7 +2,7 @@
  <head>
   <title>Minifloat Format Converter</title>
   <meta name="description" content="An overview of minifloat formats and converting to them.">
-  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, fp8, e4m3, e5m2, bfloat16, half, R11G11B10">
+  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e5m2, bfloat16, half, r11g11b10, tf32">
 
   <script>
     window.minifloatsModuleLoaded = false;
@@ -50,10 +50,23 @@
       margin-right: auto;
     }
 
-    #cnv_formats_cont {
+    .cnv_formats_cont {
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       flex-wrap: wrap;
+      align-items: center;
+      align-content: center;
+    }
+
+    .cnv_fmt_title {
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    .cnv_formats_cont input[type="radio"]+label,
+    .cnv_formats_cont input[type="radio"]:checked+label,
+    .cnv_formats_cont input[type="radio"]:disabled+label {
+       margin: 0.5em;
     }
 
     #cnv_controls {
@@ -172,20 +185,59 @@
 
 <div id="cnv_top">
 
-  <div class="knkRadio" id="cnv_formats_cont">
-      <input disabled type="radio" id="cnvFormat-bfloat16" name="cnvFormat"><label for="cnvFormat-bfloat16">bfloat16</label>
-      <input disabled type="radio" id="cnvFormat-f16" name="cnvFormat" checked="checked"><label for="cnvFormat-f16">Half (F16)</label>
-      <input disabled type="radio" id="cnvFormat-fp8" name="cnvFormat"><label for="cnvFormat-fp8">FP8</label>
-      <input disabled type="radio" id="cnvFormat-e5m2_nosat" name="cnvFormat"><label for="cnvFormat-e5m2_nosat">E5M2</label>
-      <input disabled type="radio" id="cnvFormat-e5m2_sat" name="cnvFormat"><label for="cnvFormat-e5m2_sat">E5M2 (Sat)</label>
-      <input disabled type="radio" id="cnvFormat-e4m3_nosat" name="cnvFormat"><label for="cnvFormat-e4m3_nosat">E4M3</label>
-      <input disabled type="radio" id="cnvFormat-e4m3_sat" name="cnvFormat"><label for="cnvFormat-e4m3_sat">E4M3 (Sat)</label>
+<div class="twoxnctrls">
+  <div>
+    <div class="cnv_fmt_title">19-bit</div>
+    <div class="knkRadio cnv_formats_cont">
+        <input disabled type="radio" id="cnvFormat-tf32" name="cnvFormat"><label for="cnvFormat-tf32">TensorFloat-32</label>
+    </div>
+  </div>
+
+  <div>
+    <div class="cnv_fmt_title">16-bit</div>
+    <div class="knkRadio cnv_formats_cont">
+        <input disabled type="radio" id="cnvFormat-bfloat16" name="cnvFormat"><label for="cnvFormat-bfloat16">bfloat16</label>
+        <input disabled type="radio" id="cnvFormat-f16" name="cnvFormat" checked="checked"><label for="cnvFormat-f16">Half (F16)</label>
+    </div>
+  </div>
+
+  <div>
+    <div class="cnv_fmt_title">11-bit / 10-bit</div>
+    <div class="knkRadio cnv_formats_cont">
+        <input disabled type="radio" id="cnvFormat-u11" name="cnvFormat"><label for="cnvFormat-u11">u11 (R11G11B10)</label>
+        <input disabled type="radio" id="cnvFormat-u10" name="cnvFormat"><label for="cnvFormat-u10">u10 (R11G11B10)</label>
+    </div>
+  </div>
+
+  <div>
+    <div class="cnv_fmt_title">8-bit</div>
+    <div class="knkRadio cnv_formats_cont">
+        <input disabled type="radio" id="cnvFormat-fp8" name="cnvFormat"><label for="cnvFormat-fp8">FP8</label>
+        <input disabled type="radio" id="cnvFormat-e5m2_nosat" name="cnvFormat"><label for="cnvFormat-e5m2_nosat">E5M2</label>
+        <input disabled type="radio" id="cnvFormat-e5m2_sat" name="cnvFormat"><label for="cnvFormat-e5m2_sat">E5M2 (Sat)</label>
+        <input disabled type="radio" id="cnvFormat-e4m3_nosat" name="cnvFormat"><label for="cnvFormat-e4m3_nosat">E4M3</label>
+        <input disabled type="radio" id="cnvFormat-e4m3_sat" name="cnvFormat"><label for="cnvFormat-e4m3_sat">E4M3 (Sat)</label>
+    </div>
+  </div>
+
+  <div>
+    <div class="cnv_fmt_title">6-bit</div>
+    <div class="knkRadio cnv_formats_cont">
+        <input disabled type="radio" id="cnvFormat-e2m3" name="cnvFormat"><label for="cnvFormat-e2m3">E2M3</label>
+        <input disabled type="radio" id="cnvFormat-e3m2" name="cnvFormat"><label for="cnvFormat-e3m2">E3M2</label>
+    </div>
+  </div>
+
+  <div>
+    <div class="cnv_fmt_title">4-bit</div>
+    <div class="knkRadio cnv_formats_cont">
       <input disabled type="radio" id="cnvFormat-e2m1" name="cnvFormat"><label for="cnvFormat-e2m1">E2M1</label>
       <input disabled type="radio" id="cnvFormat-binary4p2sf" name="cnvFormat"><label for="cnvFormat-binary4p2sf">binary4p2sf</label>
       <input disabled type="radio" id="cnvFormat-binary4p2se" name="cnvFormat"><label for="cnvFormat-binary4p2se">binary4p2se</label>
-      <input disabled type="radio" id="cnvFormat-u11" name="cnvFormat"><label for="cnvFormat-u11">u11 (R11G11B10)</label>
-      <input disabled type="radio" id="cnvFormat-u10" name="cnvFormat"><label for="cnvFormat-u10">u10 (R11G11B10)</label>
+    </div>
   </div>
+
+</div>
 
   <div id="cnv_controls">
   <mako>
@@ -301,7 +353,7 @@ def add_github_link(path, text):
 </mako>
 
   </div>
-</div>
+</div> <!-- cnv_top -->
 
 <br>
 <br>
@@ -335,7 +387,7 @@ Shortened IEEE 754 single-precision floating-point format.
 
 Can be converted into a f32 by simply shifting.
 ```c
-float f = asuint((uint32_t)bfloat16_bits << 16);
+float f = asfloat((uint32_t)bfloat16_bits << 16);
 ```
 
 
@@ -417,6 +469,42 @@ Like [e5m2](#e5m2-ocpe5m2-152) has saturating modes:
 * NonSaturate: Greater than max magnitude becomes NaN.
 
 
+## 6bit formats
+
+### e2m3 (OCP-MX-E2M3, 1.2.3)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exp<br>(2)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(3)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>5</div>
+  <div class=fmt_o>&#9679;<br>3</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+Part of the OCP-MX specifaction, has no dedicated Infinity or NaN.
+
+
+### e3m2 (OCP-MX-E3M2, 1.3.2)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exp<br>(3)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(2)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>5</div>
+  <div class=fmt_o>&#9679;<br>2</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+Part of the OCP-MX specifaction, has no dedicated Infinity or NaN.
+
+
 ## 4bit formats
 
 ### e2m1
@@ -449,6 +537,32 @@ The same as [binary4p2sf](#binary4p2sf), but 6 is replaced with Inf.
 
 
 ## Other
+
+### TensorFloat-32 (1.8.10)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(8 bit)</div>
+  <div class=fmt_m_t>mantissa<br>(10 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>18</div>
+  <div class=fmt_o>&#9679;<br>10</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+Shortened IEEE 754 single-precision floating-point format.
+(Has the same exponent as a f32, but less mantissa bits).
+
+Widely used in NVIDIA Ampere/Hopper training, designed specifically for tensor cores.<br>
+Despite having 32 in the name, is actually 19 bits.
+
+Can be converted into a f32 by simply shifting.
+```c
+float f = asfloat(tf32_bits << 13);
+```
+
 
 ### R11G11B10 (0.5.6 / 0.5.5)
 

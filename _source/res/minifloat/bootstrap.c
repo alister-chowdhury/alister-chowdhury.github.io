@@ -1,5 +1,7 @@
+#include "minifloat/src/minifloat/FP19.h"
 #include "minifloat/src/minifloat/FP16.h"
 #include "minifloat/src/minifloat/FP4.h"
+#include "minifloat/src/minifloat/FP6.h"
 #include "minifloat/src/minifloat/FP8.h"
 
 #if defined(__wasm) || defined(__wasm__)
@@ -20,6 +22,12 @@ WASM_EXPORT_WRAPPER_1(float, binary4p2sf_to_f32, uint8_t)
 
 WASM_EXPORT_WRAPPER_1(uint8_t, f32_to_binary4p2se, float)
 WASM_EXPORT_WRAPPER_1(float, binary4p2se_to_f32, uint8_t)
+
+WASM_EXPORT_WRAPPER_1(uint8_t, f32_to_e2m3, float)
+WASM_EXPORT_WRAPPER_1(float, e2m3_to_f32, uint8_t)
+
+WASM_EXPORT_WRAPPER_1(uint8_t, f32_to_e3m2, float)
+WASM_EXPORT_WRAPPER_1(float, e3m2_to_f32, uint8_t)
 
 WASM_EXPORT_WRAPPER_1(uint8_t, f32_to_fp8, float)
 WASM_EXPORT_WRAPPER_1(float, fp8_to_f32, uint8_t)
@@ -44,6 +52,9 @@ WASM_EXPORT uint8_t f16_to_e5m2_(uint8_t x, int saturate) {
 }
 
 WASM_EXPORT_WRAPPER_1(uint16_t, e5m2_to_f16, uint8_t)
+
+WASM_EXPORT_WRAPPER_1(uint32_t, f32_to_tf32, float)
+WASM_EXPORT_WRAPPER_1(float, tf32_to_f32, uint32_t)
 
 WASM_EXPORT_WRAPPER_1(uint16_t, f32_to_bfloat16, float)
 WASM_EXPORT_WRAPPER_1(float, bfloat16_to_f32, uint16_t)
