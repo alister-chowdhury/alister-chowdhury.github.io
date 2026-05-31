@@ -6,7 +6,7 @@ Implementation is C++, but interface is C.
 Live demo: [Minifloat Format Converter](https://alister-chowdhury.github.io/posts/20260105-minifloat-formats/)
 
 ## 4bit formats
-* e2m1
+* e2m1 (OCP-MX-E2M1, 1.2.1)
 * binary4p2sf
 * binary4p2se
 

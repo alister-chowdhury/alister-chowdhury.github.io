@@ -287,8 +287,8 @@
   <div>
     <div class="cnv_fmt_title">6-bit</div>
     <div class="knkRadio cnv_formats_cont">
-        <input disabled type="radio" id="cnvFormat-e2m3" name="cnvFormat"><label for="cnvFormat-e2m3">E2M3</label>
         <input disabled type="radio" id="cnvFormat-e3m2" name="cnvFormat"><label for="cnvFormat-e3m2">E3M2</label>
+        <input disabled type="radio" id="cnvFormat-e2m3" name="cnvFormat"><label for="cnvFormat-e2m3">E2M3</label>
     </div>
   </div>
 
@@ -476,6 +476,7 @@
 <h1>Minifloat Format Converter</h1>
 <div class="toc">
   <ul>
+    <li><a href="#introduction">Introduction</a></li>
     <li><a href="#16bit-formats">16bit formats</a>
       <ul>
       <li><a href="#bfloat16-187">bfloat16 (1.8.7)</a></li>
@@ -491,13 +492,13 @@
     </li>
     <li><a href="#6bit-formats">6bit formats</a>
       <ul>
-      <li><a href="#e2m3-ocpmxe2m3-123">e2m3 (OCP-MX-E2M3, 1.2.3)</a></li>
       <li><a href="#e3m2-ocpmxe3m2-132">e3m2 (OCP-MX-E3M2, 1.3.2)</a></li>
+      <li><a href="#e2m3-ocpmxe2m3-123">e2m3 (OCP-MX-E2M3, 1.2.3)</a></li>
       </ul>
     </li>
     <li><a href="#4bit-formats">4bit formats</a>
       <ul>
-      <li><a href="#e2m1">e2m1</a></li>
+      <li><a href="#e2m1-ocpmxe2m1">e2m1 (OCP-MX-E2M1)</a></li>
       <li><a href="#binary4p2sf">binary4p2sf</a></li>
       <li><a href="#binary4p2se">binary4p2se</a></li>
       </ul>
@@ -508,10 +509,16 @@
       <li><a href="#r11g11b10-056-055">R11G11B10 (0.5.6 / 0.5.5)</a></li>
       </ul>
     </li>
+    <li><a href="#links">Links</a></li>
   </ul>
 </div>
 
 
+<h2 id="introduction">Introduction</h2>
+<p>Minifloats are a bunch of different floating point formats, like your standard IEEE-754 float32, but smaller!</p>
+<p>They can roughly be categorised into two use cases: Rendering (VFX and Games) and Machine learning.
+However with things like <a href="https://devblogs.microsoft.com/directx/d3d12-linalg-preview/" target="_blank" rel="noopener noreferrer">D3D12 LinAlg</a>, it probably
+won't be long until games start using neural networks (with these formats) alongside traditional rendering techniques.</p>
 <h2 id="16bit-formats">16bit formats</h2>
 <h3 id="bfloat16-187">bfloat16 (1.8.7)</h3>
 <div class=fmt_breakdown>
@@ -528,6 +535,7 @@
 
 <p>Shortened IEEE 754 single-precision floating-point format.
 (Has the same exponent as a f32, but less mantissa bits).</p>
+<p>A <a href="#ax-bf16-ext">de facto standard for LLM training</a>, where it can be used for <a href="#nv-fp8-prec-traning-ext">gradients, activations and weights</a>.</p>
 <p>Can be converted into a f32 by simply shifting.</p>
 <pre><code class="language-c">float f = asfloat((uint32_t)bfloat16_bits &lt;&lt; 16);
 </code></pre>
@@ -568,7 +576,9 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 <pre><code class="language-c">half h = ashalf((uint16_t)fp8_bits &lt;&lt; 8);
 </code></pre>
 <h3 id="e5m2-ocpe5m2-152">e5m2 (OCP-E5M2, 1.5.2)</h3>
-<p>The same as <a href="#fp8-152">fp8</a>, but with OFP8 saturation applied.</p>
+<p>Part of the <a href="#OFP8-ext">OFP8 specification</a>, targeting machine learning.</p>
+<p>Has larger range than <a href="#e4m3-ocpe4m3-143">e4m3</a>, making it useful for <a href="#nv-fp8-prec-traning-ext">gradients</a>.</p>
+<p>Stored the same as <a href="#fp8-152">fp8</a>, but with OFP8 saturation applied when converting from another format.</p>
 <ul>
 <li>Saturate: Clamp to the max magnitude.</li>
 <li>NonSaturate: Greater than max magnitude becomes infinity.</li>
@@ -586,6 +596,8 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<p>Part of the <a href="#OFP8-ext">OFP8 specification</a>, targeting machine learning.</p>
+<p>Has higher precision than <a href="#e5m2-ocpe5m2-152">e5m2</a>, making it useful for <a href="#nv-fp8-prec-traning-ext">activations and weights</a>.</p>
 <p>Has no dedicated infinity, with NaN being 0xff / 0x7f.</p>
 <p>Like <a href="#e5m2-ocpe5m2-152">e5m2</a> has saturating modes:</p>
 <ul>
@@ -593,20 +605,6 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 <li>NonSaturate: Greater than max magnitude becomes NaN.</li>
 </ul>
 <h2 id="6bit-formats">6bit formats</h2>
-<h3 id="e2m3-ocpmxe2m3-123">e2m3 (OCP-MX-E2M3, 1.2.3)</h3>
-<div class=fmt_breakdown>
-  <div class=fmt_s_t>sign</div>
-  <div class=fmt_e_t>exp<br>(2)</div>
-  <div class="fmt_m_t fmt_m_wr">mantissa<br>(3)</div>
-  <div class=fmt_s_v>&block;</div>
-  <div class=fmt_e_v>&block;&block;</div>
-  <div class=fmt_m_v>&block;&block;&block;</div>
-  <div class=fmt_o>&#9679;<br>5</div>
-  <div class=fmt_o>&#9679;<br>3</div>
-  <div class=fmt_o>&#9679;<br>0</div>
-</div>
-
-<p>Part of the OCP-MX specifaction, has no dedicated Infinity or NaN.</p>
 <h3 id="e3m2-ocpmxe3m2-132">e3m2 (OCP-MX-E3M2, 1.3.2)</h3>
 <div class=fmt_breakdown>
   <div class=fmt_s_t>sign</div>
@@ -620,9 +618,27 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
-<p>Part of the OCP-MX specifaction, has no dedicated Infinity or NaN.</p>
+<p>Part of the <a href="#OCPMX-ext">OCP-MX specification</a>, targeting machine learning and designed to be used as part of a block with a shared scaling factor.</p>
+<p>Much like how <a href="#e5m2-ocpe5m2-152">e5m2</a> relates to <a href="#e4m3-ocpe4m3-143">e4m3</a>, e3m2 relates to <a href="#e2m3-ocpmxe2m3-123">e2m3</a> (has a larger range).</p>
+<p>Has no dedicated Infinity or NaN.</p>
+<h3 id="e2m3-ocpmxe2m3-123">e2m3 (OCP-MX-E2M3, 1.2.3)</h3>
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exp<br>(2)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(3)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>5</div>
+  <div class=fmt_o>&#9679;<br>3</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<p>Part of the <a href="#OCPMX-ext">OCP-MX specification</a>, targeting machine learning and designed to be used as part of a block with a shared scaling factor.</p>
+<p>Has more precision than <a href="#e3m2-ocpmxe3m2-132">e3m2</a>, but has less range.</p>
+<p>Has no dedicated Infinity or NaN.</p>
 <h2 id="4bit-formats">4bit formats</h2>
-<h3 id="e2m1">e2m1</h3>
+<h3 id="e2m1-ocpmxe2m1">e2m1 (OCP-MX-E2M1)</h3>
 <table>
 <thead>
 <tr>
@@ -662,8 +678,11 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 </tr>
 </tbody>
 </table>
+<p>Part of the <a href="#OCPMX-ext">OCP-MX specification</a>, targeting machine learning and designed to be used as part of a block with a shared scaling factor.</p>
+<p>Despite its small size, the accuracy scores compared to <a href="#e4m3-ocpe4m3-143">e4m3</a> formats, when used as part of a microscaling block, are <a href="#nv-fp4">impressive</a>.</p>
+<p>Has no dedicated Infinity or NaN.</p>
 <h3 id="binary4p2sf">binary4p2sf</h3>
-<p>The same as <a href="#e2m1">e2m1</a>, but -0 is replaced with NaN.</p>
+<p>The same as <a href="#e2m1-ocpmxe2m1">e2m1</a>, but -0 is replaced with NaN.</p>
 <table>
 <thead>
 <tr>
@@ -790,13 +809,21 @@ Despite having 32 in the name, is actually 19 bits.</p>
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
-<p>Often used in place of RGBA16f for render targets.</p>
 <p>Shortened unsigned IEEE 754 half-precision binary floating-point format.
 (Has the same exponent as a f16, but less mantissa bits).</p>
+<p>Often used in place of RGBA16f for render targets.</p>
 <p>Can be converted into a <a href="#f16-half-1510">f16</a> by simply shifting.</p>
 <pre><code class="language-c">half h10 = ashalf((uint16_t)u10_bits &lt;&lt; 5);
 half h11 = ashalf((uint16_t)u11_bits &lt;&lt; 4);
 </code></pre>
+<h2 id="links">Links</h2>
+<ul>
+<li><a id="ax-bf16-ext" target="_blank" href="https://arxiv.org/html/2405.18710v1" rel="noopener noreferrer">To FP8 and Back Again: Quantifying the Effects of Reducing Precision on LLM Training Stability</a></li>
+<li><a id="nv-fp8-prec-traning-ext" target="_blank" href="https://developer.nvidia.com/blog/floating-point-8-an-introduction-to-efficient-lower-precision-ai-training/" rel="noopener noreferrer">NVIDIA: Floating-Point 8: An Introduction to Efficient, Lower-Precision AI Training</a></li>
+<li><a id="nv-fp4" target="_blank" href="https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/" rel="noopener noreferrer">NVIDIA: Introducing NVFP4 for Efficient and Accurate Low-Precision Inference</a></li>
+<li><a id="OFP8-ext" target="_blank" href="https://www.opencompute.org/documents/ocp-8-bit-floating-point-specification-ofp8-revision-1-0-2023-12-01-pdf-1" rel="noopener noreferrer">OCP 8-bit Floating Point Specification (OFP8) - Revision 1.0</a></li>
+<li><a id="OCPMX-ext" target="_blank" href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" rel="noopener noreferrer">OCP Microscaling Formats (MX) Specification - Version 1.0</a></li>
+</ul>
 
 </main>
 
