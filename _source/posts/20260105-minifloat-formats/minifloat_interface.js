@@ -205,6 +205,98 @@ export const minifloatInterface = minifloat.then( funcs => {
         "tf32": tf32
     };
 
+/*
+    // Helper for generating tables about the extremes of a format
+
+    const generateBreakdownTable = (key)=>
+    {
+        const value = interfaces[key];
+
+        const smallest_denorm = 1;
+        const largest_denom = (1 << value.m_bits) - 1;
+        const smallest_norm = 1 << value.m_bits;
+        // formats with no NaN or Inf
+        // 0x7fff...ffff
+        let largest_norm = (1 << (value.e_bits + value.m_bits)) - 1;
+        if (!isFinite(value.to_f32(largest_norm)))
+        {
+            // 0x7fff...fffe
+            largest_norm -= 1;
+            if (!isFinite(value.to_f32(largest_norm)))
+            {
+                // Standard
+                largest_norm = (1 << (value.e_bits + value.m_bits)) - 1;
+                largest_norm -= (1 << value.m_bits);
+            }
+        }
+
+        const smallest_gt_one = value.from_f32(1.0) + 1;
+        const largest_lt_one = value.from_f32(1.0) - 1;
+        const closest_pi = value.from_f32(Math.PI);
+
+        // Brute force, but probably not worth the effort in calculating this analytically.
+        let largest_seq_integer_f32 = 1.0;
+        while (value.to_f32(value.from_f32(largest_seq_integer_f32)) == largest_seq_integer_f32)
+        {
+            largest_seq_integer_f32 += 1.0;
+        }
+        largest_seq_integer_f32 -= 1.0;
+        const largest_seq_integer = value.from_f32(largest_seq_integer_f32);
+
+        const num_nibbles = Math.floor((value.num_bits + 3) / 4);
+        const makeentry = (name, raw_val) => {
+            const hex_value = raw_val.toString(16).padStart(num_nibbles, "0");
+            const f32_value = value.to_f32(raw_val);
+            return `| **${name}** | 0x${hex_value} | ${f32_value} |`
+        };
+
+        const make_delta_entry = (name, ref_val, raw_val) => {
+            const hex_value = raw_val.toString(16).padStart(num_nibbles, "0");
+            const f32_value = value.to_f32(raw_val);
+            const delta = Math.abs((f32_value - ref_val)).toExponential();
+            const [delta_up, delta_lo] = delta.split("e");
+
+            let _10x_superscript = "";
+            for (let v of delta_lo.toString()) {
+                switch(v) {
+                case "-": _10x_superscript += "&#8315;"; break;
+                case "0": _10x_superscript += "&#8304;"; break;
+                case "1": _10x_superscript += "&#185;"; break;
+                case "2": _10x_superscript += "&#178;"; break;
+                case "3": _10x_superscript += "&#179;"; break;
+                case "4": _10x_superscript += "&#8308;"; break;
+                case "5": _10x_superscript += "&#8309;"; break;
+                case "6": _10x_superscript += "&#8310;"; break;
+                case "7": _10x_superscript += "&#8311;"; break;
+                case "8": _10x_superscript += "&#8312;"; break;
+                case "9": _10x_superscript += "&#8313;"; break;
+                default:
+                    throw "Oh dear";
+                }
+            }
+
+            const sci_v = `${Math.round(delta_up*1000)/1000}x10${_10x_superscript}`;
+            return `| **${name}** | 0x${hex_value} | ${f32_value} (&Delta; &asymp; ${sci_v}) |`
+        };
+        
+
+        let result =  `\n\n<br>\n\n| | Hex | Value |\n` +
+                      "| -- | -- | -- |\n" +
+                     `${makeentry("Smallest value (Denormal)", smallest_denorm)}\n` +
+                     `${makeentry("Largest value (Denormal)", largest_denom)}\n` +
+                     `${makeentry("Smallest value (Normal)", smallest_norm)}\n` +
+                     `${makeentry("Largest value (Normal)", largest_norm)}\n` +
+                     `${makeentry("Smallest value > 1", smallest_gt_one)}\n` +
+                     `${makeentry("Largest value < 1", largest_lt_one)}\n` +
+                     `${make_delta_entry("Closest value to &#x03C0;", Math.PI, closest_pi)}\n` +
+                     `${makeentry("Largest sequential integer", largest_seq_integer)}\n`
+                     ;
+        result += "\n<br>\n\n";
+        console.log(result);
+    };
+    generateBreakdownTable("bfloat16");
+*/
+
     // Breaks down a minifloat into it's components (s, exp, mant).
     const breakdown = (v, interface_) => {
         const val = interface_.to_f32(v);

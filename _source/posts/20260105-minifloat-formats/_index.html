@@ -170,9 +170,12 @@
 
     th,td {
       border: #7373c3 1px solid;
-      text-align: right;
       padding: 0.25em;
       font-family: monospace;
+    }
+
+    .ralign_table th, .ralign_table td {
+      text-align: right;
     }
 
   </style>
@@ -391,6 +394,21 @@ won't be long until games start using neural networks (with these formats) along
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x0001 | 9.183549615799121e-41 |
+| **Largest value (Denormal)** | 0x007f | 1.1663108012064884e-38 |
+| **Smallest value (Normal)** | 0x0080 | 1.1754943508222875e-38 |
+| **Largest value (Normal)** | 0x7f7f | 3.3895313892515355e+38 |
+| **Smallest value > 1** | 0x3f81 | 1.0078125 |
+| **Largest value < 1** | 0x3f7f | 0.99609375 |
+| **Closest value to &#x03C0;** | 0x4049 | 3.140625 (&Delta; &asymp; 9.677x10&#8315;&#8308;) |
+| **Largest sequential integer** | 0x4380 | 256 |
+
+<br>
+
 Shortened IEEE 754 single-precision floating-point format.
 (Has the same exponent as a f32, but less mantissa bits).
 
@@ -416,10 +434,26 @@ float f = asfloat((uint32_t)bfloat16_bits << 16);
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x0001 | 5.960464477539063e-8 |
+| **Largest value (Denormal)** | 0x03ff | 0.00006097555160522461 |
+| **Smallest value (Normal)** | 0x0400 | 0.00006103515625 |
+| **Largest value (Normal)** | 0x7bff | 65504 |
+| **Smallest value > 1** | 0x3c01 | 1.0009765625 |
+| **Largest value < 1** | 0x3bff | 0.99951171875 |
+| **Closest value to &#x03C0;** | 0x4248 | 3.140625 (&Delta; &asymp; 9.677x10&#8315;&#8308;) |
+| **Largest sequential integer** | 0x6800 | 2048 |
+
+<br>
 
 Probably the third most widely used format globally, after f32 and f64.
 
-Commonly used for storing pre-tonemapped and HDR textures.
+In games, it's commonly used for storing the pre-tonemapped render target alongside HDR textures.
+
+In VFX, you'd output render passes for compositing in this format.
 
 On GPUs you would expect to see dedicated `f32tof16` / `f16tof32` instructions.<br>
 Additionally many GPUs can perform arithmetic directly on f16 values (usually packing two in a 32bit register).
@@ -440,6 +474,21 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
   <div class=fmt_o>&#9679;<br>2</div>
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
+
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x01 | 0.0000152587890625 |
+| **Largest value (Denormal)** | 0x03 | 0.0000457763671875 |
+| **Smallest value (Normal)** | 0x04 | 0.00006103515625 |
+| **Largest value (Normal)** | 0x7b | 57344 |
+| **Smallest value > 1** | 0x3d | 1.25 |
+| **Largest value < 1** | 0x3b | 0.875 |
+| **Closest value to &#x03C0;** | 0x42 | 3 (&Delta; &asymp; 1.416x10&#8315;&#185;) |
+| **Largest sequential integer** | 0x48 | 8 |
+
+<br>
 
 Shortened IEEE 754 half-precision binary floating-point format.
 (Has the same exponent as a f16, but less mantissa bits).
@@ -476,6 +525,22 @@ Stored the same as [fp8](#fp8-152), but with OFP8 saturation applied when conver
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x01 | 0.001953125 |
+| **Largest value (Denormal)** | 0x07 | 0.013671875 |
+| **Smallest value (Normal)** | 0x08 | 0.015625 |
+| **Largest value (Normal)** | 0x7e | 448 |
+| **Smallest value > 1** | 0x39 | 1.125 |
+| **Largest value < 1** | 0x37 | 0.9375 |
+| **Closest value to &#x03C0;** | 0x45 | 3.25 (&Delta; &asymp; 1.084x10&#8315;&#185;) |
+| **Largest sequential integer** | 0x58 | 16 |
+
+<br>
+
+
 Part of the [OFP8 specification](#OFP8-ext), targeting machine learning.
 
 Has higher precision than [e5m2](#e5m2-ocpe5m2-152), making it useful for [activations and weights](#nv-fp8-prec-traning-ext).
@@ -505,6 +570,21 @@ Like [e5m2](#e5m2-ocpe5m2-152) has saturating modes:
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x01 | 0.0625 |
+| **Largest value (Denormal)** | 0x03 | 0.1875 |
+| **Smallest value (Normal)** | 0x04 | 0.25 |
+| **Largest value (Normal)** | 0x1f | 28 |
+| **Smallest value > 1** | 0x0d | 1.25 |
+| **Largest value < 1** | 0x0b | 0.875 |
+| **Closest value to &#x03C0;** | 0x12 | 3 (&Delta; &asymp; 1.416x10&#8315;&#185;) |
+| **Largest sequential integer** | 0x18 | 8 |
+
+<br>
+
 Part of the [OCP-MX specification](#OCPMX-ext), targeting machine learning and designed to be used as part of a block with a shared scaling factor.
 
 Much like how [e5m2](#e5m2-ocpe5m2-152) relates to [e4m3](#e4m3-ocpe4m3-143), e3m2 relates to [e2m3](#e2m3-ocpmxe2m3-123) (has a larger range).
@@ -526,6 +606,22 @@ Has no dedicated Infinity or NaN.
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x01 | 0.125 |
+| **Largest value (Denormal)** | 0x07 | 0.875 |
+| **Smallest value (Normal)** | 0x08 | 1 |
+| **Largest value (Normal)** | 0x1f | 7.5 |
+| **Smallest value > 1** | 0x09 | 1.125 |
+| **Largest value < 1** | 0x07 | 0.875 |
+| **Closest value to &#x03C0;** | 0x15 | 3.25 (&Delta; &asymp; 1.084x10&#8315;&#185;) |
+| **Largest sequential integer** | 0x1e | 7 |
+
+<br>
+
+
 Part of the [OCP-MX specification](#OCPMX-ext), targeting machine learning and designed to be used as part of a block with a shared scaling factor.
 
 Has more precision than [e3m2](#e3m2-ocpmxe3m2-132), but has less range.
@@ -537,11 +633,14 @@ Has no dedicated Infinity or NaN.
 
 ### e2m1 (OCP-MX-E2M1)
 
+<div class="ralign_table">
 
 |  |*s*000|*s*001|*s*010|*s*011|*s*100|*s*101|*s*110|*s*111|
 |-----|----|----|----|----|----|----|----|----|
 | *s=0* |   0| 0.5|   1| 1.5|   2|   3|   4|   6|
 | *s=1* |  −0|−0.5|  −1|−1.5|  −2|  −3|  −4|  −6|
+
+</div>
 
 
 Part of the [OCP-MX specification](#OCPMX-ext), targeting machine learning and designed to be used as part of a block with a shared scaling factor.
@@ -555,21 +654,27 @@ Has no dedicated Infinity or NaN.
 
 The same as [e2m1](#e2m1-ocpmxe2m1), but -0 is replaced with NaN.
 
+<div class="ralign_table">
+
 |  |*s*000|*s*001|*s*010|*s*011|*s*100|*s*101|*s*110|*s*111|
 |-----|----|----|----|----|----|----|----|----|
 | *s=0* |   0| 0.5|   1| 1.5|   2|   3|   4|   6|
 | *s=1* |  NaN|−0.5|  −1|−1.5|  −2|  −3|  −4|  −6|
 
+</div>
 
 ### binary4p2se
 
 The same as [binary4p2sf](#binary4p2sf), but 6 is replaced with Inf.
+
+<div class="ralign_table">
 
 |  |*s*000|*s*001|*s*010|*s*011|*s*100|*s*101|*s*110|*s*111|
 |-----|----|----|----|----|----|----|----|----|
 | *s=0* |   0| 0.5|   1| 1.5|   2|   3|   4| &infin;|
 | *s=1* | NaN|−0.5|  −1|−1.5|  −2|  −3|  −4| -&infin;|
 
+</div>
 
 ## Other
 
@@ -586,6 +691,21 @@ The same as [binary4p2sf](#binary4p2sf), but 6 is replaced with Inf.
   <div class=fmt_o>&#9679;<br>10</div>
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
+
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x00001 | 1.1479437019748901e-41 |
+| **Largest value (Denormal)** | 0x003ff | 1.1743464071203126e-38 |
+| **Smallest value (Normal)** | 0x00400 | 1.1754943508222875e-38 |
+| **Largest value (Normal)** | 0x3fbff | 3.4011621342146535e+38 |
+| **Smallest value > 1** | 0x1fc01 | 1.0009765625 |
+| **Largest value < 1** | 0x1fbff | 0.99951171875 |
+| **Closest value to &#x03C0;** | 0x20248 | 3.140625 (&Delta; &asymp; 9.677x10&#8315;&#8308;) |
+| **Largest sequential integer** | 0x22800 | 2048 |
+
+<br>
 
 Shortened IEEE 754 single-precision floating-point format.
 (Has the same exponent as a f32, but less mantissa bits).
@@ -614,6 +734,21 @@ float f = asfloat(tf32_bits << 13);
 </div>
 
 
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x001 | 9.5367431640625e-7 |
+| **Largest value (Denormal)** | 0x03f | 0.00006008148193359375 |
+| **Smallest value (Normal)** | 0x040 | 0.00006103515625 |
+| **Largest value (Normal)** | 0x7bf | 65024 |
+| **Smallest value > 1** | 0x3c1 | 1.015625 |
+| **Largest value < 1** | 0x3bf | 0.9921875 |
+| **Closest value to &#x03C0;** | 0x425 | 3.15625 (&Delta; &asymp; 1.466x10&#8315;&#178;) |
+| **Largest sequential integer** | 0x580 | 128 |
+
+<br>
+
 <div class=fmt_breakdown>
   <div class=fmt_s_t></div>
   <div class=fmt_e_t>exponent<br>(5 bit)</div>
@@ -625,6 +760,23 @@ float f = asfloat(tf32_bits << 13);
   <div class=fmt_o>&#9679;<br>5</div>
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
+
+
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x001 | 0.0000019073486328125 |
+| **Largest value (Denormal)** | 0x01f | 0.0000591278076171875 |
+| **Smallest value (Normal)** | 0x020 | 0.00006103515625 |
+| **Largest value (Normal)** | 0x3df | 64512 |
+| **Smallest value > 1** | 0x1e1 | 1.03125 |
+| **Largest value < 1** | 0x1df | 0.984375 |
+| **Closest value to &#x03C0;** | 0x212 | 3.125 (&Delta; &asymp; 1.659x10&#8315;&#178;) |
+| **Largest sequential integer** | 0x2a0 | 64 |
+
+<br>
+
 
 Shortened unsigned IEEE 754 half-precision binary floating-point format.
 (Has the same exponent as a f16, but less mantissa bits).

@@ -224,9 +224,12 @@
 
     th,td {
       border: #7373c3 1px solid;
-      text-align: right;
       padding: 0.25em;
       font-family: monospace;
+    }
+
+    .ralign_table th, .ralign_table td {
+      text-align: right;
     }
 
   </style>
@@ -533,6 +536,61 @@ won't be long until games start using neural networks (with these formats) along
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x0001</td>
+  <td>9.183549615799121e-41</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x007f</td>
+  <td>1.1663108012064884e-38</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x0080</td>
+  <td>1.1754943508222875e-38</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x7f7f</td>
+  <td>3.3895313892515355e+38</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x3f81</td>
+  <td>1.0078125</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x3f7f</td>
+  <td>0.99609375</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x4049</td>
+  <td>3.140625 (Δ ≈ 9.677x10⁻⁴)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x4380</td>
+  <td>256</td>
+</tr>
+</tbody>
+</table>
+<br>
+
 <p>Shortened IEEE 754 single-precision floating-point format.
 (Has the same exponent as a f32, but less mantissa bits).</p>
 <p>A <a href="#ax-bf16-ext">de facto standard for LLM training</a>, where it can be used for <a href="#nv-fp8-prec-traning-ext">gradients, activations and weights</a>.</p>
@@ -552,8 +610,64 @@ won't be long until games start using neural networks (with these formats) along
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x0001</td>
+  <td>5.960464477539063e-8</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x03ff</td>
+  <td>0.00006097555160522461</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x0400</td>
+  <td>0.00006103515625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x7bff</td>
+  <td>65504</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x3c01</td>
+  <td>1.0009765625</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x3bff</td>
+  <td>0.99951171875</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x4248</td>
+  <td>3.140625 (Δ ≈ 9.677x10⁻⁴)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x6800</td>
+  <td>2048</td>
+</tr>
+</tbody>
+</table>
+<br>
+
 <p>Probably the third most widely used format globally, after f32 and f64.</p>
-<p>Commonly used for storing pre-tonemapped and HDR textures.</p>
+<p>In games, it's commonly used for storing the pre-tonemapped render target alongside HDR textures.</p>
+<p>In VFX, you'd output render passes for compositing in this format.</p>
 <p>On GPUs you would expect to see dedicated <code>f32tof16</code> / <code>f16tof32</code> instructions.<br>
 Additionally many GPUs can perform arithmetic directly on f16 values (usually packing two in a 32bit register).</p>
 <h2 id="8bit-formats">8bit formats</h2>
@@ -569,6 +683,61 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
   <div class=fmt_o>&#9679;<br>2</div>
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
+
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x01</td>
+  <td>0.0000152587890625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x03</td>
+  <td>0.0000457763671875</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x04</td>
+  <td>0.00006103515625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x7b</td>
+  <td>57344</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x3d</td>
+  <td>1.25</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x3b</td>
+  <td>0.875</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x42</td>
+  <td>3 (Δ ≈ 1.416x10⁻¹)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x48</td>
+  <td>8</td>
+</tr>
+</tbody>
+</table>
+<br>
 
 <p>Shortened IEEE 754 half-precision binary floating-point format.
 (Has the same exponent as a f16, but less mantissa bits).</p>
@@ -596,6 +765,61 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x01</td>
+  <td>0.001953125</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x07</td>
+  <td>0.013671875</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x08</td>
+  <td>0.015625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x7e</td>
+  <td>448</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x39</td>
+  <td>1.125</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x37</td>
+  <td>0.9375</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x45</td>
+  <td>3.25 (Δ ≈ 1.084x10⁻¹)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x58</td>
+  <td>16</td>
+</tr>
+</tbody>
+</table>
+<br>
+
 <p>Part of the <a href="#OFP8-ext">OFP8 specification</a>, targeting machine learning.</p>
 <p>Has higher precision than <a href="#e5m2-ocpe5m2-152">e5m2</a>, making it useful for <a href="#nv-fp8-prec-traning-ext">activations and weights</a>.</p>
 <p>Has no dedicated infinity, with NaN being 0xff / 0x7f.</p>
@@ -618,6 +842,61 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x01</td>
+  <td>0.0625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x03</td>
+  <td>0.1875</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x04</td>
+  <td>0.25</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x1f</td>
+  <td>28</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x0d</td>
+  <td>1.25</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x0b</td>
+  <td>0.875</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x12</td>
+  <td>3 (Δ ≈ 1.416x10⁻¹)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x18</td>
+  <td>8</td>
+</tr>
+</tbody>
+</table>
+<br>
+
 <p>Part of the <a href="#OCPMX-ext">OCP-MX specification</a>, targeting machine learning and designed to be used as part of a block with a shared scaling factor.</p>
 <p>Much like how <a href="#e5m2-ocpe5m2-152">e5m2</a> relates to <a href="#e4m3-ocpe4m3-143">e4m3</a>, e3m2 relates to <a href="#e2m3-ocpmxe2m3-123">e2m3</a> (has a larger range).</p>
 <p>Has no dedicated Infinity or NaN.</p>
@@ -634,11 +913,68 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x01</td>
+  <td>0.125</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x07</td>
+  <td>0.875</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x08</td>
+  <td>1</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x1f</td>
+  <td>7.5</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x09</td>
+  <td>1.125</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x07</td>
+  <td>0.875</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x15</td>
+  <td>3.25 (Δ ≈ 1.084x10⁻¹)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x1e</td>
+  <td>7</td>
+</tr>
+</tbody>
+</table>
+<br>
+
 <p>Part of the <a href="#OCPMX-ext">OCP-MX specification</a>, targeting machine learning and designed to be used as part of a block with a shared scaling factor.</p>
 <p>Has more precision than <a href="#e3m2-ocpmxe3m2-132">e3m2</a>, but has less range.</p>
 <p>Has no dedicated Infinity or NaN.</p>
 <h2 id="4bit-formats">4bit formats</h2>
 <h3 id="e2m1-ocpmxe2m1">e2m1 (OCP-MX-E2M1)</h3>
+<div class="ralign_table">
+
 <table>
 <thead>
 <tr>
@@ -678,11 +1014,15 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 </tr>
 </tbody>
 </table>
+</div>
+
 <p>Part of the <a href="#OCPMX-ext">OCP-MX specification</a>, targeting machine learning and designed to be used as part of a block with a shared scaling factor.</p>
 <p>Despite its small size, the accuracy scores compared to <a href="#e4m3-ocpe4m3-143">e4m3</a> formats, when used as part of a microscaling block, are <a href="#nv-fp4">impressive</a>.</p>
 <p>Has no dedicated Infinity or NaN.</p>
 <h3 id="binary4p2sf">binary4p2sf</h3>
 <p>The same as <a href="#e2m1-ocpmxe2m1">e2m1</a>, but -0 is replaced with NaN.</p>
+<div class="ralign_table">
+
 <table>
 <thead>
 <tr>
@@ -722,8 +1062,12 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 </tr>
 </tbody>
 </table>
+</div>
+
 <h3 id="binary4p2se">binary4p2se</h3>
 <p>The same as <a href="#binary4p2sf">binary4p2sf</a>, but 6 is replaced with Inf.</p>
+<div class="ralign_table">
+
 <table>
 <thead>
 <tr>
@@ -763,6 +1107,8 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 </tr>
 </tbody>
 </table>
+</div>
+
 <h2 id="other">Other</h2>
 <h3 id="tensorfloat32-1810">TensorFloat-32 (1.8.10)</h3>
 <div class=fmt_breakdown>
@@ -776,6 +1122,61 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
   <div class=fmt_o>&#9679;<br>10</div>
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
+
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x00001</td>
+  <td>1.1479437019748901e-41</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x003ff</td>
+  <td>1.1743464071203126e-38</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x00400</td>
+  <td>1.1754943508222875e-38</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x3fbff</td>
+  <td>3.4011621342146535e+38</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x1fc01</td>
+  <td>1.0009765625</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x1fbff</td>
+  <td>0.99951171875</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x20248</td>
+  <td>3.140625 (Δ ≈ 9.677x10⁻⁴)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x22800</td>
+  <td>2048</td>
+</tr>
+</tbody>
+</table>
+<br>
 
 <p>Shortened IEEE 754 single-precision floating-point format.
 (Has the same exponent as a f32, but less mantissa bits).</p>
@@ -797,6 +1198,61 @@ Despite having 32 in the name, is actually 19 bits.</p>
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
 
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x001</td>
+  <td>9.5367431640625e-7</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x03f</td>
+  <td>0.00006008148193359375</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x040</td>
+  <td>0.00006103515625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x7bf</td>
+  <td>65024</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x3c1</td>
+  <td>1.015625</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x3bf</td>
+  <td>0.9921875</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x425</td>
+  <td>3.15625 (Δ ≈ 1.466x10⁻²)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x580</td>
+  <td>128</td>
+</tr>
+</tbody>
+</table>
+<br>
+
 <div class=fmt_breakdown>
   <div class=fmt_s_t></div>
   <div class=fmt_e_t>exponent<br>(5 bit)</div>
@@ -808,6 +1264,61 @@ Despite having 32 in the name, is actually 19 bits.</p>
   <div class=fmt_o>&#9679;<br>5</div>
   <div class=fmt_o>&#9679;<br>0</div>
 </div>
+
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x001</td>
+  <td>0.0000019073486328125</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x01f</td>
+  <td>0.0000591278076171875</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x020</td>
+  <td>0.00006103515625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x3df</td>
+  <td>64512</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x1e1</td>
+  <td>1.03125</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x1df</td>
+  <td>0.984375</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x212</td>
+  <td>3.125 (Δ ≈ 1.659x10⁻²)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x2a0</td>
+  <td>64</td>
+</tr>
+</tbody>
+</table>
+<br>
 
 <p>Shortened unsigned IEEE 754 half-precision binary floating-point format.
 (Has the same exponent as a f16, but less mantissa bits).</p>

@@ -2,7 +2,6 @@ import {
     AsyncBarrier,
     loadCommonShaderSource,
     resolveChildren,
-    createCanvasDragHandler,
     loadF32Lines,
     addDPIResizeWatcher
 } from '../../util.js';
