@@ -216,10 +216,11 @@ export const createCanvasDragHandler = (canvas, startDragging, drag, stopDraggin
                 event.preventDefault();
                 canvas.removeEventListener("touchmove", onMove, false);
                 canvas.removeEventListener("touchend", onEnd, false);
+                stopDragging();
             };
             canvas.addEventListener("touchmove", onMove, false);
             canvas.addEventListener("touchend", onEnd, false);
-            onMove(event);
+            startDragging(calcDragUV(event, true));
        }
     };
     
