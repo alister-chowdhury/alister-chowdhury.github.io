@@ -563,7 +563,7 @@ class GPUTimerPool
     getNumberOfIterations()
     {
 
-        for(var i=0; i<this.waitingQueries.length; ++i)
+        for(let i=0; i<this.waitingQueries.length; ++i)
         {
             const result = this.waitingQueries[i].query.getResult();
             if(result != null)
@@ -571,20 +571,20 @@ class GPUTimerPool
                 this.history.push([this.waitingQueries[i].numIterations,
                                    result]);
                 this.freeQueries.push(this.waitingQueries[i].query);
-                this.waitingQueries.pop(i);
+                this.waitingQueries.splice(i--, 1);
             }
         }
 
         // Keep a maximum of 8 frames for reference
         while(this.history.length > 8)
         {
-            this.history.pop(0);
+            this.history.splice(0, 1);
         }
 
-        var resolvedIterations = 0;
-        var resolvedTimeTaken = 0;
+        let resolvedIterations = 0;
+        let resolvedTimeTaken = 0;
 
-        for(var i=0; i<this.history.length; ++i)
+        for(let i=0; i<this.history.length; ++i)
         {
             resolvedIterations += this.history[i][0];
             resolvedTimeTaken += this.history[i][1];

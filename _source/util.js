@@ -115,7 +115,7 @@ export const loadF32Lines = IS_LITTLE_ENDIAN ?
 export const bitcast = (()=>
 {
     const u32tmp = new Uint32Array(1);
-    const i32tmp = new Float32Array(u32tmp.buffer);
+    const i32tmp = new Int32Array(u32tmp.buffer);
     const f32tmp = new Float32Array(u32tmp.buffer);
 
     const setAndFetch = (x, A, B)=>{A[0] = x; return B[0]; };

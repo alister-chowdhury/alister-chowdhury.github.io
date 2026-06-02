@@ -394,7 +394,7 @@ class CircularMappingCanvasContext
                     if(prev[1] >= current[0])
                     {
                         prev[1] = Math.max(prev[1], current[1]);
-                        arr.pop(j);
+                        arr.splice(j, 1);
                     }
                 }
             };
