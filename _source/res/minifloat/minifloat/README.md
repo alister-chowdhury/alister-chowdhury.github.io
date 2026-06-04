@@ -17,7 +17,9 @@ Live demo: [Minifloat Format Converter](https://alister-chowdhury.github.io/post
 ## 8bit formats
 * fp8 (1.5.2)
 * e4m3 (OCP-E4M3, 1.4.3)
+* e4m3fnuz (1.4.3)
 * e5m2 (OCP-E5M2, 1.5.2)
+* e5m2fnuz (1.5.2)
 * e8m0 (OCP-MX-E8M0, 0.8.0)
 
 ## 16bit formats

@@ -47,11 +47,17 @@ WASM_EXPORT uint8_t f32_to_e5m2_(float x, int saturate) {
 
 WASM_EXPORT_WRAPPER_1(float, e5m2_to_f32, uint8_t)
 
-WASM_EXPORT uint8_t f16_to_e5m2_(uint8_t x, int saturate) {
+WASM_EXPORT uint8_t f16_to_e5m2_(uint16_t x, int saturate) {
   return f16_to_e5m2(x, saturate ? OPF8_Saturating : OPF8_NonSaturating);
 }
 
 WASM_EXPORT_WRAPPER_1(uint16_t, e5m2_to_f16, uint8_t)
+
+WASM_EXPORT_WRAPPER_1(uint8_t, f32_to_e4m3fnuz, float)
+WASM_EXPORT_WRAPPER_1(float, e4m3fnuz_to_f32, uint8_t)
+
+WASM_EXPORT_WRAPPER_1(uint8_t, f32_to_e5m2fnuz, float)
+WASM_EXPORT_WRAPPER_1(float, e5m2fnuz_to_f32, uint8_t)
 
 WASM_EXPORT_WRAPPER_1(uint8_t, f32_to_e8m0, float)
 WASM_EXPORT_WRAPPER_1(float, e8m0_to_f32, uint8_t)

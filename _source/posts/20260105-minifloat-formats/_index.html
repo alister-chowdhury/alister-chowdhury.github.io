@@ -218,8 +218,10 @@
         <input disabled type="radio" id="cnvFormat-fp8" name="cnvFormat"><label for="cnvFormat-fp8">FP8</label>
         <input disabled type="radio" id="cnvFormat-e5m2_nosat" name="cnvFormat"><label for="cnvFormat-e5m2_nosat">E5M2</label>
         <input disabled type="radio" id="cnvFormat-e5m2_sat" name="cnvFormat"><label for="cnvFormat-e5m2_sat">E5M2 (Sat)</label>
+        <input disabled type="radio" id="cnvFormat-e5m2fnuz" name="cnvFormat"><label for="cnvFormat-e5m2fnuz">E5M2FNUZ</label>
         <input disabled type="radio" id="cnvFormat-e4m3_nosat" name="cnvFormat"><label for="cnvFormat-e4m3_nosat">E4M3</label>
         <input disabled type="radio" id="cnvFormat-e4m3_sat" name="cnvFormat"><label for="cnvFormat-e4m3_sat">E4M3 (Sat)</label>
+        <input disabled type="radio" id="cnvFormat-e4m3fnuz" name="cnvFormat"><label for="cnvFormat-e4m3fnuz">E4M3FNUZ</label>
         <input disabled type="radio" id="cnvFormat-e8m0" name="cnvFormat"><label for="cnvFormat-e8m0">E8M0</label>
     </div>
   </div>
@@ -512,6 +514,46 @@ Stored the same as [fp8](#fp8-152), but with OFP8 saturation applied when conver
 * NonSaturate: Greater than max magnitude becomes infinity.
 
 
+### e5m2fnuz (1.5.2)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(2 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>2</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x01 | 0.00000762939453125 |
+| **Largest value (Denormal)** | 0x03 | 0.00002288818359375 |
+| **Smallest value (Normal)** | 0x04 | 0.000030517578125 |
+| **Largest value (Normal)** | 0x7f | 57344 |
+| **Smallest value > 1** | 0x41 | 1.25 |
+| **Largest value < 1** | 0x3f | 0.875 |
+| **Closest value to &#x03C0;** | 0x46 | 3 (&Delta; &asymp; 1.416x10&#8315;&#185;) |
+| **Largest sequential integer** | 0x4c | 8 |
+
+<br>
+
+FNUZ (Float NaN Unsigned Zero) variant of [e5m2](#e5m2-ocpe5m2-152).
+
+Supported primarily today by AMD hardware (MI300).
+
+Uses a bias of 16 (1 more than [e5m2](#e5m2-ocpe5m2-152)) for the exponent.
+
+Has no dedicated infinity, with NaN being 0x80 (-0). Removing +/- infinity and 6 NaN bit-patterns in favour of a single NaN, it has 8 more unique values.
+
+As there is no infinity to overflow to, values beyond the maximum magnitude always saturate.
+
+
 ### e4m3 (OCP-E4M3, 1.4.3)
 
 <div class=fmt_breakdown>
@@ -552,6 +594,46 @@ Like [e5m2](#e5m2-ocpe5m2-152) has saturating modes:
 
 * Saturate: Clamp to the max magnitude.
 * NonSaturate: Greater than max magnitude becomes NaN.
+
+
+### e4m3fnuz (1.4.3)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(4 bit)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(3 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>3</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x01 | 0.0009765625 |
+| **Largest value (Denormal)** | 0x07 | 0.0068359375 |
+| **Smallest value (Normal)** | 0x08 | 0.0078125 |
+| **Largest value (Normal)** | 0x7f | 240 |
+| **Smallest value > 1** | 0x41 | 1.125 |
+| **Largest value < 1** | 0x3f | 0.9375 |
+| **Closest value to &#x03C0;** | 0x4d | 3.25 (&Delta; &asymp; 1.084x10&#8315;&#185;) |
+| **Largest sequential integer** | 0x60 | 16 |
+
+<br>
+
+FNUZ (Float NaN Unsigned Zero) variant of [e4m3](#e4m3-ocpe4m3-143).
+
+Supported primarily today by AMD hardware (MI300).
+
+Uses a bias of 8 (1 more than [e4m3](#e4m3-ocpe4m3-143)) for the exponent.
+
+Has no dedicated infinity, with NaN being 0x80 (-0). By reducing the 2 NaN values to 1 and removing -0, it has 2 more unique values.
+
+As there is no infinity to overflow to, values beyond the maximum magnitude always saturate.
 
 
 ### e8m0 (OCP-MX-E8M0, 0.8.0)

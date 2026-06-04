@@ -283,8 +283,10 @@
         <input disabled type="radio" id="cnvFormat-fp8" name="cnvFormat"><label for="cnvFormat-fp8">FP8</label>
         <input disabled type="radio" id="cnvFormat-e5m2_nosat" name="cnvFormat"><label for="cnvFormat-e5m2_nosat">E5M2</label>
         <input disabled type="radio" id="cnvFormat-e5m2_sat" name="cnvFormat"><label for="cnvFormat-e5m2_sat">E5M2 (Sat)</label>
+        <input disabled type="radio" id="cnvFormat-e5m2fnuz" name="cnvFormat"><label for="cnvFormat-e5m2fnuz">E5M2FNUZ</label>
         <input disabled type="radio" id="cnvFormat-e4m3_nosat" name="cnvFormat"><label for="cnvFormat-e4m3_nosat">E4M3</label>
         <input disabled type="radio" id="cnvFormat-e4m3_sat" name="cnvFormat"><label for="cnvFormat-e4m3_sat">E4M3 (Sat)</label>
+        <input disabled type="radio" id="cnvFormat-e4m3fnuz" name="cnvFormat"><label for="cnvFormat-e4m3fnuz">E4M3FNUZ</label>
         <input disabled type="radio" id="cnvFormat-e8m0" name="cnvFormat"><label for="cnvFormat-e8m0">E8M0</label>
     </div>
   </div>
@@ -492,7 +494,9 @@
       <ul>
       <li><a href="#fp8-152">fp8 (1.5.2)</a></li>
       <li><a href="#e5m2-ocpe5m2-152">e5m2 (OCP-E5M2, 1.5.2)</a></li>
+      <li><a href="#e5m2fnuz-152">e5m2fnuz (1.5.2)</a></li>
       <li><a href="#e4m3-ocpe4m3-143">e4m3 (OCP-E4M3, 1.4.3)</a></li>
+      <li><a href="#e4m3fnuz-143">e4m3fnuz (1.4.3)</a></li>
       <li><a href="#e8m0-ocpmxe8m0-080">e8m0 (OCP-MX-E8M0, 0.8.0)</a></li>
       </ul>
     </li>
@@ -755,6 +759,79 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 <li>Saturate: Clamp to the max magnitude.</li>
 <li>NonSaturate: Greater than max magnitude becomes infinity.</li>
 </ul>
+<h3 id="e5m2fnuz-152">e5m2fnuz (1.5.2)</h3>
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(2 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>2</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x01</td>
+  <td>0.00000762939453125</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x03</td>
+  <td>0.00002288818359375</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x04</td>
+  <td>0.000030517578125</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x7f</td>
+  <td>57344</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x41</td>
+  <td>1.25</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x3f</td>
+  <td>0.875</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x46</td>
+  <td>3 (Δ ≈ 1.416x10⁻¹)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x4c</td>
+  <td>8</td>
+</tr>
+</tbody>
+</table>
+<br>
+
+<p>FNUZ (Float NaN Unsigned Zero) variant of <a href="#e5m2-ocpe5m2-152">e5m2</a>.</p>
+<p>Supported primarily today by AMD hardware (MI300).</p>
+<p>Uses a bias of 16 (1 more than <a href="#e5m2-ocpe5m2-152">e5m2</a>) for the exponent.</p>
+<p>Has no dedicated infinity, with NaN being 0x80 (-0). Removing +/- infinity and 6 NaN bit-patterns in favour of a single NaN, it has 8 more unique values.</p>
+<p>As there is no infinity to overflow to, values beyond the maximum magnitude always saturate.</p>
 <h3 id="e4m3-ocpe4m3-143">e4m3 (OCP-E4M3, 1.4.3)</h3>
 <div class=fmt_breakdown>
   <div class=fmt_s_t>sign</div>
@@ -831,6 +908,79 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 <li>Saturate: Clamp to the max magnitude.</li>
 <li>NonSaturate: Greater than max magnitude becomes NaN.</li>
 </ul>
+<h3 id="e4m3fnuz-143">e4m3fnuz (1.4.3)</h3>
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(4 bit)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(3 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>3</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x01</td>
+  <td>0.0009765625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x07</td>
+  <td>0.0068359375</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x08</td>
+  <td>0.0078125</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x7f</td>
+  <td>240</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x41</td>
+  <td>1.125</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x3f</td>
+  <td>0.9375</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x4d</td>
+  <td>3.25 (Δ ≈ 1.084x10⁻¹)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x60</td>
+  <td>16</td>
+</tr>
+</tbody>
+</table>
+<br>
+
+<p>FNUZ (Float NaN Unsigned Zero) variant of <a href="#e4m3-ocpe4m3-143">e4m3</a>.</p>
+<p>Supported primarily today by AMD hardware (MI300).</p>
+<p>Uses a bias of 8 (1 more than <a href="#e4m3-ocpe4m3-143">e4m3</a>) for the exponent.</p>
+<p>Has no dedicated infinity, with NaN being 0x80 (-0). By reducing the 2 NaN values to 1 and removing -0, it has 2 more unique values.</p>
+<p>As there is no infinity to overflow to, values beyond the maximum magnitude always saturate.</p>
 <h3 id="e8m0-ocpmxe8m0-080">e8m0 (OCP-MX-E8M0, 0.8.0)</h3>
 <div class=fmt_breakdown>
   <div class=fmt_s_t></div>

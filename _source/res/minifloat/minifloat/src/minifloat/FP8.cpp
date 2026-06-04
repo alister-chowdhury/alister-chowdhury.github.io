@@ -74,6 +74,62 @@ uint8_t f16_to_e5m2(uint16_t x, OFP8_SatMode sat_mode) {
   return e5m2_saturate(y, sat_mode);
 }
 
+uint8_t f32_to_e4m3fnuz(float x) {
+  // Handle NaNs
+  if (std::isnan(x)) {
+    return 0x80u;
+  }
+
+  // Handle negatives (including -0), we're going to potentially
+  // allow the value to overflow when converting.
+  uint8_t s = (0x80 & (asuint(x) >> 24));
+  if (x < 0.0f) {
+    x = -x;
+  }
+  uint32_t v = generic_convert_from_f32(x, false, 4, 3, 1, false);
+  if (v > 0x7fu) {
+    v = 0x7fu;
+  }
+
+  // Only apply sign if it's non zero, otherwise we're creating a NaN
+  return v ? (v | s) : 0u;
+}
+
+float e4m3fnuz_to_f32(uint8_t x) {
+  if (x == 0x80) {
+    return NAN;
+  }
+  return generic_convert_to_f32(x, true, 4, 3, 1, false);
+}
+
+uint8_t f32_to_e5m2fnuz(float x) {
+  // Handle NaNs
+  if (std::isnan(x)) {
+    return 0x80u;
+  }
+
+  // Handle negatives (including -0), we're going to potentially
+  // allow the value to overflow when converting.
+  uint8_t s = (0x80 & (asuint(x) >> 24));
+  if (x < 0.0f) {
+    x = -x;
+  }
+  uint32_t v = generic_convert_from_f32(x, false, 5, 2, 1, false);
+  if (v > 0x7fu) {
+    v = 0x7fu;
+  }
+
+  // Only apply sign if it's non zero, otherwise we're creating a NaN
+  return v ? (v | s) : 0u;
+}
+
+float e5m2fnuz_to_f32(uint8_t x) {
+  if (x == 0x80) {
+    return NAN;
+  }
+  return generic_convert_to_f32(x, true, 5, 2, 1, false);
+}
+
 uint8_t f32_to_e8m0(float x) {
   if (std::isnan(x)) {
     return 0xffu;
