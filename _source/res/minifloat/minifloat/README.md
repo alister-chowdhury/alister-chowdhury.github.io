@@ -18,6 +18,7 @@ Live demo: [Minifloat Format Converter](https://alister-chowdhury.github.io/post
 * fp8 (1.5.2)
 * e4m3 (OCP-E4M3, 1.4.3)
 * e5m2 (OCP-E5M2, 1.5.2)
+* e8m0 (OCP-MX-E8M0, 0.8.0)
 
 ## 16bit formats
 * bfloat16 (1.8.7)

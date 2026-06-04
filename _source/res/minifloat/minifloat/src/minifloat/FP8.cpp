@@ -73,3 +73,37 @@ uint8_t f16_to_e5m2(uint16_t x, OFP8_SatMode sat_mode) {
   uint8_t y = f16_to_fp8(x);
   return e5m2_saturate(y, sat_mode);
 }
+
+uint8_t f32_to_e8m0(float x) {
+  if (std::isnan(x)) {
+    return 0xffu;
+  }
+
+  // Clamp negative values to 2^-127, there isn't anything in spec
+  // about what to do with these, but I imagine most people would
+  // naturally expect this.
+  if (x <= 0.0f) {
+    return 0u;
+  }
+
+  uint8_t r = uint8_t(rtne_trunc(asuint(x), 23));
+
+  // Clamp inf to 2^127, spec also doesn't seems to say anything
+  // about handling infinities, but I doubt most people want large
+  // exponents to turn into a NaN.
+  if (r == 0xffu) {
+    r = 0xfeu;
+  }
+  return r;
+}
+
+float e8m0_to_f32(uint8_t x) {
+  if (x == 0xffu) {
+    return NAN;
+  }
+  // 0 is 2^-127, rather than 0, the rest maps directly to the exponent.
+  if (!x) {
+    return asfloat(0x400000u);
+  }
+  return asfloat(uint32_t(x) << 23);
+}

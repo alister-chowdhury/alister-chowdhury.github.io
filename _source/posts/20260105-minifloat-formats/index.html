@@ -48,6 +48,7 @@
     <meta property="og:article:tag" content="fp8">
     <meta property="og:article:tag" content="e4m3">
     <meta property="og:article:tag" content="e5m2">
+    <meta property="og:article:tag" content="e8m0">
     <meta property="og:article:tag" content="bfloat16">
     <meta property="og:article:tag" content="half">
     <meta property="og:article:tag" content="r11g11b10">
@@ -56,7 +57,7 @@
 
   <title>Minifloat Format Converter</title>
   <meta name="description" content="An overview of minifloat formats and converting to them.">
-  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e5m2, bfloat16, half, r11g11b10, tf32">
+  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e5m2, e8m0, bfloat16, half, r11g11b10, tf32">
 
   <script>
     window.minifloatsModuleLoaded = false;
@@ -284,6 +285,7 @@
         <input disabled type="radio" id="cnvFormat-e5m2_sat" name="cnvFormat"><label for="cnvFormat-e5m2_sat">E5M2 (Sat)</label>
         <input disabled type="radio" id="cnvFormat-e4m3_nosat" name="cnvFormat"><label for="cnvFormat-e4m3_nosat">E4M3</label>
         <input disabled type="radio" id="cnvFormat-e4m3_sat" name="cnvFormat"><label for="cnvFormat-e4m3_sat">E4M3 (Sat)</label>
+        <input disabled type="radio" id="cnvFormat-e8m0" name="cnvFormat"><label for="cnvFormat-e8m0">E8M0</label>
     </div>
   </div>
 
@@ -491,6 +493,7 @@
       <li><a href="#fp8-152">fp8 (1.5.2)</a></li>
       <li><a href="#e5m2-ocpe5m2-152">e5m2 (OCP-E5M2, 1.5.2)</a></li>
       <li><a href="#e4m3-ocpe4m3-143">e4m3 (OCP-E4M3, 1.4.3)</a></li>
+      <li><a href="#e8m0-ocpmxe8m0-080">e8m0 (OCP-MX-E8M0, 0.8.0)</a></li>
       </ul>
     </li>
     <li><a href="#6bit-formats">6bit formats</a>
@@ -828,6 +831,62 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 <li>Saturate: Clamp to the max magnitude.</li>
 <li>NonSaturate: Greater than max magnitude becomes NaN.</li>
 </ul>
+<h3 id="e8m0-ocpmxe8m0-080">e8m0 (OCP-MX-E8M0, 0.8.0)</h3>
+<div class=fmt_breakdown>
+  <div class=fmt_s_t></div>
+  <div class=fmt_e_t>exponent<br>(8 bit)</div>
+  <div class="fmt_m_t fmt_m_wr"></div>
+  <div class=fmt_s_v></div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v></div>
+  <div class=fmt_o></div>
+  <div class=fmt_o>&#9679;<br>0</div>
+  <div class=fmt_o></div>
+</div>
+
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value</strong></td>
+  <td>0x00</td>
+  <td>5.877471754111438e-39</td>
+</tr>
+<tr>
+  <td><strong>Largest value</strong></td>
+  <td>0xfe</td>
+  <td>1.7014118346046923e+38</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x80</td>
+  <td>2</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x7e</td>
+  <td>0.5</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x81</td>
+  <td>4 (Δ ≈ 8.584x10⁻¹)</td>
+</tr>
+</tbody>
+</table>
+<br>
+
+<p>Part of the <a href="#OCPMX-ext">OCP-MX specification</a>, targeting machine learning and designed to be used as part of a block with a shared scaling factor.</p>
+<p>Only has positive powers of 2 and scales from 2⁻¹²⁷ (0x00) to 2¹²⁷ (0xfe), with NaN being specifically at 0xff.</p>
+<p>Has no dedicated Infinity or 0.</p>
 <h2 id="6bit-formats">6bit formats</h2>
 <h3 id="e3m2-ocpmxe3m2-132">e3m2 (OCP-MX-E3M2, 1.3.2)</h3>
 <div class=fmt_breakdown>
@@ -1417,6 +1476,9 @@ half h11 = ashalf((uint16_t)u11_bits &lt;&lt; 4);
       cnv_val_inp.value = "";
       getElement("cnv_sgn_cont").style.display = (
         currentInterface.has_sign ? "contents" : "none"
+      );
+      getElement("cnv_mant_cont").style.display = (
+        (currentInterface.m_bits > 0) ? "contents" : "none"
       );
 
       const signBitMask = 1 << (currentInterface.e_bits + currentInterface.m_bits);

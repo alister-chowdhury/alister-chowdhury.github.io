@@ -53,6 +53,9 @@ WASM_EXPORT uint8_t f16_to_e5m2_(uint8_t x, int saturate) {
 
 WASM_EXPORT_WRAPPER_1(uint16_t, e5m2_to_f16, uint8_t)
 
+WASM_EXPORT_WRAPPER_1(uint8_t, f32_to_e8m0, float)
+WASM_EXPORT_WRAPPER_1(float, e8m0_to_f32, uint8_t)
+
 WASM_EXPORT_WRAPPER_1(uint32_t, f32_to_tf32, float)
 WASM_EXPORT_WRAPPER_1(float, tf32_to_f32, uint32_t)
 

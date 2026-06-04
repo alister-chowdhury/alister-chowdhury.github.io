@@ -47,6 +47,15 @@ inline uint8_t half_to_e5m2(uint16_t x, enum OFP8_SatMode sat_mode) {
 }
 inline uint16_t e5m2_to_half(uint8_t x) { return fp8_to_f16(x); }
 
+// OCP-MX Formats
+// https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+
+// OCP-MX-E8M0
+// 0.8.0
+// NaN = 0xff, no 0, no dedicated infinity.
+uint8_t f32_to_e8m0(float x);
+float e8m0_to_f32(uint8_t x);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif  // __cplusplus

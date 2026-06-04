@@ -2,7 +2,7 @@
  <head>
   <title>Minifloat Format Converter</title>
   <meta name="description" content="An overview of minifloat formats and converting to them.">
-  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e5m2, bfloat16, half, r11g11b10, tf32">
+  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e5m2, e8m0, bfloat16, half, r11g11b10, tf32">
 
   <script>
     window.minifloatsModuleLoaded = false;
@@ -220,6 +220,7 @@
         <input disabled type="radio" id="cnvFormat-e5m2_sat" name="cnvFormat"><label for="cnvFormat-e5m2_sat">E5M2 (Sat)</label>
         <input disabled type="radio" id="cnvFormat-e4m3_nosat" name="cnvFormat"><label for="cnvFormat-e4m3_nosat">E4M3</label>
         <input disabled type="radio" id="cnvFormat-e4m3_sat" name="cnvFormat"><label for="cnvFormat-e4m3_sat">E4M3 (Sat)</label>
+        <input disabled type="radio" id="cnvFormat-e8m0" name="cnvFormat"><label for="cnvFormat-e8m0">E8M0</label>
     </div>
   </div>
 
@@ -553,6 +554,38 @@ Like [e5m2](#e5m2-ocpe5m2-152) has saturating modes:
 * NonSaturate: Greater than max magnitude becomes NaN.
 
 
+### e8m0 (OCP-MX-E8M0, 0.8.0)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t></div>
+  <div class=fmt_e_t>exponent<br>(8 bit)</div>
+  <div class="fmt_m_t fmt_m_wr"></div>
+  <div class=fmt_s_v></div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v></div>
+  <div class=fmt_o></div>
+  <div class=fmt_o>&#9679;<br>0</div>
+  <div class=fmt_o></div>
+</div>
+
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value** | 0x00 | 5.877471754111438e-39 |
+| **Largest value** | 0xfe | 1.7014118346046923e+38 |
+| **Smallest value > 1** | 0x80 | 2 |
+| **Largest value < 1** | 0x7e | 0.5 |
+| **Closest value to &#x03C0;** | 0x81 | 4 (&Delta; &asymp; 8.584x10&#8315;&#185;) |
+
+<br>
+
+Part of the [OCP-MX specification](#OCPMX-ext), targeting machine learning and designed to be used as part of a block with a shared scaling factor.
+
+Only has positive powers of 2 and scales from 2&#8315;&#185;&#178;&#8311; (0x00) to 2&#185;&#178;&#8311; (0xfe), with NaN being specifically at 0xff.
+
+Has no dedicated Infinity or 0.
+
 ## 6bit formats
 
 
@@ -879,6 +912,9 @@ half h11 = ashalf((uint16_t)u11_bits << 4);
       cnv_val_inp.value = "";
       getElement("cnv_sgn_cont").style.display = (
         currentInterface.has_sign ? "contents" : "none"
+      );
+      getElement("cnv_mant_cont").style.display = (
+        (currentInterface.m_bits > 0) ? "contents" : "none"
       );
 
       const signBitMask = 1 << (currentInterface.e_bits + currentInterface.m_bits);

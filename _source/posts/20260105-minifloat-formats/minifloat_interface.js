@@ -16,6 +16,7 @@ const minifloat = WebAssembly.instantiateStreaming(fetch("/res/minifloat.wasm"))
         e4m3_to_f32: wasm_funcs.e4m3_to_f32_,
         e5m2_to_f16: wasm_funcs.e5m2_to_f16_,
         e5m2_to_f32: wasm_funcs.e5m2_to_f32_,
+        e8m0_to_f32: wasm_funcs.e8m0_to_f32_,
         f16_to_e5m2: wasm_funcs.f16_to_e5m2_,
         f16_to_f32: wasm_funcs.f16_to_f32_,
         f16_to_fp8: wasm_funcs.f16_to_fp8_,
@@ -29,6 +30,7 @@ const minifloat = WebAssembly.instantiateStreaming(fetch("/res/minifloat.wasm"))
         f32_to_e3m2: wasm_funcs.f32_to_e3m2_,
         f32_to_e4m3: wasm_funcs.f32_to_e4m3_,
         f32_to_e5m2: wasm_funcs.f32_to_e5m2_,
+        f32_to_e8m0: wasm_funcs.f32_to_e8m0_,
         f32_to_f16: wasm_funcs.f32_to_f16_,
         f32_to_fp8: wasm_funcs.f32_to_fp8_,
         f32_to_tf32: wasm_funcs.f32_to_tf32_,
@@ -128,6 +130,16 @@ export const minifloatInterface = minifloat.then( funcs => {
         from_f32: (x) => funcs.f32_to_e4m3(x, false)
     };
 
+    const e8m0 = {
+        has_sign: false,
+        e_bits: 8,
+        m_bits: 0,
+        num_bits: 8,
+        no_subnormals: true,
+        to_f32: funcs.e8m0_to_f32,
+        from_f32: funcs.f32_to_e8m0
+    };
+
     const e2m1 = {
         has_sign: true,
         e_bits: 2,
@@ -195,6 +207,7 @@ export const minifloatInterface = minifloat.then( funcs => {
         "e5m2_nosat": e5m2_nosat,
         "e4m3_sat": e4m3_sat,
         "e4m3_nosat": e4m3_nosat,
+        "e8m0": e8m0,
 
         "u10": u10,
         "u11": u11,
@@ -304,7 +317,7 @@ export const minifloatInterface = minifloat.then( funcs => {
         const s_val = (s == 0 ? 1.0 : -1.0);
         const e_mask = (1 << interface_.e_bits) - 1;
         const e = (v >> interface_.m_bits) & e_mask;
-        const subnormal = e == 0;
+        const subnormal = (e == 0) && !interface_.no_subnormals;
         const e_val = (e + subnormal) - Math.floor(e_mask / 2);
         const m_mask = (1 << interface_.m_bits) - 1;
         const m = v & m_mask;
