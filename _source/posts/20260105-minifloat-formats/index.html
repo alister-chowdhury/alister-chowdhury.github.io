@@ -40,6 +40,7 @@
     <meta property="og:article:published_time" content="2026-01-05T00:00:00">
     <meta property="og:article:tag" content="minifloat">
     <meta property="og:article:tag" content="converter">
+    <meta property="og:article:tag" content="float">
     <meta property="og:article:tag" content="e2m1">
     <meta property="og:article:tag" content="binary4p2sf">
     <meta property="og:article:tag" content="binary4p2se">
@@ -47,17 +48,20 @@
     <meta property="og:article:tag" content="e3m2">
     <meta property="og:article:tag" content="fp8">
     <meta property="og:article:tag" content="e4m3">
+    <meta property="og:article:tag" content="e4m3fnuz">
     <meta property="og:article:tag" content="e5m2">
+    <meta property="og:article:tag" content="e5m2fnuz">
     <meta property="og:article:tag" content="e8m0">
     <meta property="og:article:tag" content="bfloat16">
     <meta property="og:article:tag" content="half">
+    <meta property="og:article:tag" content="f16">
     <meta property="og:article:tag" content="r11g11b10">
     <meta property="og:article:tag" content="tf32">
 <script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"Article","author":[{"@type":"Person","name":"Alister Chowdhury"}],"name":"Minifloat Format Converter","url":"https://alister-chowdhury.github.io/posts/20260105-minifloat-formats/","description":"An overview of minifloat formats and converting to them.","thumbnailUrl":"https://alister-chowdhury.github.io/posts/20260105-minifloat-formats/thumbnail.png","datePublished":"2026-01-05T00:00:00"}</script>
 
   <title>Minifloat Format Converter</title>
   <meta name="description" content="An overview of minifloat formats and converting to them.">
-  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e5m2, e8m0, bfloat16, half, r11g11b10, tf32">
+  <meta name="keywords" content="minifloat, converter, float, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e4m3fnuz, e5m2, e5m2fnuz, e8m0, bfloat16, half, f16, r11g11b10, tf32">
 
   <script>
     window.minifloatsModuleLoaded = false;
@@ -458,7 +462,8 @@
 
   <div id=cnv_disc>
     NB: e5m2 / e4m3 saturation modes only apply when providing a decimal value.<br>
-    Lovingly based of <a href="https://www.h-schmidt.net/FloatConverter/IEEE754.html" target="_blank" rel="noopener noreferrer">https://www.h-schmidt.net/FloatConverter</a> and <a href="https://flop.evanau.dev/" target="_blank" rel="noopener noreferrer">flop.evanau.dev</a>
+    All input conversions use rounding-to-nearest-even.<br>
+    Lovingly based on <a href="https://www.h-schmidt.net/FloatConverter/IEEE754.html" target="_blank" rel="noopener noreferrer">https://www.h-schmidt.net/FloatConverter</a> and <a href="https://flop.evanau.dev/" target="_blank" rel="noopener noreferrer">flop.evanau.dev</a>
 
 <br>
 <br>
@@ -526,9 +531,13 @@
 
 <h2 id="introduction">Introduction</h2>
 <p>Minifloats are a bunch of different floating point formats, like your standard IEEE-754 float32, but smaller!</p>
+<p>Each of them makes the delicate trade off between bandwidth, computing cost and precision.<br>
+No one format can claim to dominate the others in every situation.</p>
 <p>They can roughly be categorised into two use cases: Rendering (VFX and Games) and Machine learning.
 However with things like <a href="https://devblogs.microsoft.com/directx/d3d12-linalg-preview/" target="_blank" rel="noopener noreferrer">D3D12 LinAlg</a>, it probably
 won't be long until games start using neural networks (with these formats) alongside traditional rendering techniques.</p>
+<p>The (s.e.m) notation you might see in this e.g (1.8.7) means (sign.exponent.mantissa) in terms of bits.<br>
+So (1.8.7) means (1 sign bit, 8 exponent bits, 7 mantissa bits) and really acts as a shorthand way of identifying the shape of a floating point format.</p>
 <h2 id="16bit-formats">16bit formats</h2>
 <h3 id="bfloat16-187">bfloat16 (1.8.7)</h3>
 <div class=fmt_breakdown>
@@ -752,6 +761,73 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 <pre><code class="language-c">half h = ashalf((uint16_t)fp8_bits &lt;&lt; 8);
 </code></pre>
 <h3 id="e5m2-ocpe5m2-152">e5m2 (OCP-E5M2, 1.5.2)</h3>
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(2 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>2</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x01</td>
+  <td>0.0000152587890625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x03</td>
+  <td>0.0000457763671875</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x04</td>
+  <td>0.00006103515625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x7b</td>
+  <td>57344</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x3d</td>
+  <td>1.25</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x3b</td>
+  <td>0.875</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x42</td>
+  <td>3 (Δ ≈ 1.416x10⁻¹)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x48</td>
+  <td>8</td>
+</tr>
+</tbody>
+</table>
+<br>
+
 <p>Part of the <a href="#OFP8-ext">OFP8 specification</a>, targeting machine learning.</p>
 <p>Has larger range than <a href="#e4m3-ocpe4m3-143">e4m3</a>, making it useful for <a href="#nv-fp8-prec-traning-ext">gradients</a>.</p>
 <p>Stored the same as <a href="#fp8-152">fp8</a>, but with OFP8 saturation applied when converting from another format.</p>
@@ -1274,7 +1350,7 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 </div>
 
 <h3 id="binary4p2se">binary4p2se</h3>
-<p>The same as <a href="#binary4p2sf">binary4p2sf</a>, but 6 is replaced with Inf.</p>
+<p>The same as <a href="#binary4p2sf">binary4p2sf</a>, but ±6 is replaced with ±Inf.</p>
 <div class="ralign_table">
 
 <table>

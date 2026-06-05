@@ -2,7 +2,7 @@
  <head>
   <title>Minifloat Format Converter</title>
   <meta name="description" content="An overview of minifloat formats and converting to them.">
-  <meta name="keywords" content="minifloat, converter, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e5m2, e8m0, bfloat16, half, r11g11b10, tf32">
+  <meta name="keywords" content="minifloat, converter, float, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e4m3fnuz, e5m2, e5m2fnuz, e8m0, bfloat16, half, f16, r11g11b10, tf32">
 
   <script>
     window.minifloatsModuleLoaded = false;
@@ -330,7 +330,8 @@ emit_bit_checkbox = lambda prefix, n, hidden, checked: r"""
 
   <div id=cnv_disc>
     NB: e5m2 / e4m3 saturation modes only apply when providing a decimal value.<br>
-    Lovingly based of <a href="https://www.h-schmidt.net/FloatConverter/IEEE754.html" target="_blank">https://www.h-schmidt.net/FloatConverter</a> and <a href="https://flop.evanau.dev/" target="_blank">flop.evanau.dev</a>
+    All input conversions use rounding-to-nearest-even.<br>
+    Lovingly based on <a href="https://www.h-schmidt.net/FloatConverter/IEEE754.html" target="_blank">https://www.h-schmidt.net/FloatConverter</a> and <a href="https://flop.evanau.dev/" target="_blank">flop.evanau.dev</a>
 
 <br>
 <br>
@@ -376,9 +377,15 @@ def add_github_link(path, text):
 
 Minifloats are a bunch of different floating point formats, like your standard IEEE-754 float32, but smaller!
 
+Each of them makes the delicate trade off between bandwidth, computing cost and precision.<br>
+No one format can claim to dominate the others in every situation.
+
 They can roughly be categorised into two use cases: Rendering (VFX and Games) and Machine learning.
 However with things like <a href="https://devblogs.microsoft.com/directx/d3d12-linalg-preview/" target="_blank">D3D12 LinAlg</a>, it probably
 won't be long until games start using neural networks (with these formats) alongside traditional rendering techniques.
+
+The (s.e.m) notation you might see in this e.g (1.8.7) means (sign.exponent.mantissa) in terms of bits.<br>
+So (1.8.7) means (1 sign bit, 8 exponent bits, 7 mantissa bits) and really acts as a shorthand way of identifying the shape of a floating point format.
 
 
 ## 16bit formats
@@ -503,6 +510,33 @@ half h = ashalf((uint16_t)fp8_bits << 8);
 
 
 ### e5m2 (OCP-E5M2, 1.5.2)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t>sign</div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class="fmt_m_t fmt_m_wr">mantissa<br>(2 bit)</div>
+  <div class=fmt_s_v>&block;</div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;</div>
+  <div class=fmt_o>&#9679;<br>7</div>
+  <div class=fmt_o>&#9679;<br>2</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x01 | 0.0000152587890625 |
+| **Largest value (Denormal)** | 0x03 | 0.0000457763671875 |
+| **Smallest value (Normal)** | 0x04 | 0.00006103515625 |
+| **Largest value (Normal)** | 0x7b | 57344 |
+| **Smallest value > 1** | 0x3d | 1.25 |
+| **Largest value < 1** | 0x3b | 0.875 |
+| **Closest value to &#x03C0;** | 0x42 | 3 (&Delta; &asymp; 1.416x10&#8315;&#185;) |
+| **Largest sequential integer** | 0x48 | 8 |
+
+<br>
 
 Part of the [OFP8 specification](#OFP8-ext), targeting machine learning.
 
@@ -780,7 +814,7 @@ The same as [e2m1](#e2m1-ocpmxe2m1), but -0 is replaced with NaN.
 
 ### binary4p2se
 
-The same as [binary4p2sf](#binary4p2sf), but 6 is replaced with Inf.
+The same as [binary4p2sf](#binary4p2sf), but &#177;6 is replaced with &#177;Inf.
 
 <div class="ralign_table">
 
