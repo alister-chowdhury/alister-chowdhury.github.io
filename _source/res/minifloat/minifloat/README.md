@@ -30,3 +30,4 @@ Live demo: [Minifloat Format Converter](https://alister-chowdhury.github.io/post
 * tf32 (1.8.10)
 * u11 (R11G11B10, 0.5.6)
 * u10 (R11G11B10, 0.5.5)
+* e5m9 (E5B9G9R9, 0.5.9)

@@ -81,6 +81,12 @@ WASM_EXPORT_WRAPPER_1(uint16_t, u11_to_f16, uint16_t)
 WASM_EXPORT_WRAPPER_1(uint16_t, f16_to_u10, uint16_t)
 WASM_EXPORT_WRAPPER_1(uint16_t, u10_to_f16, uint16_t)
 
+WASM_EXPORT_WRAPPER_1(uint16_t, f32_to_e5m9, float)
+WASM_EXPORT_WRAPPER_1(float, e5m9_to_f32, uint16_t)
+
+WASM_EXPORT_WRAPPER_1(uint16_t, f16_to_e5m9, uint16_t)
+WASM_EXPORT_WRAPPER_1(uint16_t, e5m9_to_f16, uint16_t)
+
 #else  // defined(__wasm) || defined(__wasm__)
 #warning "Skipping wasm bootstrapping code, since not targetting wasm."
 #endif  // defined(__wasm) || defined(__wasm__)

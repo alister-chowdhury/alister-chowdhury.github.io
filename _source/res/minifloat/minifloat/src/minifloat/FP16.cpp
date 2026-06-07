@@ -57,3 +57,21 @@ uint16_t f16_to_u10(uint16_t x) {
   }
   return uint16_t(rtne_trunc(x, 5));
 }
+
+uint16_t f32_to_e5m9(float x) {
+  return (uint16_t)generic_convert_from_f32(x, false, 5, 9);
+}
+float e5m9_to_f32(uint16_t x) { return generic_convert_to_f32(x, false, 5, 9); }
+
+uint16_t f16_to_e5m9(uint16_t x) {
+  // Clamp to 0, but allow NaNs to propagate
+  if (x & 0x8000) {
+    if (x < 0xfc01) {
+      return 0;
+    }
+    return 0x7fff >> 1;
+  } else if (x >= 0x7c01) {
+    return 0x7fff >> 1;
+  }
+  return uint16_t(rtne_trunc(x, 1));
+}

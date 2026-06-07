@@ -56,12 +56,13 @@
     <meta property="og:article:tag" content="half">
     <meta property="og:article:tag" content="f16">
     <meta property="og:article:tag" content="r11g11b10">
+    <meta property="og:article:tag" content="e5b9g9r9">
     <meta property="og:article:tag" content="tf32">
 <script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"Article","author":[{"@type":"Person","name":"Alister Chowdhury"}],"name":"Minifloat Format Converter","url":"https://alister-chowdhury.github.io/posts/20260105-minifloat-formats/","description":"An overview of minifloat formats and converting to them.","thumbnailUrl":"https://alister-chowdhury.github.io/posts/20260105-minifloat-formats/thumbnail.png","datePublished":"2026-01-05T00:00:00"}</script>
 
   <title>Minifloat Format Converter</title>
   <meta name="description" content="An overview of minifloat formats and converting to them.">
-  <meta name="keywords" content="minifloat, converter, float, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e4m3fnuz, e5m2, e5m2fnuz, e8m0, bfloat16, half, f16, r11g11b10, tf32">
+  <meta name="keywords" content="minifloat, converter, float, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e4m3fnuz, e5m2, e5m2fnuz, e8m0, bfloat16, half, f16, r11g11b10, e5b9g9r9, tf32">
 
   <script>
     window.minifloatsModuleLoaded = false;
@@ -274,8 +275,9 @@
   </div>
 
   <div>
-    <div class="cnv_fmt_title">11-bit / 10-bit</div>
+    <div class="cnv_fmt_title">14-bit / 11-bit / 10-bit</div>
     <div class="knkRadio cnv_formats_cont">
+        <input disabled type="radio" id="cnvFormat-e5m9" name="cnvFormat"><label for="cnvFormat-e5m9">e5m9 (E5B9G9R9)</label>
         <input disabled type="radio" id="cnvFormat-u11" name="cnvFormat"><label for="cnvFormat-u11">u11 (R11G11B10)</label>
         <input disabled type="radio" id="cnvFormat-u10" name="cnvFormat"><label for="cnvFormat-u10">u10 (R11G11B10)</label>
     </div>
@@ -521,6 +523,7 @@
     <li><a href="#other">Other</a>
       <ul>
       <li><a href="#tensorfloat32-1810">TensorFloat-32 (1.8.10)</a></li>
+      <li><a href="#e5b9g9r9-059">E5B9G9R9 (0.5.9)</a></li>
       <li><a href="#r11g11b10-056-055">R11G11B10 (0.5.6 / 0.5.5)</a></li>
       </ul>
     </li>
@@ -533,7 +536,7 @@
 <p>Minifloats are a bunch of different floating point formats, like your standard IEEE-754 float32, but smaller!</p>
 <p>Each of them makes the delicate trade off between bandwidth, computing cost and precision.<br>
 No one format can claim to dominate the others in every situation.</p>
-<p>They can roughly be categorised into two use cases: Rendering (VFX and Games) and Machine learning.
+<p>They can roughly be categorised into two use cases: Rendering (VFX and Games) and Machine Learning.
 However with things like <a href="https://devblogs.microsoft.com/directx/d3d12-linalg-preview/" target="_blank" rel="noopener noreferrer">D3D12 LinAlg</a>, it probably
 won't be long until games start using neural networks (with these formats) alongside traditional rendering techniques.</p>
 <p>The (s.e.m) notation you might see in this e.g (1.8.7) means (sign.exponent.mantissa) in terms of bits.<br>
@@ -1469,6 +1472,87 @@ Additionally many GPUs can perform arithmetic directly on f16 values (usually pa
 Despite having 32 in the name, is actually 19 bits.</p>
 <p>Can be converted into a f32 by simply shifting.</p>
 <pre><code class="language-c">float f = asfloat(tf32_bits &lt;&lt; 13);
+</code></pre>
+<h3 id="e5b9g9r9-059">E5B9G9R9 (0.5.9)</h3>
+<div class=fmt_breakdown>
+  <div class=fmt_s_t></div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class=fmt_m_t>mantissa<br>(9 bit)</div>
+  <div class=fmt_s_v></div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_o></div>
+  <div class=fmt_o>&#9679;<br>9</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<br>
+
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th>Hex</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Smallest value (Denormal)</strong></td>
+  <td>0x0001</td>
+  <td>1.1920928955078125e-7</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Denormal)</strong></td>
+  <td>0x01ff</td>
+  <td>0.00006091594696044922</td>
+</tr>
+<tr>
+  <td><strong>Smallest value (Normal)</strong></td>
+  <td>0x0200</td>
+  <td>0.00006103515625</td>
+</tr>
+<tr>
+  <td><strong>Largest value (Normal)</strong></td>
+  <td>0x3dff</td>
+  <td>65472</td>
+</tr>
+<tr>
+  <td><strong>Smallest value &gt; 1</strong></td>
+  <td>0x1e01</td>
+  <td>1.001953125</td>
+</tr>
+<tr>
+  <td><strong>Largest value &lt; 1</strong></td>
+  <td>0x1dff</td>
+  <td>0.9990234375</td>
+</tr>
+<tr>
+  <td><strong>Closest value to π</strong></td>
+  <td>0x2124</td>
+  <td>3.140625 (Δ ≈ 9.677x10⁻⁴)</td>
+</tr>
+<tr>
+  <td><strong>Largest sequential integer</strong></td>
+  <td>0x3200</td>
+  <td>1024</td>
+</tr>
+</tbody>
+</table>
+<br>
+
+<p>Shortened unsigned IEEE 754 half-precision binary floating-point format.
+(Has the same exponent as a f16, but less mantissa bits).</p>
+<p>Colour values are stored as mantissa bits with a shared exponent.</p>
+<p>Often used as a HDR texture format (although largely replaced by BC6).</p>
+<p>The reasoning behind this format is that perceptually the human eye is a lot better at picking out differences in
+luminance than it is hue changes.<br>
+The same theory applies to formats like YCbCr, where it's not uncommon to transmit Y (luma) at a higher resolution
+than the chromacities (CbCr).<br>
+This idea can also be seen when storing baked lighting as L1 spherical harmonics. Rather than storing each channel as 4
+coefficients, it's pretty common to construct a weighted average and normalise against L0, with additional coefficients for R, G and B (12 floats becomes 6).</p>
+<p>Can be converted into a <a href="#f16-half-1510">f16</a> by simply shifting.</p>
+<pre><code class="language-c">half h = ashalf((uint16_t)e5m9_bits &lt;&lt; 1);
 </code></pre>
 <h3 id="r11g11b10-056-055">R11G11B10 (0.5.6 / 0.5.5)</h3>
 <div class=fmt_breakdown>

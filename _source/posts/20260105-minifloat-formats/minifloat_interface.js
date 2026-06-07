@@ -18,8 +18,11 @@ const minifloat = WebAssembly.instantiateStreaming(fetch("/res/minifloat.wasm"))
         e5m2_to_f16: wasm_funcs.e5m2_to_f16_,
         e5m2_to_f32: wasm_funcs.e5m2_to_f32_,
         e5m2fnuz_to_f32: wasm_funcs.e5m2fnuz_to_f32_,
+        e5m9_to_f16: wasm_funcs.e5m9_to_f16,
+        e5m9_to_f32: wasm_funcs.e5m9_to_f32_,
         e8m0_to_f32: wasm_funcs.e8m0_to_f32_,
         f16_to_e5m2: wasm_funcs.f16_to_e5m2_,
+        f16_to_e5m9: wasm_funcs.f16_to_e5m9_,
         f16_to_f32: wasm_funcs.f16_to_f32_,
         f16_to_fp8: wasm_funcs.f16_to_fp8_,
         f16_to_u10: wasm_funcs.f16_to_u10_,
@@ -34,6 +37,7 @@ const minifloat = WebAssembly.instantiateStreaming(fetch("/res/minifloat.wasm"))
         f32_to_e4m3fnuz: wasm_funcs.f32_to_e4m3fnuz_,
         f32_to_e5m2: wasm_funcs.f32_to_e5m2_,
         f32_to_e5m2fnuz: wasm_funcs.f32_to_e5m2fnuz_,
+        f32_to_e5m9: wasm_funcs.f32_to_e5m9_,
         f32_to_e8m0: wasm_funcs.f32_to_e8m0_,
         f32_to_f16: wasm_funcs.f32_to_f16_,
         f32_to_fp8: wasm_funcs.f32_to_fp8_,
@@ -87,6 +91,15 @@ export const minifloatInterface = minifloat.then( funcs => {
         num_bits: 11,
         to_f32: funcs.u11_to_f32,
         from_f32: funcs.f32_to_u11
+    };
+
+    const e5m9 = {
+        has_sign: false,
+        e_bits: 5,
+        m_bits: 9,
+        num_bits: 14,
+        to_f32: funcs.e5m9_to_f32,
+        from_f32: funcs.f32_to_e5m9
     };
 
     const fp8 = {
@@ -237,6 +250,7 @@ export const minifloatInterface = minifloat.then( funcs => {
 
         "u10": u10,
         "u11": u11,
+        "e5m9": e5m9,
 
         "bfloat16": bfloat16,
         "f16": f16,
@@ -333,7 +347,7 @@ export const minifloatInterface = minifloat.then( funcs => {
         result += "\n<br>\n\n";
         console.log(result);
     };
-    generateBreakdownTable("bfloat16");
+    generateBreakdownTable("e5m9");
 */
 
     // Breaks down a minifloat into it's components (s, exp, mant).

@@ -2,7 +2,7 @@
  <head>
   <title>Minifloat Format Converter</title>
   <meta name="description" content="An overview of minifloat formats and converting to them.">
-  <meta name="keywords" content="minifloat, converter, float, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e4m3fnuz, e5m2, e5m2fnuz, e8m0, bfloat16, half, f16, r11g11b10, tf32">
+  <meta name="keywords" content="minifloat, converter, float, e2m1, binary4p2sf, binary4p2se, e2m3, e3m2, fp8, e4m3, e4m3fnuz, e5m2, e5m2fnuz, e8m0, bfloat16, half, f16, r11g11b10, e5b9g9r9, tf32">
 
   <script>
     window.minifloatsModuleLoaded = false;
@@ -205,8 +205,9 @@
   </div>
 
   <div>
-    <div class="cnv_fmt_title">11-bit / 10-bit</div>
+    <div class="cnv_fmt_title">14-bit / 11-bit / 10-bit</div>
     <div class="knkRadio cnv_formats_cont">
+        <input disabled type="radio" id="cnvFormat-e5m9" name="cnvFormat"><label for="cnvFormat-e5m9">e5m9 (E5B9G9R9)</label>
         <input disabled type="radio" id="cnvFormat-u11" name="cnvFormat"><label for="cnvFormat-u11">u11 (R11G11B10)</label>
         <input disabled type="radio" id="cnvFormat-u10" name="cnvFormat"><label for="cnvFormat-u10">u10 (R11G11B10)</label>
     </div>
@@ -380,7 +381,7 @@ Minifloats are a bunch of different floating point formats, like your standard I
 Each of them makes the delicate trade off between bandwidth, computing cost and precision.<br>
 No one format can claim to dominate the others in every situation.
 
-They can roughly be categorised into two use cases: Rendering (VFX and Games) and Machine learning.
+They can roughly be categorised into two use cases: Rendering (VFX and Games) and Machine Learning.
 However with things like <a href="https://devblogs.microsoft.com/directx/d3d12-linalg-preview/" target="_blank">D3D12 LinAlg</a>, it probably
 won't be long until games start using neural networks (with these formats) alongside traditional rendering techniques.
 
@@ -865,6 +866,55 @@ Despite having 32 in the name, is actually 19 bits.
 Can be converted into a f32 by simply shifting.
 ```c
 float f = asfloat(tf32_bits << 13);
+```
+
+### E5B9G9R9 (0.5.9)
+
+<div class=fmt_breakdown>
+  <div class=fmt_s_t></div>
+  <div class=fmt_e_t>exponent<br>(5 bit)</div>
+  <div class=fmt_m_t>mantissa<br>(9 bit)</div>
+  <div class=fmt_s_v></div>
+  <div class=fmt_e_v>&block;&block;&block;&block;&block;</div>
+  <div class=fmt_m_v>&block;&block;&block;&block;&block;&block;&block;&block;&block;</div>
+  <div class=fmt_o></div>
+  <div class=fmt_o>&#9679;<br>9</div>
+  <div class=fmt_o>&#9679;<br>0</div>
+</div>
+
+<br>
+
+| | Hex | Value |
+| -- | -- | -- |
+| **Smallest value (Denormal)** | 0x0001 | 1.1920928955078125e-7 |
+| **Largest value (Denormal)** | 0x01ff | 0.00006091594696044922 |
+| **Smallest value (Normal)** | 0x0200 | 0.00006103515625 |
+| **Largest value (Normal)** | 0x3dff | 65472 |
+| **Smallest value > 1** | 0x1e01 | 1.001953125 |
+| **Largest value < 1** | 0x1dff | 0.9990234375 |
+| **Closest value to &#x03C0;** | 0x2124 | 3.140625 (&Delta; &asymp; 9.677x10&#8315;&#8308;) |
+| **Largest sequential integer** | 0x3200 | 1024 |
+
+<br>
+
+Shortened unsigned IEEE 754 half-precision binary floating-point format.
+(Has the same exponent as a f16, but less mantissa bits).
+
+Colour values are stored as mantissa bits with a shared exponent.
+
+Often used as a HDR texture format (although largely replaced by BC6).
+
+The reasoning behind this format is that perceptually the human eye is a lot better at picking out differences in
+luminance than it is hue changes.<br>
+The same theory applies to formats like YCbCr, where it's not uncommon to transmit Y (luma) at a higher resolution
+than the chromacities (CbCr).<br>
+This idea can also be seen when storing baked lighting as L1 spherical harmonics. Rather than storing each channel as 4
+coefficients, it's pretty common to construct a weighted average and normalise against L0, with additional coefficients for R, G and B (12 floats becomes 6).
+
+
+Can be converted into a [f16](#f16-half-1510) by simply shifting.
+```c
+half h = ashalf((uint16_t)e5m9_bits << 1);
 ```
 
 
