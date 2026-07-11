@@ -1,36 +1,14 @@
 import sys
 import os
 
-sys.path.insert(
-    0,
-    os.path.abspath(
-        os.path.join(
-            __file__,
-            "..",
-            "..",
-            ".."
-        )
-    )
-)
+sys.path.insert(0, os.path.abspath(os.path.join(__file__, "..", "..", "..")))
 
 from builder.cc_compiler import compile_c, make_static_lib
 
-_ROOT_DIR = os.path.abspath(
-    os.path.join(__file__, "..")
-)
-
-_SRC_DIR = os.path.abspath(
-    os.path.join(__file__, "..", "src")
-)
-
-_INCLUDE_DIR = os.path.abspath(
-    os.path.join(__file__, "..", "include")
-)
-
-_BUILD_DIR = os.path.abspath(
-    os.path.join(__file__, "..", "build")
-)
-
+_ROOT_DIR = os.path.abspath(os.path.join(__file__, ".."))
+_SRC_DIR = os.path.abspath(os.path.join(__file__, "..", "src"))
+_INCLUDE_DIR = os.path.abspath(os.path.join(__file__, "..", "include"))
+_BUILD_DIR = os.path.abspath(os.path.join(__file__, "..", "build"))
 
 _MUSL_FILES = (
     "acos.c",
@@ -130,12 +108,11 @@ _MUSL_FILES = (
     "__math_xflowf.c",
 )
 
-
 _MUSL_EXTRA_ARGS = (
-    '-Wno-ignored-pragmas',
-    '-Dweak=__attribute__((__weak__))',
+    "-Wno-ignored-pragmas",
+    "-Dweak=__attribute__((__weak__))",
     '-Dhidden=__attribute__((__visibility__("hidden")))',
-    '-Dweak_alias(old, new)=extern __typeof(old) new __attribute__((__weak__, __alias__(#old)))',
+    "-Dweak_alias(old, new)=extern __typeof(old) new __attribute__((__weak__, __alias__(#old)))",
 )
 
 if __name__ == "__main__":
@@ -145,29 +122,47 @@ if __name__ == "__main__":
 
     if not os.path.isdir(_BUILD_DIR):
         os.makedirs(_BUILD_DIR)
-
     obj_files = []
-
-    # Compile musl math libraries
-    musl_includes = includes + [
-        _src("musl/include/"),
-        _src("musl/arch/generic/")
-    ]
-    for musl_file in _MUSL_FILES:
-        musl_obj = _build("{0}.o".format(musl_file))
-        obj_files.append(musl_obj)
-        compile_c(
-            _src("musl/src/", musl_file),
-            musl_obj,
-            include_paths=musl_includes,
-            extra_args=_MUSL_EXTRA_ARGS
-        )
 
     memcmp_object = _build("_memcmp.o")
     obj_files.append(memcmp_object)
     compile_c(_src("_memcmp.c"), memcmp_object, include_paths=includes)
 
     malloc_simple_object = _build("_malloc__simple.o")
-    compile_c(_src("_malloc.c"), malloc_simple_object, include_paths=includes, extra_args=("-DMALLOC_SIMPLE=1",))
+    compile_c(
+        _src("_malloc.c"),
+        malloc_simple_object,
+        include_paths=includes,
+        extra_args=("-DMALLOC_SIMPLE=1",),
+    )
 
-    make_static_lib(obj_files + [malloc_simple_object], os.path.join(_ROOT_DIR, "ministl_simplemalloc.lib"))
+    # Compile musl math libraries
+    fast_math_objs = []
+    slow_math_objs = []
+
+    musl_includes = includes + [_src("musl/include/"), _src("musl/arch/generic/")]
+    for musl_file in _MUSL_FILES:
+        fast_musl_obj = _build("{0}__fast.o".format(musl_file))
+        slow_musl_obj = _build("{0}__slow.o".format(musl_file))
+        fast_math_objs.append(fast_musl_obj)
+        slow_math_objs.append(slow_musl_obj)
+        compile_c(
+            _src("musl/src/", musl_file),
+            fast_musl_obj,
+            include_paths=musl_includes,
+            extra_args=_MUSL_EXTRA_ARGS,
+        )
+        compile_c(
+            _src("musl/src/", musl_file),
+            slow_musl_obj,
+            include_paths=musl_includes,
+            extra_args=_MUSL_EXTRA_ARGS + ("-fno-fast-math",),
+        )
+    make_static_lib(
+        obj_files + fast_math_objs + [malloc_simple_object],
+        os.path.join(_ROOT_DIR, "ministl_fastmath_simplemalloc.lib"),
+    )
+    make_static_lib(
+        obj_files + slow_math_objs + [malloc_simple_object],
+        os.path.join(_ROOT_DIR, "ministl_slowmath_simplemalloc.lib"),
+    )

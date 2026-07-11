@@ -22,12 +22,18 @@ MINISTL_INCLUDE_DIR = os.path.join(
     "include"
 )
 
-MINISTL_SIMPLE_MALLOC_STATIC_LIB = os.path.join(
+MINISTL_FASTMATH_SIMPLE_MALLOC_STATIC_LIB = os.path.join(
     _MINISTL_ROOT,
     "ministl_simplemalloc.lib"
 )
 
+MINISTL_SLOWMATH_SIMPLE_MALLOC_STATIC_LIB = os.path.join(
+    _MINISTL_ROOT,
+    "ministl_slowmath_simplemalloc.lib"
+)
 
+# Default to fastmath
+MINISTL_SIMPLE_MALLOC_STATIC_LIB = MINISTL_FASTMATH_SIMPLE_MALLOC_STATIC_LIB
 
 def _check_call(cmd):
     """Run subprocess.check_call, but actually print out the cmdline if
@@ -135,12 +141,29 @@ def _get_compile_obj_args(
         "-mbulk-memory",
         "-flto",
         "-O3",
-        "-ffast-math",
-        "-Wno-nan-infinity-disabled"
     ]
 
+    use_fast_math = True
+
+    # Preprocess extra args, so things like fast math can be opted out of.
     if extra_args:
-        args.extend(_tuple_if_str(extra_args))
+        extra_args = _tuple_if_str(extra_args)
+        extra_args_ = []
+        for extra_arg in extra_args:
+            if extra_arg == "-fno-fast-math":
+                use_fast_math = False
+                continue
+            extra_args_.append(extra_arg)
+        extra_args = extra_args_
+
+    if use_fast_math:
+        args.extend((
+            "-ffast-math",
+            "-Wno-nan-infinity-disabled"
+        ))
+
+    if extra_args:
+        args.extend(extra_args)
 
     if include_paths:
         for path in include_paths:
