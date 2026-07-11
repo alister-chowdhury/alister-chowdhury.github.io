@@ -1,0 +1,13 @@
+{
+    "index.html": {"minify": true},
+    "approx_roots_2.js": {"minify": true},
+    "res/find_magic_one_pass.wasm": {},
+    "res/bs_scan_max.webm": {},
+    "res/bs_scan_min.webm": {},
+    "res/magic_numbers.webm": {},
+    "res/perfect_scan_1.webm": {},
+    "res/sqrt_rel_error.png": {},
+    "res/pure_sqrt_error_bias.webm": {},
+    "res/impure_sqrt_error_bias.webm": {},
+    "thumbnail.png": {}
+}

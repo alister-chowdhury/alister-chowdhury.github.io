@@ -4,7 +4,7 @@ import re
 import mistune
 _markdown_render = mistune.html
 
-from ._transformer_base import _BaseHtmlTransformer
+from ._transformer_base import _BaseHtmlTransformer, _gen_entityref
 
 
 class _HtmlMarkdownRenderer(_BaseHtmlTransformer):
@@ -45,7 +45,7 @@ class _HtmlMarkdownRenderer(_BaseHtmlTransformer):
             data (str): entity ref.
         """
         if self._in_markdown:
-            self._markdown_data += "&{0};".format(data)
+            self._markdown_data += _gen_entityref(self, data)
         else:
             super().handle_entityref(data)
 

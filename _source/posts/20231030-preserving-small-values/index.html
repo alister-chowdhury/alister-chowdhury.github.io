@@ -266,8 +266,7 @@ As it turns out <a href="https://en.wikipedia.org/wiki/Hacker%27s_Delight" targe
 <p>While we aren't concerned with solving negative exponents, we can use the same methods to solve positive ones.</p>
 <p>(<a href="https://musl.libc.org/" target="_blank" rel="noopener noreferrer">MUSLs</a> <code>cbrt</code> implementation uses the same technique, but never got any of the appreciation it deserves).</p>
 <p>We aren't going to be doing any Newton or Halley iterations, they aren't really relevant to us and if we want to use fractional powers, make everything messy.</p>
-<br>
-
+<p><strong>EDIT Probably want to look at <a href="/posts/20260622-obsessively-approximating-roots">On The Topic Of Obsessively Approximating Roots</a> for a follow up, which improves the methodology we're using here.</strong></p>
 <p>We first derive the exponent via <code>uint(127 - 127 / power) &lt;&lt; 23</code>, leaving us to solve the 23bit mantissa.</p>
 <p>This can be done by probing the maximum ulp error for different mantissa values and keeping whichever one has the least error.</p>
 <p>It might sound like this requires an enormous amount of computing, but it doesn't.</p>

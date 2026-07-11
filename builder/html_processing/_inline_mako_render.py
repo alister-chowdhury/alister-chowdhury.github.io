@@ -2,7 +2,7 @@ import os
 
 # TODO: Inline this into the project?
 import mako.template
-from ._transformer_base import _BaseHtmlTransformer
+from ._transformer_base import _BaseHtmlTransformer, _gen_entityref
 
 
 _REPO_ROOT = os.path.abspath(
@@ -58,10 +58,9 @@ class _HtmlMakoRenderer(_BaseHtmlTransformer):
             data (str): entity ref.
         """
         if self._in_mako:
-            self._mako_data += "&{0};".format(data)
+            self._mako_data = _gen_entityref(self, data)
         else:
             super().handle_entityref(data)
-
 
     def handle_startendtag(self, tag, attrs):
         """Handle a startendtag e.g: <div id="main">.

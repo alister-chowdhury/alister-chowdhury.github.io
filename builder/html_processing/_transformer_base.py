@@ -1,5 +1,49 @@
+import re
 import html.parser
 
+# Based off entityref in html.parser itsel.
+_TRUE_ENTITY_REF_RE = re.compile('^&([a-zA-Z][-.a-zA-Z0-9]*);')
+
+def _detect_true_entityref(parser):
+    """Detect if the currently parsed entityref has the form "&xxx;".
+
+    Because of the way the parser works, it's liable to trigger for:
+    ```
+        memcpy(&z, ...) => memcpy(&z;, ...)
+    ```
+    Which isn't what you'd really want.
+
+    Args:
+        parser (html.parser.HTMLParser): Parser currently
+            handling `handle_entityref`.
+
+    Returns:
+        bool: True if true entity ref.
+    """
+    current_line, current_offset = parser.getpos()
+    # Line seems to randomly be offset by 1, no idea why
+    line = parser.rawdata.split("\n", current_line)[-2]
+    # Move to the relevant part
+    line = line[current_offset:]
+    if not line.startswith("&"):
+        raise ValueError("entityref doesn't start with &!")
+    return bool(_TRUE_ENTITY_REF_RE.match(line))
+
+def _gen_entityref(parser, data):
+    """Handle entityrefs consistently, by accounting for impartial matches.
+
+    Args:
+        parser (html.parser.HTMLParser): Parser currently
+            handling `handle_entityref`.
+        data (str): Data fed into `handle_entityref`.
+
+    Returns:
+        str: Formatted text.
+    """
+    if not _detect_true_entityref(parser):
+        return "&{0}".format(data)
+    else:
+        return "&{0};".format(data)
 
 class _BaseHtmlTransformer(html.parser.HTMLParser):
     """Base HTML transformer, used for other rendering ops."""
@@ -80,7 +124,7 @@ class _BaseHtmlTransformer(html.parser.HTMLParser):
         Args:
             data (str): entity ref.
         """
-        self._insert("&{0};".format(data))
+        self._insert(_gen_entityref(self, data))
 
     def handle_starttag(self, tag, attrs):
         """Handle the start of a tag e.g: <div id="main">.

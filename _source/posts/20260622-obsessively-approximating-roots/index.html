@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+   
+ 
+<head>
+      <meta charset="utf-8">
+      <meta name="author" content="Alister Chowdhury">
+      <meta name="theme-color" content="#2b2b2b">
+      <link href="/css.css" rel="stylesheet">
+      <meta property="og:site_name" content="Stuff And Also Things">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" type="image/png" sizes="32x32" href="/res/favicon-32x32.png">
+      <link rel="icon" type="image/png" sizes="16x16" href="/res/favicon-16x16.png">
+      <link rel="preconnect" href="https://www.googletagmanager.com">
+      <link rel="preconnect" href="https://www.google-analytics.com">
+      <script>
+        if(window.location.hostname == "alister-chowdhury.github.io")
+        {
+          let s = document.createElement("script");
+          s.async = true;
+          s.src = "https://www.googletagmanager.com/gtag/js?id=G-1WDZZ2C662";
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag("js", new Date());
+          gtag("config", "G-1WDZZ2C662");
+        }
+      </script>
+   
+    <link rel="canonical" href="https://alister-chowdhury.github.io/posts/20260622-obsessively-approximating-roots/">
+    <meta property="og:title" content="On The Topic Of Obsessively Approximating Roots">
+    <meta property="og:url" content="https://alister-chowdhury.github.io/posts/20260622-obsessively-approximating-roots/">
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="An account of bithacking floats so they look sort of similar to a pow, generalising the famous fast inverse square root method.">
+    <meta property="og:image" content="https://alister-chowdhury.github.io/res/favicon.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="On The Topic Of Obsessively Approximating Roots">
+    <meta name="twitter:image" content="https://alister-chowdhury.github.io/res/favicon.png">
+    <meta name="twitter:description" content="An account of bithacking floats so they look sort of similar to a pow, generalising the famous fast inverse square root method.">
+    <meta property="og:article:published_time" content="2026-06-22T00:00:00">
+    <meta property="og:article:tag" content="approximation">
+    <meta property="og:article:tag" content="fast inverse square root">
+    <meta property="og:article:tag" content="pow">
+    <meta property="og:article:tag" content="float">
+    <meta property="og:article:tag" content="bithack">
+    <meta property="og:article:tag" content="magic numbers">
+    <meta property="og:article:tag" content="rendering">
+    <meta property="og:article:tag" content="graphics">
+    <meta property="og:article:tag" content="gpu">
+<script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"Article","author":[{"@type":"Person","name":"Alister Chowdhury"}],"name":"On The Topic Of Obsessively Approximating Roots","url":"https://alister-chowdhury.github.io/posts/20260622-obsessively-approximating-roots/","description":"An account of bithacking floats so they look sort of similar to a pow, generalising the famous fast inverse square root method.","thumbnailUrl":"https://alister-chowdhury.github.io/res/favicon.png","datePublished":"2026-06-22T00:00:00"}</script>
+
+  <title>On The Topic Of Obsessively Approximating Roots</title>
+  <meta name="description" content="An account of bithacking floats so they look sort of similar to a pow, generalising the famous fast inverse square root method.">
+  <meta name="keywords" content="approximation, fast inverse square root, pow, float, bithack, magic numbers, rendering, graphics, gpu">
+
+  <script>
+    window.findMagicOnePassLoaded = false;
+    window.afterFindMagicOnePassLoaded = [];
+    function addAfterFindMagicOnePassLoaded(f)
+    {
+      if(!window.findMagicOnePassLoaded)
+      {
+        window.afterFindMagicOnePassLoaded.push(f);
+      }
+      else
+      {
+        f();
+      }
+    }
+  </script>
+
+  <script type="module">
+    import { findMagicOnePassInterface } from './approx_roots_2.js';
+    findMagicOnePassInterface.then(x => {
+       window.findMagicOnePassInterface = x;
+       window.findMagicOnePassLoaded = true;
+       window.afterFindMagicOnePassLoaded.forEach(f => {f()});
+    })
+  </script>
+
+  <style>
+    .dryrun-table table, .dryrun-table th, .dryrun-table td
+    {
+        border: #7373c3 1px solid;
+        border-collapse: collapse;
+        border-spacing: 0;
+        margin: 0;
+    }
+    .dryrun-table table {
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .dryrun-table td
+    {
+        padding-left: 0.75em;
+        padding-right: 0.75em;
+    }
+    .dryrun-table th
+    {
+        padding: 0.75em;
+        font-weight: bold;
+    }
+    .chart_cent
+    {
+        text-align: center;
+        color: #c3c3f3;
+        font-weight: bold;
+        text-decoration: underline;
+        font-size: 1.1em;
+        margin: 0;
+        padding: 0;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .chart
+    {
+        aspect-ratio: 720 / 144;
+        width: calc(min(100%, 960px));
+        height: stretch;
+    }
+
+    .chart2_cont
+    {
+        margin-left:auto;
+        margin-right:auto;
+        text-align: center;
+    }
+    .chart2_video
+    {
+        aspect-ratio: 720 / 144;
+        width: calc(round(nearest, min(100%, 720px), 8px));
+        height: stretch;
+    }
+  </style>
+
+
+ 
+<link rel="stylesheet" href="/thirdparty/katex.min.css">
+<link rel="stylesheet" href="/thirdparty/highlight.js.css">
+</head>
+   
+
+ 
+<body>
+    <div id="header">
+        <a href="/">Home</a>
+        <a href="/posts/">Posts</a>
+        <a href="https://github.com/alister-chowdhury">Github</a>
+    </div>
+   
+
+<main>
+<h1>On The Topic Of Obsessively Approximating Roots</h1>
+<div class="toc">
+  <ul>
+    <li><a href="#background">Background</a></li>
+    <li><a href="#whats-happening-at-a-high-level">Whats happening at a high level?</a></li>
+    <li><a href="#convergence">Convergence?</a></li>
+    <li><a href="#calculating-magic-numbers-faster-lowest-ulp-error">Calculating Magic Numbers Faster (Lowest ULP Error)</a>
+      <ul>
+      <li><a href="#refining-whats-tested">Refining What's Tested</a></li>
+      <li><a href="#refining-further">Refining Further</a></li>
+      <li><a href="#side-tangents">Side Tangents</a>
+        <ul>
+        <li><a href="#trying-to-approximate-the-approximation">Trying To Approximate The Approximation</a></li>
+        <li><a href="#searching-for-emstrongperfectstrongem-inputs">Searching For <em><strong>Perfect</strong></em> Inputs</a></li>
+        <li><a href="#seperately-scaling-the-exponent-and-mantissa">Seperately Scaling The Exponent And Mantissa</a></li>
+        </ul>
+      </li>
+      </ul>
+    </li>
+    <li><a href="#lowest-relative-error">Lowest Relative Error</a>
+      <ul>
+      <li><a href="#brute-force-method">Brute Force Method</a></li>
+      <li><a href="#some-initial-research">Some Initial Research</a></li>
+      </ul>
+    </li>
+    <li><a href="#beyond-roots">Beyond Roots</a>
+      <ul>
+      <li><a href="#powers-greater-than-1">Powers Greater Than 1</a></li>
+      <li><a href="#negative-powers">Negative Powers</a></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+
+<h2 id="background">Background</h2>
+<p>Since the dawn of time, humanity looked upon the IEEE-754 float32 format and thought: <em><strong>How can I abuse this?</strong></em></p>
+<p>A while ago, I posted about <a href="/posts/20231030-preserving-small-values/#approximating-roots">Preserving Small Values</a>, where I talked about a method for calculating roots.<br>
+It was a bit clunky and can be summarised as doing a binary search, looking for a good magic number.</p>
+<p>Today, for no real reason at all, we are going to try and improve this.</p>
+<h2 id="whats-happening-at-a-high-level">Whats happening at a high level?</h2>
+<p>Seeing something like this can look a bit daunting:</p>
+<pre><code class="language-c">    float approx_sqrt(float x)
+    {
+        uint z = asuint(x) &gt;&gt; 1;
+        return asfloat(z + MAGIC);
+    }
+</code></pre>
+<p>The first line really just taking the floats bits and dividing them by 2.<br>
+The second line adds <em>something</em> magical to it and together, they somehow approximate √.</p>
+<p>But whats really going on here?<br></p>
+<p>At a macro level, it exploits the encoding of the floating point format.<br>
+With most of the heavy lifting taking place in the exponent bits:<br></p>
+<p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8641em;"></span><span class="mord">2<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0.5<span class="mord mathnormal mtight">x</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.0839em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9561em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord">2<span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.5904em;"><span style="top:-2.989em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">x</span></span></span></span></span></span></span></span></span></span></span><span style="top:-2.9161em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.08em" viewbox="0 0 400000 1080" preserveaspectratio="xMinYMin slice"><path d='M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.0839em;"></span></span></span></span></span></span></span>
+<br></p>
+<p>A correction term is still needed, due the exponent not being stored as an unsigned integer.<br></p>
+<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="text"><span class="mord">MAGIC</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord text mtight"><span class="mord mtight">initial</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:3em;vertical-align:-1.25em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size4">{</span></span><span class="mord"><span class="mtable"><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.69em;"><span style="top:-3.69em;"><span class="pstrut" style="height:3.008em;"></span><span class="mord"><span class="mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&lt;</span><span class="mspace" style="margin-right:0.2778em;"></span>0<span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">:</span></span></span><span style="top:-2.25em;"><span class="pstrut" style="height:3.008em;"></span><span class="mord"><span class="mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span>0<span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">:</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.19em;"></span></span></span></span><span class="arraycolsep" style="width:1em;"></span><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.69em;"><span style="top:-3.69em;"><span class="pstrut" style="height:3.008em;"></span><span class="mord"><span class="mopen">⌊</span><span class="mopen">(</span>127<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">127</span><span class="mord mathnormal">x</span><span class="mclose">)⌋</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≪</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">23</span></span></span><span style="top:-2.25em;"><span class="pstrut" style="height:3.008em;"></span><span class="mord"><span class="mopen">⌈</span><span class="mopen">(</span>127<span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">127</span><span class="mord mathnormal">x</span><span class="mclose">)⌉</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≪</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord">23</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.19em;"></span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span>
+
+
+<p>Being brutally honest, the mantissa bits are mostly just fudged during this process.<br>
+But since we're already going to add a correction term, we might aswell try to minimise the max relative error in the same operation.<br></p>
+<h2 id="convergence">Convergence?</h2>
+<p>I mentioned before that I have no idea why each power has a clear convergence to some &quot;best&quot; magic number.<br>
+So maybe we can try to analytically figure out why this may be.</p>
+<p>If we keep with something nice and simple, like √, it's a root of 2, which at least vaguely sounds like a nice number to start prodding in isolation.</p>
+<pre><code class="language-c">    uint z = asuint(x) &gt;&gt; 1;
+    return asfloat(z + MAGIC);
+</code></pre>
+<ul>
+<li>We assume the input number is positive, so we'll just ignore the sign.</li>
+<li>The exponent bits will get halved, the core of the approximation.</li>
+<li>The mantissa bits will also get halved, but may also have some of the original exponent spilling into it.</li>
+</ul>
+<p>The useful thing to look at isn't the output, it's the magic number each input <em>wishes</em> it had.<br>
+That is, for every input we can work out the one value that would make the approximation exact:</p>
+<p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="text"><span class="mord">MAGIC</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord text mtight"><span class="mord mtight">ideal</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.0992em;vertical-align:-0.25em;"></span><span class="mop"><span class="mord mathrm">asuint</span></span><span class="mopen">(</span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8492em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal">x</span></span></span><span style="top:-2.8092em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.08em" viewbox="0 0 400000 1080" preserveaspectratio="xMinYMin slice"><path d='M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z'/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1908em;"></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mop"><span class="mord mathrm">asuint</span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≫</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span>
+</p>
+<p>Whatever single constant we end up shipping has to serve that entire column at once, so let's look at some dry run inputs:</p>
+<div class="dryrun-table">
+
+<table>
+<thead>
+<tr>
+  <th>Input</th>
+  <th>Input (Hex)</th>
+  <th>Sqrt</th>
+  <th>Sqrt (Hex)</th>
+  <th>z (Hex)</th>
+  <th>Ideal Magic (Hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>1.0</td>
+  <td>0x3f800000</td>
+  <td>1.0</td>
+  <td>0x3f800000</td>
+  <td>0x1fc00000</td>
+  <td>0x1fc00000</td>
+</tr>
+<tr>
+  <td>1.1</td>
+  <td>0x3f8ccccd</td>
+  <td>1.0488088</td>
+  <td>0x3f863f5e</td>
+  <td>0x1fc66666</td>
+  <td>0x1fbfd8f8</td>
+</tr>
+<tr>
+  <td>1.5</td>
+  <td>0x3fc00000</td>
+  <td>1.2247449</td>
+  <td>0x3f9cc471</td>
+  <td>0x1fe00000</td>
+  <td>0x1fbcc471</td>
+</tr>
+<tr>
+  <td>1.8</td>
+  <td>0x3fe66666</td>
+  <td>1.3416408</td>
+  <td>0x3fabbae3</td>
+  <td>0x1ff33333</td>
+  <td>0x1fb887b0</td>
+</tr>
+<tr>
+  <td>2.3</td>
+  <td>0x40133333</td>
+  <td>1.5165750</td>
+  <td>0x3fc21f22</td>
+  <td>0x20099999</td>
+  <td>0x1fb88589</td>
+</tr>
+<tr>
+  <td>2.6</td>
+  <td>0x40266666</td>
+  <td>1.6124515</td>
+  <td>0x3fce64d0</td>
+  <td>0x20133333</td>
+  <td>0x1fbb319d</td>
+</tr>
+<tr>
+  <td>2.9</td>
+  <td>0x4039999a</td>
+  <td>1.7029386</td>
+  <td>0x3fd9f9e5</td>
+  <td>0x201ccccd</td>
+  <td>0x1fbd2d18</td>
+</tr>
+<tr>
+  <td>3.2</td>
+  <td>0x404ccccd</td>
+  <td>1.7888543</td>
+  <td>0x3fe4f92e</td>
+  <td>0x20266666</td>
+  <td>0x1fbe92c8</td>
+</tr>
+<tr>
+  <td>3.5</td>
+  <td>0x40600000</td>
+  <td>1.8708287</td>
+  <td>0x3fef7751</td>
+  <td>0x20300000</td>
+  <td>0x1fbf7751</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>Across every input above it stays inside <code>[0x1fbf7751, 0x1fc00000]</code>, but evaluating <code>[1, 2)</code> give us the extremes we need to pick a middle ground that stops the maximum error
+ever getting out of control.<br></p>
+<p>It behaves like a sawtooth within <code>[1, 2)</code>, but swaps between <code>[2, 4)</code>, which will be due to the mantissa spilling.<br>
+So there is a bit of a pattern here, but this is just for <code>sqrt</code>, where &quot;divide the exponent&quot; happens to be a single bit shift.<br>
+Higher roots aren't, and reasoning about where the mantissa lands gets confusing fast.<br></p>
+<p>With that in mind, maybe analytically chasing a closed form isn't the fastest way forward.</p>
+<h2 id="calculating-magic-numbers-faster-lowest-ulp-error">Calculating Magic Numbers Faster (Lowest ULP Error)</h2>
+<p>In my original post, the method I used to calculate magics was at it's core, probing the maximum error for candidate magic numbers.<br>
+This would be refined after a series of passes until a best candidate was picked.</p>
+<p>But this is a bit silly and we can get a good magic number in a single pass:</p>
+<pre><code class="language-python">from numpy import linspace, float32, uint32
+
+def get_root_magic(root):
+    # [1, 2)
+    input_values = linspace(
+        0x3f800000,
+        0x40000000,
+        0x40000000-0x3f800000,
+        dtype=uint32
+    )
+
+    iroot = 1.0 / root
+
+    # Initial approximation, pre correction
+    initial_adj = (input_values.astype(float32) * float32(iroot)).astype(uint32)
+
+    # The actual pow value we're trying to match against
+    ref_value = (input_values.view(float32) ** float32(iroot)).view(uint32)
+
+    # Pick the mid point between the min and max extremes
+    delta = ref_value - initial_adj
+    return (delta.min() + delta.max()) // 2
+</code></pre>
+<p>Our goal is to minimize the max absolute error.<br>
+Rather than probing at all, we simply find which inputs need the smallest correction and largest and take their mid point.<br></p>
+<div id="minmax_delta_bin" class="dryrun-table">
+
+<table>
+<thead>
+<tr>
+  <th>Root</th>
+  <th>Min Input Delta</th>
+  <th>Max Input Delta</th>
+  <th>Magic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>2</td>
+  <td>0x1fb504e8</td>
+  <td>0x1fc00010</td>
+  <td>0x1fba827c</td>
+</tr>
+<tr>
+  <td>2.2</td>
+  <td>0x229821bf</td>
+  <td>0x22a2e8c9</td>
+  <td>0x229d8544</td>
+</tr>
+<tr>
+  <td>2.4</td>
+  <td>0x2500315f</td>
+  <td>0x250aaacd</td>
+  <td>0x25056e16</td>
+</tr>
+<tr>
+  <td>2.71828</td>
+  <td>0x2819d658</td>
+  <td>0x2823bf8a</td>
+  <td>0x281ecaf1</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td>0x2a4befb1</td>
+  <td>0x2a555560</td>
+  <td>0x2a50a288</td>
+</tr>
+<tr>
+  <td>3.14159265359</td>
+  <td>0x2b406901</td>
+  <td>0x2b498e19</td>
+  <td>0x2b44fb8d</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td>0x2f9837ec</td>
+  <td>0x2fa00008</td>
+  <td>0x2f9c1bfa</td>
+</tr>
+<tr>
+  <td>4.5</td>
+  <td>0x315c6d3f</td>
+  <td>0x31638e45</td>
+  <td>0x315ffdc2</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td>0x32c63bb9</td>
+  <td>0x32ccccd6</td>
+  <td>0x32c98447</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="refining-whats-tested">Refining What's Tested</h3>
+<p>We're now at the point where we can calculate a magic number in a reasonable time, but can we go futher?<br>
+Currently, we're testing values between <code>0x3f800000</code> and <code>0x3fffffff</code>, that's 8388607 different combinations!<br></p>
+<p>Looking at our <a href="#minmax_delta_bin">previous table</a> for inputs:</p>
+<div class="dryrun-table">
+
+<table>
+<thead>
+<tr>
+  <th>Root</th>
+  <th>Min Input</th>
+  <th>Min Input (Hex)</th>
+  <th>Max Input</th>
+  <th>Max Input (Hex)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>2</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.0000038146972656</td>
+  <td>0x3f800020</td>
+</tr>
+<tr>
+  <td>2.2</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.0000190734863281</td>
+  <td>0x3f8000a0</td>
+</tr>
+<tr>
+  <td>2.4</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.000003695487976</td>
+  <td>0x3f80001f</td>
+</tr>
+<tr>
+  <td>2.71828</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.000034213066101</td>
+  <td>0x3f80011f</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.0000113248825073</td>
+  <td>0x3f80005f</td>
+</tr>
+<tr>
+  <td>3.14159265359</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.0001410245895386</td>
+  <td>0x3f80049f</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.000003695487976</td>
+  <td>0x3f80001f</td>
+</tr>
+<tr>
+  <td>4.5</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.0000110864639282</td>
+  <td>0x3f80005d</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td>1.9999961853027344</td>
+  <td>0x3fffffe0</td>
+  <td>1.0000033378601074</td>
+  <td>0x3f80001c</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>It's pretty clear that the inputs to compute the min value approaches <code>2.0</code> and the max approaches <code>1.0</code>.<br>
+Big input give minimum, small input give maximum.<br></p>
+<p>So as one does, I went about trying to find some reasonable bounds.<br>
+Using <code>[0.000030517578 -&gt; 0.5)</code> (<code>[0x38000000 -&gt; 0x3f000000)</code>) as my input search range.</p>
+<p>This took ages.</p>
+<p>First I added lazy multithreaded (OpenMP) and killed it a couple of times to reduce the bounds tested against (originally after like 2 hours it was like 0.1% done).</p>
+<details>
+<summary>find_min_max_input.cpp</summary>
+
+<pre><code class="language-cpp">#include &lt;math.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+#include &lt;algorithm&gt;
+#include &lt;mutex&gt;
+#include &lt;thread&gt;
+#include &lt;unordered_map&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+#if defined(__GNUC__) || defined(__clang__)
+#define FORCEINLINE __attribute__((always_inline)) inline
+#elif defined(_MSC_VER)
+#define FORCEINLINE __forceinline
+#else
+#define FORCEINLINE inline
+#endif
+
+FORCEINLINE uint32_t asuint(float x) {
+  uint32_t z;
+  memcpy(&amp;z, &amp;x, sizeof(x));
+  return z;
+}
+
+FORCEINLINE float asfloat(uint32_t x) {
+  float z;
+  memcpy(&amp;z, &amp;x, sizeof(x));
+  return z;
+}
+
+typedef struct CalcMagicExtra_ {
+  uint32_t delta_min_input;
+  uint32_t delta_max_input;
+  uint32_t delta_min;
+  uint32_t delta_max;
+} CalcMagicExtra;
+
+uint32_t calc_root_magic_(float inv_root, CalcMagicExtra* out_extras) {
+  CalcMagicExtra working;
+  working.delta_min = 0xffffffffu;
+  working.delta_max = 0u;
+
+  auto calc_range = [&amp;](const uint32_t start, const uint32_t end) {
+    for (uint32_t input = start; input &lt; end; ++input) {
+      // Initial approximation, pre correction
+      uint32_t initial_adj = (uint32_t)((float)input * inv_root);
+
+      // The actual pow value we're trying to match against
+      uint32_t ref_value = asuint(powf(asfloat(input), inv_root));
+
+      // Pick the mid point between the min and max extremes
+      uint32_t delta = ref_value - initial_adj;
+
+      if (delta &lt; working.delta_min) {
+        working.delta_min_input = input;
+        working.delta_min       = delta;
+      }
+      if (delta &gt; working.delta_max) {
+        working.delta_max_input = input;
+        working.delta_max       = delta;
+      }
+    }
+  };
+
+  // // Initial guess
+  // // Use 3f800000 -&gt; 3fa00000 + 3fd00000 -&gt; 40000000
+  // // (5242880 iterations)
+  // calc_range(0x3f800000u, 0x3fa00000u);
+  // calc_range(0x3fd00000u, 0x40000000u);
+
+  // Refined range after a bit of initial searching + some saftey padding
+  // Use 3f800000 -&gt; 3f810000 + 3ffe0000 -&gt; 40000000
+  // (196608 iterations)
+  // [3ffe8160 | 3fffffe0]  [3f800000 | 3f8061d4] | 0x380065ff [0.000031]
+  calc_range(0x3f800000u, 0x3f810000u);
+  calc_range(0x3ffe0000u, 0x40000000u);
+
+  if (out_extras) {
+    *out_extras = working;
+  }
+
+  // (delta_min + delta_max) &gt;&gt; 1, without overflow;
+  uint32_t magic = (working.delta_min &amp; working.delta_max) +
+                   ((working.delta_min ^ working.delta_max) &gt;&gt; 1);
+  return magic;
+}
+
+void find_min_max_input() {
+  
+  // Input range
+  // [0.000030517578, 0.5)
+  constexpr uint32_t start      = 0x38000000u;
+  constexpr uint32_t end        = 0x3f000000u;
+  constexpr uint32_t interval   = 0x00000001u;
+
+  constexpr uint32_t num_inputs = (end - start) / interval;
+
+  // Total numbers crunched
+  std::atomic&lt;uint32_t&gt; total_done = 0;
+
+  // Global min-max range
+  std::mutex m;
+  std::pair&lt;uint32_t, uint32_t&gt; min_r(0xffffffffu, 0);
+  std::pair&lt;uint32_t, uint32_t&gt; max_r(0xffffffffu, 0);
+
+  // Wake flag, that tells the main thread we've got an update.
+  uint32_t wake_value{};
+  std::atomic_flag wake{};
+
+  // Final flag which is written too, when the routine is done.
+  bool done = false;
+
+  // Thread acts a payload for a `parallel-for`, the main thread
+  // acts a book-keeper, pretty much just printing the progress.
+  std::thread worker([&amp;] {
+    const uint32_t num_threads      = std::thread::hardware_concurrency();
+    const uint32_t per_thread_range = num_inputs / num_threads;
+
+#pragma omp parallel for
+    for (int tid = 0; tid &lt; num_threads; ++tid) {
+      // per-thread input start/end ranges
+      uint32_t pt_start = start + interval * tid * per_thread_range;
+      uint32_t pt_end   = start + interval * (tid + 1) * per_thread_range;
+      if ((tid + 1) == num_threads) {
+        pt_end = end;
+      }
+
+      // per-thread min/max delta ranges
+      std::pair&lt;uint32_t, uint32_t&gt; pt_min_r(0xffffffffu, 0);
+      std::pair&lt;uint32_t, uint32_t&gt; pt_max_r(0xffffffffu, 0);
+
+      uint32_t local_inc = 0;
+      for (uint32_t v = pt_start; v &lt; pt_end; v += interval, ++local_inc) {
+        // Prevent flushing how many are done every iteration, to
+        // try and minimise cache stomping.
+        if (local_inc &gt; 32) {
+          total_done += local_inc;
+          local_inc = 0;
+        }
+
+        CalcMagicExtra extras;
+        calc_root_magic_(asfloat(v), &amp;extras);
+        const uint32_t delta_min_input = extras.delta_min_input;
+        const uint32_t delta_max_input = extras.delta_max_input;
+
+        // Check if the local threads range has been updated.
+        bool needs_update = false;
+        if (delta_min_input &lt; pt_min_r.first) {
+          pt_min_r.first = delta_min_input;
+          needs_update   = true;
+        }
+        if (delta_min_input &gt; pt_min_r.second) {
+          pt_min_r.second = delta_min_input;
+          needs_update    = true;
+        }
+        if (delta_max_input &lt; pt_max_r.first) {
+          pt_max_r.first = delta_max_input;
+          needs_update   = true;
+        }
+        if (delta_max_input &gt; pt_max_r.second) {
+          pt_max_r.second = delta_max_input;
+          needs_update    = true;
+        }
+
+        // If so, check against the global
+        if (needs_update) {
+          needs_update = false;
+          std::scoped_lock g(m);
+          if (pt_min_r.first &lt; min_r.first) {
+            min_r.first  = pt_min_r.first;
+            needs_update = true;
+          }
+          if (pt_min_r.second &gt; min_r.second) {
+            min_r.second = pt_min_r.second;
+            needs_update = true;
+          }
+          if (pt_max_r.first &lt; max_r.first) {
+            max_r.first  = pt_max_r.first;
+            needs_update = true;
+          }
+          if (pt_max_r.second &gt; max_r.second) {
+            max_r.second = pt_max_r.second;
+            needs_update = true;
+          }
+
+          // Copy back the values, so we avoid locking for no reason in the
+          // future, if this didn't update.
+          pt_min_r = min_r;
+          pt_max_r = max_r;
+
+          // Tell the main thread, we have a new value!
+          if (needs_update) {
+            wake_value = v;
+            wake.test_and_set();
+          }
+        }
+      }
+
+      total_done += local_inc;
+    }
+
+    done = true;
+  });
+
+  while (!done) {
+    printf(&quot;\r%d / %d&quot;, (uint32_t)total_done, num_inputs);
+    if (wake.test()) {
+      std::scoped_lock g(m);
+      wake.clear();
+      printf(&quot;\n[%x | %x]  [%x | %x] | 0x%x [%f]\n&quot;, min_r.first, min_r.second,
+             max_r.first, max_r.second, wake_value, asfloat(wake_value));
+    }
+  }
+
+  worker.join();
+}
+
+int main(void) { find_min_max_input(); }
+</code></pre>
+</details>
+
+<br>
+
+<p>With the calculated bounds worth searching being:</p>
+<div class="dryrun-table">
+
+<table>
+<thead>
+<tr>
+  <th>Upper Bound Start</th>
+  <th>Upper Bound End</th>
+  <th>Lower Bound Start</th>
+  <th>Lower Bound End</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>0x3ffe8160</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800000</td>
+  <td>0x3f80aa20</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>That is a reduction from 8388607 to 141474 iterations, <em><strong>98.31% less</strong></em>!</p>
+<h3 id="refining-further">Refining Further</h3>
+<p>So I started thinking, what if I could do a binary search, that would mean even less iterations.<br>
+Hoping there was perfect converging pattern, instead I got whatever this is:</p>
+<div class="chart2_cont">
+    <video disablepictureinpicture loading="lazy" width="720" height="144" class="chart2_video" id="bs_scan_min">
+      <source src="res/bs_scan_min.webm#t=150" type="video/webm" />
+    </video>
+    <div class="twoxnctrls">
+    <!----><div>
+    <!--    --><div id="bs_scan_min_info">Magic Input</div>
+    <!--    --><div><input aria-labelledby="bs_scan_min_info" id="bs_scan_min_ctrl" disabled type="range" min="0" max="1024" value="150" step="1"><br/></div>
+    <!----></div>
+    </div>
+</div>
+
+<br>
+
+<div class="chart2_cont">
+    <video disablepictureinpicture  loading="lazy" width="720" height="144" class="chart2_video" id="bs_scan_max">
+      <source src="res/bs_scan_max.webm#t=700" type="video/webm" />
+    </video>
+    <div class="twoxnctrls">
+    <!----><div>
+    <!--    --><div id="bs_scan_max_info">Magic Input</div>
+    <!--    --><div><input aria-labelledby="bs_scan_max_info" id="bs_scan_max_ctrl" disabled type="range" min="0" max="1024" value="700" step="1"><br/></div>
+    <!----></div>
+    </div>
+</div>
+
+<br>
+
+<p>That did however lead me into a different idea looking at how values themselves.<br>
+When computing this, we would keep track of the delta ranges with <code>&lt;</code> and <code>&gt;</code>, due to the way we iterate will bias smaller numbers.<br>
+But if we do another run with <code>&lt;=</code> and <code>&gt;=</code>, that will bias towards larger numbers.<br>
+Doing this, within the range of what we've already computed, might compact it down even further.<br>
+(Personally, I imagine this like a cocktail shaking)</p>
+<details>
+<summary>find_min_max_input_update.cpp</summary>
+
+<pre><code class="language-cpp">  // Calculate delta_max
+  for (uint32_t input = 0x3f800000u; input &lt;= 0x3f80aa20u; ++input) {
+      // Initial approximation, pre correction
+      uint32_t initial_adj = (uint32_t)((float)input * inv_root);
+
+      // The actual pow value we're trying to match against
+      uint32_t ref_value = asuint(powf(asfloat(input), inv_root));
+
+      // Pick the mid point between the min and max extremes
+      uint32_t delta = ref_value - initial_adj;
+
+      if (delta &gt;= working.delta_max) {
+        working.delta_max_input = input;
+        working.delta_max       = delta;
+      }
+  }
+
+  // Calculate delta_min
+  for (uint32_t input = 0x3ffe8160u; input &lt;= 0x3fffffe0u; ++input) {
+      // Initial approximation, pre correction
+      uint32_t initial_adj = (uint32_t)((float)input * inv_root);
+
+      // The actual pow value we're trying to match against
+      uint32_t ref_value = asuint(powf(asfloat(input), inv_root));
+
+      // Pick the mid point between the min and max extremes
+      uint32_t delta = ref_value - initial_adj;
+
+      if (delta &lt;= working.delta_min) {
+        working.delta_min_input = input;
+        working.delta_min       = delta;
+      }
+  }
+</code></pre>
+</details>
+
+<p>Which it did! Resulting in the new smaller range:</p>
+<div class="dryrun-table">
+
+<table>
+<thead>
+<tr>
+  <th>Upper Bound Start</th>
+  <th>Upper Bound End</th>
+  <th>Lower Bound Start</th>
+  <th>Lower Bound End</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>0x3fff81ec</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800020</td>
+  <td>0x3f80aa20</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>Which is now a cool 75766 iterations, another <em><strong>46.44% less</strong></em>, <em><strong>99.09% less</strong></em> in total!</p>
+<p>With an isolated version that can be used, being something like this:</p>
+<details>
+<summary>calc_magic_even_faster.cpp</summary>
+
+<pre><code class="language-cpp">#include &lt;math.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;string.h&gt;
+
+#if defined(__GNUC__) || defined(__clang__)
+#define FORCEINLINE __attribute__((always_inline)) inline
+#elif defined(_MSC_VER)
+#define FORCEINLINE __forceinline
+#else
+#define FORCEINLINE inline
+#endif
+
+FORCEINLINE uint32_t asuint(float x) {
+  uint32_t z;
+  memcpy(&amp;z, &amp;x, sizeof(x));
+  return z;
+}
+
+FORCEINLINE float asfloat(uint32_t x) {
+  float z;
+  memcpy(&amp;z, &amp;x, sizeof(x));
+  return z;
+}
+
+uint32_t calc_root_magic(float inv_root) {
+  uint32_t delta_min = 0xffffffffu;
+  uint32_t delta_max = 0u;
+
+  // Calculate delta_max
+  for (uint32_t input = 0x3f800020u; input &lt;= 0x3f80aa20u; ++input) {
+      // Initial approximation, pre correction
+      uint32_t initial_adj = (uint32_t)((float)input * inv_root);
+
+      // The actual pow value we're trying to match against
+      uint32_t ref_value = asuint(powf(asfloat(input), inv_root));
+
+      // Pick the mid point between the min and max extremes
+      uint32_t delta = ref_value - initial_adj;
+
+      if (delta &gt;= delta_max) {
+        delta_max = delta;
+      }
+  }
+
+  // Calculate delta_min
+  for (uint32_t input = 0x3fff81ecu; input &lt;= 0x3fffffe0u; ++input) {
+      // Initial approximation, pre correction
+      uint32_t initial_adj = (uint32_t)((float)input * inv_root);
+
+      // The actual pow value we're trying to match against
+      uint32_t ref_value = asuint(powf(asfloat(input), inv_root));
+
+      // Pick the mid point between the min and max extremes
+      uint32_t delta = ref_value - initial_adj;
+
+      if (delta &lt;= delta_min) {
+        delta_min = delta;
+      }
+  }
+
+  // (delta_min + delta_max) &gt;&gt; 1, without overflow;
+  uint32_t magic = (delta_min &amp; delta_max) +
+                   ((delta_min ^ delta_max) &gt;&gt; 1);
+  return magic;
+}
+</code></pre>
+</details>
+
+<br>
+
+<p>This number can be further reduced when ranges are isolated per exponent octave.<br></p>
+<div class="dryrun-table">
+
+<table>
+<thead>
+<tr>
+  <th>Exponent</th>
+  <th>Upper Bound Start</th>
+  <th>Upper Bound End</th>
+  <th>Lower Bound Start</th>
+  <th>Lower Bound End</th>
+  <th>Iterations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>0x38000000</td>
+  <td>0x3fff81ec</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f802020</td>
+  <td>0x3f80771a</td>
+  <td>54512</td>
+</tr>
+<tr>
+  <td>0x38800000</td>
+  <td>0x3fffc077</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f801020</td>
+  <td>0x3f807b5c</td>
+  <td>43687</td>
+</tr>
+<tr>
+  <td>0x39000000</td>
+  <td>0x3fffe06a</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800820</td>
+  <td>0x3f8076db</td>
+  <td>36403</td>
+</tr>
+<tr>
+  <td>0x39800000</td>
+  <td>0x3ffff061</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800420</td>
+  <td>0x3f80795f</td>
+  <td>33984</td>
+</tr>
+<tr>
+  <td>0x3a000000</td>
+  <td>0x3ffff860</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800220</td>
+  <td>0x3f80765f</td>
+  <td>31681</td>
+</tr>
+<tr>
+  <td>0x3a800000</td>
+  <td>0x3ffffc60</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800120</td>
+  <td>0x3f807a9c</td>
+  <td>31998</td>
+</tr>
+<tr>
+  <td>0x3b000000</td>
+  <td>0x3ffffe60</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f8000a0</td>
+  <td>0x3f807a1c</td>
+  <td>31486</td>
+</tr>
+<tr>
+  <td>0x3b800000</td>
+  <td>0x3fffff60</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f80005f</td>
+  <td>0x3f807c5e</td>
+  <td>31873</td>
+</tr>
+<tr>
+  <td>0x3c000000</td>
+  <td>0x3fffffe0</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f8000a0</td>
+  <td>0x3f807bdf</td>
+  <td>31553</td>
+</tr>
+<tr>
+  <td>0x3c800000</td>
+  <td>0x3fffffe0</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800020</td>
+  <td>0x3f806b9e</td>
+  <td>27520</td>
+</tr>
+<tr>
+  <td>0x3d000000</td>
+  <td>0x3fffffe0</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800020</td>
+  <td>0x3f80785f</td>
+  <td>30785</td>
+</tr>
+<tr>
+  <td>0x3d800000</td>
+  <td>0x3fffffe0</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800020</td>
+  <td>0x3f807d20</td>
+  <td>32002</td>
+</tr>
+<tr>
+  <td>0x3e000000</td>
+  <td>0x3fffffe0</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800020</td>
+  <td>0x3f808ba0</td>
+  <td>35714</td>
+</tr>
+<tr>
+  <td>0x3e800000</td>
+  <td>0x3fffffe0</td>
+  <td>0x3fffffe0</td>
+  <td>0x3f800020</td>
+  <td>0x3f80aa20</td>
+  <td>43522</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="side-tangents">Side Tangents</h3>
+<h4 id="trying-to-approximate-the-approximation">Trying To Approximate The Approximation</h4>
+<p>At some point, I got incredibly bored of waiting for magic numbers to compute and made a LUTs for each exponent (since we have a much faster way of computing them now):</p>
+<details>
+<summary>magic_lut.cpp</summary>
+
+<pre><code class="language-cpp">
+void run(const char* outdir) {
+  // Input range
+  // [0.000030517578, 0.9375]
+  constexpr uint32_t start     = 0x38000000u;
+  constexpr uint32_t end       = 0x3f700000u;
+  constexpr uint32_t expsize   = 0x00800000u;
+
+  uint32_t* magic_buffer = (uint32_t*)malloc(
+    sizeof(uint32_t) * expsize
+  );
+
+  const int outdir_sz = strlen(outdir);
+  char* outfile = (char*)malloc(outdir_sz      // outdir
+                                + 1            // /
+                                + 8            // XXXXXXXX
+                                + 4            // .lut
+                                + 1            // \0
+  );
+
+  uint32_t working_it = 0;
+  uint32_t total_work = (end - start) / expsize;
+
+  for (uint32_t page = start; page &lt; end; page += expsize) {
+
+    sprintf(outfile, &quot;%s/%08x.lut&quot;, outdir, page);
+    printf(&quot;Writing to: %s [%u / %u]\n&quot;, outfile, ++working_it, total_work);
+
+    FILE* fp = fopen(outfile, &quot;wb&quot;);
+    if (!fp) {
+      printf(&quot;FAILED TO OPEN FILE!\n&quot;);
+      break;
+    }
+
+    std::atomic&lt;uint32_t&gt; subit = 0u;
+    constexpr uint32_t subwork_update = 0x1000;
+
+    #pragma omp parallel for
+    for(int inv_root_offset=0; inv_root_offset &lt; expsize; ++inv_root_offset)
+    {
+      const float inv_root = asfloat(page + inv_root_offset);
+      magic_buffer[inv_root_offset] = calc_root_magic(inv_root);
+
+      uint32_t subwork_done = subit.fetch_add(1u);
+      if ((subwork_done % subwork_update) == 0) [[unlikely]]
+      {
+        printf(
+          &quot;\r%u / %u [%2.2f%%]&quot;,
+          subwork_done,
+          expsize,
+          double(subwork_done) * (100.0 / double(expsize))
+        );
+      }
+
+    }
+    printf(&quot;\n&quot;);
+
+    fwrite(magic_buffer, sizeof(uint32_t), expsize, fp);
+    fclose(fp);
+  }
+
+  free(outfile);
+  free(magic_buffer);
+}
+</code></pre>
+</details>
+
+<p><br><br></p>
+<div class="chart2_cont">
+    <video disablepictureinpicture  loading="lazy" width="720" height="144" class="chart2_video" id="magic_numbers_vid">
+      <source src="res/magic_numbers.webm#t=8" type="video/webm" />
+    </video>
+    <div class="twoxnctrls">
+    <!----><div>
+    <!--    --><div id="magic_numbers_vid_info">Exponent</div>
+    <!--    --><div><input aria-labelledby="magic_numbers_vid_info" id="magic_numbers_vid_ctrl" disabled type="range" min="0" max="14" value="8" step="1"><br/></div>
+    <!----></div>
+    </div>
+</div>
+
+<p>I did a bit of a double take looking at this, the magic number looks to be perfectly linear, relative to the root itself.<br>
+However, when you try to plug this into a line equation, it's clearly not at a micro level.<br></p>
+<p>The closest polyfit based solution I found was:</p>
+<pre><code class="language-python"># inv_root needs to be double for this work.
+def approximate_magic(inv_root):
+    a  = 4.00302424026998 * inv_root - 1.00012216260499
+    acc = 737.083067311021 * inv_root + 4135.88384756351
+    acc = a * acc + 74767.903015393
+    acc = a * acc - 266321277.850238
+    acc = a * acc + 798928755.213496
+    return uint32(acc)
+</code></pre>
+<p>On my spot testing (which wasn't exhaustive) the max error was ~13 ulp, which is pretty great considering how simple it is.<br>
+The biggest gripe I have with it, is that it needs to be in double precision.<br></p>
+<h4 id="searching-for-emstrongperfectstrongem-inputs">Searching For <em><strong>Perfect</strong></em> Inputs</h4>
+<p>This all got me wondering, what sort of values would produce the perfect delta.<br>
+Specifically what values between <code>[1, 2)</code> would produce a delta that happened to be <code>(delta_min + delta_max) &gt;&gt; 1</code>.<br></p>
+<p>This is a visualisation of just that, each pixel corresponds to a value that would result in a perfect delta, with the mean highlighed by white.</p>
+<div class="chart2_cont">
+    <video disablepictureinpicture  loading="lazy" width="720" height="144" class="chart2_video" id="perfect_scan_1">
+      <source src="res/perfect_scan_1.webm#t=8" type="video/webm" />
+    </video>
+    <div class="twoxnctrls">
+    <!----><div>
+    <!--    --><div id="perfect_scan_1_info">Exponent</div>
+    <!--    --><div><input aria-labelledby="perfect_scan_1_info" id="perfect_scan_1_ctrl" disabled type="range" min="0" max="14" value="8" step="1"><br/></div>
+    <!----></div>
+    </div>
+</div>
+
+<p>There's definately a trend around the <code>1.66</code> mark, although anything below <code>0.00390625</code> quickly seems to devolve into noise.</p>
+<h4 id="seperately-scaling-the-exponent-and-mantissa">Seperately Scaling The Exponent And Mantissa</h4>
+<p>While waiting for a magic number LUT to generate, I had a brainfart.<br>
+Namely, seperating the exponent and mantissa, based around the observation that <code>[1, 2] ^ n</code> will always remain between <code>[1, 1.414]</code> (the same exponent bucket), when <code>n</code> is between <code>(0, 1)</code>.<br></p>
+<p>Sadly, this turned out to be more expensive and less accurate, but worth mentioning all the same (success is just failing enough times).</p>
+<details>
+<summary>failed_magic.cpp</summary>
+
+<pre><code class="language-cpp">
+struct magic_params
+{
+    float    ir      {};  // root
+    uint32_t initial {};  // exponent correction
+    float    s       {};  // mantissa correction
+};
+
+magic_params make(float ir)
+{
+    uint32_t initial = asuint(1.0f) - uint32_t(float(asuint(1.0f) * ir));
+    float    s       = powf(2.0f, ir) - 1.0;
+    return { ir, initial, s };
+}
+
+float apply(float x, magic_params p)
+{
+    // Exponent handling
+    uint32_t e0 = asuint(x) &amp; 0xff800000u;                      // and      1FR  | 1
+    float    e1 = float(e0);                                    // u2f      1FR  | 2
+    float    e2 = e1 * p.ir;                                    // mul      1FR  | 3
+    uint32_t e3 = uint32_t(e2);                                 // f2u      1FR  | 4
+    float    e  = asfloat(e3 + p.initial);                      // add      1FR  | 5
+    // Mantissa handling
+    float m0 = asfloat((asuint(x) &amp; 0x7fffffu) | asuint(1.0f)); // and_or   1FR  | 6
+    float m  = p.s * m0 - p.s; /* (m0 - 1.0f) * p.s */          // mad      1FR  | 7
+    // Combing
+    float r = e * m + e; /* e * (1.0f + m) */                   // mad      1FR  | 8
+    return r;
+}
+</code></pre>
+</details>
+
+<h2 id="lowest-relative-error">Lowest Relative Error</h2>
+<p>So far, everything is based around the lowest absolute ULP error.<br>
+This ignores the simple fact that the ULP error doesn't reflect the relative error!<br></p>
+<p>Take √ for example, the upper bound delta comes from <code>1.0000038</code> and lower bound comes from <code>1.9999962</code>, meaning both will have the same ULP error (<code>359828</code>).<br>
+But there is a much larger relative error for <code>1.9999962</code>, then it is for <code>1.0000038</code>.<br></p>
+<div class="dryrun-table">
+
+<table>
+<thead>
+<tr>
+  <th>Input</th>
+  <th>Approx</th>
+  <th>Correct</th>
+  <th>|Correct-Approx|/Correct</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>1.0000038</td>
+  <td>0.97855353</td>
+  <td>1.0000019</td>
+  <td>2.14%</td>
+</tr>
+<tr>
+  <td>1.9999962</td>
+  <td>1.4571071</td>
+  <td>1.4142122</td>
+  <td>3.03%</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>Despite having the same ULP error, the relative error isn't balanced!<br></p>
+<p>When visualised further, <code>1.0857886</code> has the maximum relative error, at around <code>4.03%</code>:</p>
+<div class="chart2_cont">
+  <img alt="sqrt_rel_error" src="res/sqrt_rel_error.png" width="720" height="144" class="chart2_video"/>
+</div>
+
+<p>It is worth mentioning, that the initial magic number shifts where the maximum error will be.<br></p>
+<p>What we're really looking for here is a <code>min((correct-approx)/correct) == -max((correct-approx)/correct)</code>.<br></p>
+<h3 id="brute-force-method">Brute Force Method</h3>
+<p>We can brute force the values out, but trying every reasonable delta.</p>
+<pre><code class="language-python">from numpy import *
+
+iroot = 0.5
+
+# Initial approximation + reference value for correct x^iroot
+input_values = arange(0x3f800000, 0x40000000, dtype=uint32)
+initial_approx = (input_values.astype(float32) * iroot).astype(uint32)
+ref_value = (input_values.view(float32) ** iroot).view(uint32)
+delta = ref_value - initial_approx
+
+def get_rel_error_bias(magic):
+    approx = (initial_approx + magic).view(float32)
+    rel_error = (ref_value.view(float32) - approx) / ref_value.view(float32)
+    return rel_error.min() + rel_error.max()
+
+best_found = None
+best_err = float(&quot;inf&quot;)
+
+for magic in arange(delta.min(), delta.max(), dtype=uint32):
+    bias_err = get_rel_error_bias(magic)
+    if abs(bias_err) &lt; best_err:
+        best_err = abs(bias_err)
+        best_found = magic
+
+print(hex(best_found))
+</code></pre>
+<p>But this is an absolutely miserable experience, taking a totally unreasonable amount of time.</p>
+<p>However, graphing the <code>bias_err</code> against the delta from each number between <code>[1, 2)</code>, we can see a trend emerges, but quickly breaks down the further we zoom in:</p>
+<div class="chart2_cont">
+    <video disablepictureinpicture  loading="lazy" width="720" height="144" class="chart2_video" id="pure_sqrt_error_bias">
+      <source src="res/pure_sqrt_error_bias.webm#t=2" type="video/webm" />
+    </video>
+    <div class="twoxnctrls">
+    <!----><div>
+    <!--    --><div id="pure_sqrt_error_bias_info">Zoom</div>
+    <!--    --><div><input aria-labelledby="pure_sqrt_error_bias_info" id="pure_sqrt_error_bias_ctrl" disabled type="range" min="0" max="3" value="2" step="1"><br/></div>
+    <!----></div>
+    </div>
+</div>
+
+<p>This is a lot less so the case, when we linearly map those delta values, the trend is a lot more stable and looks like something we could possible linearly search for:</p>
+<div class="chart2_cont">
+    <video disablepictureinpicture  loading="lazy" width="720" height="144" class="chart2_video" id="impure_sqrt_error_bias">
+      <source src="res/impure_sqrt_error_bias.webm#t=2" type="video/webm" />
+    </video>
+    <div class="twoxnctrls">
+    <!----><div>
+    <!--    --><div id="impure_sqrt_error_bias_info">Zoom</div>
+    <!--    --><div><input aria-labelledby="impure_sqrt_error_bias_info" id="impure_sqrt_error_bias_ctrl" disabled type="range" min="0" max="3" value="2" step="1"><br/></div>
+    <!----></div>
+    </div>
+</div>
+
+<p>Here is an improved &quot;brute&quot; force method, which exploits this (usually converging after around 3-5 rounds), that consistently
+gives us the best magic number:</p>
+<details>
+<summary>brute_solve.py</summary>
+
+<pre><code class="language-python">
+from numpy import *
+
+def brute_solve(iroot):
+    iroot = float32(iroot)
+
+    # [1, 2)
+    # Initial approximation + reference value for correct x^iroot
+    input_values = arange(0x3f800000, 0x40000000, dtype=uint32)
+    initial_approx = (input_values.astype(float32) * iroot).astype(uint32)
+    ref_value = (input_values.view(float32) ** iroot).view(uint32)
+
+    def get_rel_error_bias(magic):
+        approx = (initial_approx + magic).view(float32)
+        rel_error = (ref_value.view(float32) - approx) / ref_value.view(float32)
+        return rel_error.min() + rel_error.max()
+
+    lhs_magic = ref_value[-1] - initial_approx[-1]
+    rhs_magic = ref_value[0] - initial_approx[0]
+    lhs_err = get_rel_error_bias(lhs_magic)
+    rhs_err = get_rel_error_bias(rhs_magic)
+
+    while (rhs_magic - lhs_magic) &gt; 1:
+        # Lerp between both sides, weighting the bias (converges faster than binary search)
+        a = abs(lhs_err) / (abs(lhs_err) + abs(rhs_err))
+        search_magic = lhs_magic + uint32((rhs_magic - lhs_magic) * a + 0.5)
+
+        # Prevent rounding error
+        if search_magic &lt;= lhs_magic:
+            search_magic = lhs_magic + 1
+        if search_magic &gt;= rhs_magic:
+            search_magic = rhs_magic - 1
+
+        search_err = get_rel_error_bias(search_magic)
+
+        if search_err &gt; 0:
+            lhs_magic = search_magic
+            lhs_err = search_err
+        else:
+            rhs_magic = search_magic
+            rhs_err = search_err
+
+    if (abs(lhs_err) &lt; abs(rhs_err)):
+        return lhs_magic
+    return rhs_magic
+</code></pre>
+</details>
+
+<p>This all said, we simply must try harder.</p>
+<h3 id="some-initial-research">Some Initial Research</h3>
+<p>Since we'll probably be wanting to keep our binary search adjacent probe based method,
+it would make to sense to try and avoid having to test the error between <code>[1, 2)</code> for each candidate magic number.</p>
+<p>So, lets start by looking at how the extreme ends change, along with the magic number first:</p>
+<div class="chart2_cont">
+    <video disablepictureinpicture  loading="lazy" width="720" height="144" class="chart2_video" id="sqrt_rel_error_seq">
+      <source src="res/sqrt_rel_error_seq.webm#t=512" type="video/webm" />
+    </video>
+    <div class="twoxnctrls">
+    <!----><div>
+    <!--    --><div id="sqrt_rel_error_seq_info">Magic</div>
+    <!--    --><div><input aria-labelledby="sqrt_rel_error_seq_info" id="sqrt_rel_error_seq_ctrl" disabled type="range" min="0" max="1024" value="512" step="1"><br/></div>
+    <!----></div>
+    </div>
+</div>
+
+<p>We can see that the negative error is mostly around at the end, but the positive error is towards the front and shifts along with the magic.<br></p>
+<p>The position of the peak here, is roughly <code>0x7f000000 - 2*magic</code>.<br></p>
+<p>After more <code>numpy.polyfit</code> diddling:</p>
+<div class="dryrun-table">
+
+<table>
+<thead>
+<tr>
+  <th>Root</th>
+  <th>≈ +Max Error Position</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>2</td>
+  <td>0x7f000000 - 2*magic</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td>0xbe800000 - 3*magic</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td>0xfe000000 - 4*magic</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td>0x3d800000 - 5*magic</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td>0x7d000000 - 6*magic</td>
+</tr>
+<tr>
+  <td>7</td>
+  <td>0xbc800000 - 7*magic</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<p>Which as it turns out, is really just <code>(0x3f800000 * root) - (root * magic)</code>.<br>
+So <code>(0x3f800000 - magic) * root</code>.</p>
+<p>Worth nothing, there is some (reasonable) rounding error here, which is mostly due to us casting to <code>float32</code> (rather than <code>float64</code>), during
+out initial approximation.</p>
+<p>Feeding this into our previous framework:</p>
+<details>
+<summary>approx_solve.py</summary>
+
+<pre><code class="language-python">from numpy import *
+
+def approx_solve(iroot):
+    iroot = float32(iroot)
+
+    # Working floating point format.
+    # - f64 = will often match the brute a bit better
+    # - f32 = faster
+    approx_fp = float64
+
+    # 0x3fffffe0 is pretty much always where the most negative error
+    # will be found, so we just compute this once and reuse it
+    # NB: There are cases, especially for very small iroot values, where
+    # this isn't true, but even then is a pretty reasonable metric
+    ub_target = uint32(0x3fffffe0)
+    ub_correct = (ub_target.view(float32) ** iroot)
+    ub_initial_approx = (ub_target.astype(approx_fp) * iroot).astype(uint32)
+
+    root = approx_fp(1.0) / iroot
+    def get_rel_error_bias(magic):
+        lb_target = uint32(approx_fp(0x3f800000 - magic) * root)
+        lb_correct = (lb_target.view(float32) ** iroot)
+        lb_initial_approx = (lb_target.astype(approx_fp) * iroot).astype(uint32)
+        lb_approx = (lb_initial_approx + magic).view(float32)
+        lb_rel_error = (lb_correct - lb_approx) / lb_correct
+
+        ub_approx = (ub_initial_approx + magic).view(float32)
+        ub_rel_error = (ub_correct - ub_approx) / ub_correct
+
+        return lb_rel_error + ub_rel_error
+
+    # Pseudo binary search
+    lhs_magic = (
+        (uint32(0x3fffffff).view(float32) ** iroot).view(uint32)
+        - (uint32(0x3fffffff).astype(float32) * iroot).astype(uint32)
+    )
+    rhs_magic = (
+        uint32(0x3f800000) # 1^x = 1
+        - (uint32(0x3f800000).astype(float32) * iroot).astype(uint32)
+    )
+    lhs_err = get_rel_error_bias(lhs_magic)
+    rhs_err = get_rel_error_bias(rhs_magic)
+
+    while (rhs_magic - lhs_magic) &gt; 1:
+        # Lerp between both sides, weighting the bias (faster convergence)
+        a = abs(lhs_err) / (abs(lhs_err) + abs(rhs_err))
+        search_magic = lhs_magic + uint32((rhs_magic - lhs_magic) * a + 0.5)
+
+        # Prevent rounding error
+        if search_magic &lt;= lhs_magic:
+            search_magic = lhs_magic + 1
+        if search_magic &gt;= rhs_magic:
+            search_magic = rhs_magic - 1
+
+        search_err = get_rel_error_bias(search_magic)
+
+        if search_err &gt; 0:
+            lhs_magic = search_magic
+            lhs_err = search_err
+        else:
+            rhs_magic = search_magic
+            rhs_err = search_err
+
+    if (abs(lhs_err) &lt; abs(rhs_err)):
+        return lhs_magic
+    return rhs_magic
+</code></pre>
+</details>
+
+<h2 id="beyond-roots">Beyond Roots</h2>
+<p>What we've really done here is create a framework for approximating powers, not simply roots.<br>
+So what do we need to do to bend this further?</p>
+<h3 id="powers-greater-than-1">Powers Greater Than 1</h3>
+<p>...</p>
+<p><code>initial_adj - ref_value</code> rather than <code>ref_value - initial_adj</code></p>
+<p>also might be better cus of float prec?:
+inverse the existing root-centric logic</p>
+<p>(Might also be better for root logic???)</p>
+<p>seems roughly similar??</p>
+<p>...</p>
+<h3 id="negative-powers">Negative Powers</h3>
+<p>...</p>
+<p>Becomes <code>M - initial</code> for &lt; 1, probably <code>M + initial</code> for Powers greater than 1</p>
+<p>...</p>
+
+</main>
+
+
+<script>
+
+// Setup bs_scan_min / bs_scan_max controls
+(()=>{
+
+    const setup_bs_scan = (vid, slider)=>{
+        const vidElement = document.getElementById(vid);
+        const sliderElement = document.getElementById(slider);
+
+        const onUpdate = ()=> {
+            const frame = sliderElement.value;
+            vidElement.currentTime = frame;
+        };
+        sliderElement.disabled = false;
+        sliderElement.oninput = onUpdate;
+        sliderElement.onchange = onUpdate;
+    };
+    setup_bs_scan("bs_scan_min", "bs_scan_min_ctrl");
+    setup_bs_scan("bs_scan_max", "bs_scan_max_ctrl");
+    setup_bs_scan("magic_numbers_vid", "magic_numbers_vid_ctrl");
+    setup_bs_scan("perfect_scan_1", "perfect_scan_1_ctrl");
+    setup_bs_scan("sqrt_rel_error_seq", "sqrt_rel_error_seq_ctrl");
+    setup_bs_scan("pure_sqrt_error_bias", "pure_sqrt_error_bias_ctrl");
+    setup_bs_scan("impure_sqrt_error_bias", "impure_sqrt_error_bias_ctrl");
+})();
+
+</script>
+
+
+ 
+<hr id="footersep">
+<div id="copyright">With the exception of third-party libraries / resources, code is public domain. Text &copy; Alister Chowdhury.</div>
+
+<script>
+async function _hsInit(...langs){
+    for(const lang of langs)
+    {
+        let script = document.createElement("script");
+        script.src = "/thirdparty/languages/" + lang +".min.js";
+        script.async = true;
+        script.onload = function(l){
+            return function()
+            {
+                document.querySelectorAll("pre code.language-" + l)
+                .forEach(hljs.highlightElement);
+            };
+        }
+        (lang);
+        document.body.appendChild(script);
+    }
+}
+</script>
+<script async src="/thirdparty/highlight.min.js" onload="_hsInit('c','cpp','python');">
+</script></body>
+</html>
+

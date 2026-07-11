@@ -217,7 +217,7 @@ While we aren't concerned with solving negative exponents, we can use the same m
 
 We aren't going to be doing any Newton or Halley iterations, they aren't really relevant to us and if we want to use fractional powers, make everything messy.
 
-<br>
+**EDIT Probably want to look at <a href="/posts/20260622-obsessively-approximating-roots">On The Topic Of Obsessively Approximating Roots</a> for a follow up, which improves the methodology we're using here.**
 
 We first derive the exponent via `uint(127 - 127 / power) << 23`, leaving us to solve the 23bit mantissa.
 

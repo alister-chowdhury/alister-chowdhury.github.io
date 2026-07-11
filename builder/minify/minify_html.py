@@ -4,6 +4,7 @@ import re
 
 from .minify_css import minify_css
 from .minify_js import minify_js
+from ..html_processing._transformer_base import _gen_entityref
 
 
 _NO_STRIP_TAGS = {
@@ -160,7 +161,7 @@ class _HtmlMinifierParser(html.parser.HTMLParser):
         Args:
             data (str): entity ref.
         """
-        self._insert("&{0};".format(data))
+        self._insert(_gen_entityref(self, data))
 
     def _minify_start_tag(self, tag, attrs, is_end):
         """Minify a start tag definition.

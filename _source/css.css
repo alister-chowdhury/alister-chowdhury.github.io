@@ -5,6 +5,22 @@ body
     font-family: monospace;
 }
 
+h1 {
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 1.5em;
+}
+
+h3 {
+    font-size: 1.3em;
+}
+
+h4 {
+    font-size: 1.15em;
+}
+
 a, a:visited, a:focus, a:hover
 {
     color: #c3c3f3;
